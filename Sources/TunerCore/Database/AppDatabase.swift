@@ -306,6 +306,13 @@ public final class AppDatabase: Sendable {
                 t.column("fetchedAt", .datetime).notNull()
             }
         }
+
+        // Series lookups now add TVmaze episode pictures: refetch cached series matches (shown meanwhile) the
+        // next time they're opened, instead of waiting out the 30-day cache.
+        m.registerMigration("v3") { db in
+            try db.execute(sql: "UPDATE mediaMetadata SET fetchedAt = ? WHERE kind = 'series' AND notFound = 0",
+                           arguments: [Date(timeIntervalSince1970: 0)])
+        }
         return m
     }
 }

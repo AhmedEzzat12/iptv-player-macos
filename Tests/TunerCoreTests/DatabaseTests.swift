@@ -130,3 +130,28 @@ struct VODDetailTests {
         #expect(try await db.series(id: series.id)?.plot == "Plot")
     }
 }
+
+@Suite("Migrations")
+struct MigrationTests {
+    @Test func v3MarksCachedSeriesMetadataStale() throws {
+        let queue = try DatabaseQueue()
+        try AppDatabase.migrator.migrate(queue, upTo: "v2")
+        let recent = Date()
+        try queue.write { db in
+            try db.execute(sql: """
+                INSERT INTO mediaMetadata (mediaId, kind, json, notFound, fetchedAt) VALUES
+                    ('series-match', 'series', '{}', 0, ?), ('series-miss', 'series', NULL, 1, ?), ('movie', 'movie', '{}', 0, ?)
+                """, arguments: [recent, recent, recent])
+        }
+        try AppDatabase.migrator.migrate(queue)
+        let fetched = try queue.read { db in
+            try Dictionary(uniqueKeysWithValues: Row.fetchAll(db, sql: "SELECT mediaId, fetchedAt FROM mediaMetadata").map {
+                ($0["mediaId"] as String, $0["fetchedAt"] as Date)
+            })
+        }
+        // Matched series refetch (to pick up TVmaze episode pictures); misses and movies keep their dates.
+        #expect(try #require(fetched["series-match"]) < Date(timeIntervalSince1970: 1))
+        #expect(abs(try #require(fetched["series-miss"]).timeIntervalSince(recent)) < 1)
+        #expect(abs(try #require(fetched["movie"]).timeIntervalSince(recent)) < 1)
+    }
+}

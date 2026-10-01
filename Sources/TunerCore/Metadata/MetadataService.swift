@@ -214,7 +214,7 @@ struct MetadataProviders: Sendable {
             do {
                 if var metadata = try await tmdb.lookup(query, kind: request.kind, tmdbId: request.tmdbId) {
                     metadata.fetchedAt = fetchedAt
-                    return .found(metadata)
+                    return .found(await withEpisodeFallbacks(metadata))
                 }
             } catch {
                 // Rejected keys fall back quietly; other errors make a Cinemeta miss inconclusive.
@@ -225,13 +225,28 @@ struct MetadataProviders: Sendable {
         do {
             if var metadata = try await CinemetaClient(fetch: fetch).lookup(query, kind: request.kind) {
                 metadata.fetchedAt = fetchedAt
-                return .found(metadata)
+                return .found(await withEpisodeFallbacks(metadata))
             }
             MetadataService.log.info("No match for '\(request.name, privacy: .public)' → '\(query.title, privacy: .public)' (\(query.year.map(String.init) ?? "-", privacy: .public))")
             return transientFailure ? .failed : .notFound
         } catch {
             MetadataService.log.error("Cinemeta lookup for '\(query.title, privacy: .public)' failed: \(error.localizedDescription, privacy: .public)")
             return .failed
+        }
+    }
+
+    /// Series: adds TVmaze episode pictures as fallbacks for stills that don't exist. Best effort — a TVmaze
+    /// failure never loses the match.
+    func withEpisodeFallbacks(_ metadata: MediaMetadata) async -> MediaMetadata {
+        guard metadata.kind == .series, !metadata.episodes.isEmpty, let imdbId = metadata.imdbId else { return metadata }
+        do {
+            let tvmaze = try await TVmazeClient(fetch: fetch).episodes(imdbId: imdbId)
+            var enriched = metadata
+            enriched.episodes = TVmazeClient.addFallbackStills(to: metadata.episodes, from: tvmaze)
+            return enriched
+        } catch {
+            MetadataService.log.error("TVmaze episode pictures for \(imdbId, privacy: .public) failed: \(error.localizedDescription, privacy: .public)")
+            return metadata
         }
     }
 }

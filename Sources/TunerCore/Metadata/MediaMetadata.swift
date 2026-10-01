@@ -20,15 +20,20 @@ public struct EpisodeMetadata: Codable, Sendable, Hashable {
     public var title: String?
     public var overview: String?
     public var stillURL: String?
+    /// A second picture source, tried when `stillURL` doesn't load (Cinemeta lists still URLs that don't exist for
+    /// many later seasons). Optional, so metadata cached before it existed still decodes.
+    public var fallbackStillURL: String?
     public var airDate: String?
     public var rating: Double?
 
-    public init(season: Int, episode: Int, title: String? = nil, overview: String? = nil, stillURL: String? = nil, airDate: String? = nil, rating: Double? = nil) {
+    public init(season: Int, episode: Int, title: String? = nil, overview: String? = nil, stillURL: String? = nil,
+                fallbackStillURL: String? = nil, airDate: String? = nil, rating: Double? = nil) {
         self.season = season
         self.episode = episode
         self.title = title
         self.overview = overview
         self.stillURL = stillURL
+        self.fallbackStillURL = fallbackStillURL
         self.airDate = airDate
         self.rating = rating
     }

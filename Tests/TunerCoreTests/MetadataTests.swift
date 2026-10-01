@@ -665,6 +665,107 @@ struct MetadataServiceTests {
     }
 }
 
+// MARK: - TVmaze episode pictures
+
+@Suite("TVmaze episode pictures")
+struct TVmazeTests {
+    /// A TVmaze `/shows/{id}?embed=episodes` body. Each tuple: season, number (nil = special), picture.
+    static func show(_ episodes: [(Int, Int?, String?)]) -> JSONObject {
+        JSONObject(["id": 48450, "name": "Jujutsu Kaisen", "_embedded": ["episodes": episodes.map { season, number, image -> [String: Any] in
+            var e: [String: Any] = ["season": season, "type": "regular"]
+            if let number { e["number"] = number }
+            if let image { e["image"] = ["medium": image + "-small", "original": image] }
+            return e
+        }]])
+    }
+
+    static func tv(_ season: Int, _ episode: Int, _ url: String?) -> TVmazeClient.Episode {
+        TVmazeClient.Episode(season: season, episode: episode, imageURL: url)
+    }
+
+    @Test func parsesPicturesBySeasonAndEpisode() {
+        let parsed = TVmazeClient.parseEpisodes(Self.show([(1, 1, "a"), (1, 2, nil), (2, 1, "b"), (0, nil, "special")]))
+        #expect(parsed.count == 3) // the unnumbered special is dropped
+        #expect(parsed.first { $0.season == 2 && $0.episode == 1 }?.imageURL == "b") // the full-size picture
+        #expect(parsed.first { $0.season == 1 && $0.episode == 2 }?.imageURL == nil)
+    }
+
+    @Test func addsFallbacksWithoutReplacingWorkingStills() {
+        let episodes = [
+            EpisodeMetadata(season: 1, episode: 1, stillURL: "cine/1/1"),
+            EpisodeMetadata(season: 1, episode: 2, stillURL: "cine/1/2"),
+            EpisodeMetadata(season: 2, episode: 1, stillURL: "cine/2/1"),
+            EpisodeMetadata(season: 2, episode: 2),
+        ]
+        let tvmaze = [Self.tv(1, 1, "tv/1/1"), Self.tv(1, 2, nil), Self.tv(2, 1, "tv/2/1"), Self.tv(2, 2, "tv/2/2")]
+        let merged = TVmazeClient.addFallbackStills(to: episodes, from: tvmaze)
+        #expect(merged[0].stillURL == "cine/1/1")
+        #expect(merged[0].fallbackStillURL == "tv/1/1")
+        #expect(merged[1].fallbackStillURL == nil) // TVmaze has no picture for it either
+        #expect(merged[2].fallbackStillURL == "tv/2/1")
+        #expect(merged[3].stillURL == "tv/2/2") // nothing before: TVmaze's picture becomes the still
+        #expect(merged[3].fallbackStillURL == nil)
+    }
+
+    @Test func skipsSeasonsNumberedDifferently() {
+        // Season 1 has 2 episodes here but 3 on TVmaze (e.g. a recap counted differently): numbers can't be trusted.
+        let episodes = [EpisodeMetadata(season: 1, episode: 1, stillURL: "cine/1/1"), EpisodeMetadata(season: 1, episode: 2)]
+        let tvmaze = [Self.tv(1, 1, "tv/1/1"), Self.tv(1, 2, "tv/1/2"), Self.tv(1, 3, "tv/1/3")]
+        #expect(TVmazeClient.addFallbackStills(to: episodes, from: tvmaze) == episodes)
+    }
+
+    @Test func episodesCachedBeforeFallbacksStillDecode() throws {
+        let json = #"{"season":2,"episode":1,"title":"Hidden Inventory","stillURL":"x"}"#
+        let episode = try JSONDecoder().decode(EpisodeMetadata.self, from: Data(json.utf8))
+        #expect(episode.stillURL == "x")
+        #expect(episode.fallbackStillURL == nil)
+    }
+
+    /// Cinemeta fixtures plus a TVmaze show whose seasons mirror the Breaking Bad fixture's episode counts.
+    static func network(tvmazeFails: Bool = false) throws -> StubNetwork {
+        let meta = try #require(try metadataJSON("cinemeta_meta_series_breaking_bad.json").object("meta"))
+        let cinemetaEpisodes = try #require(CinemetaClient.map(meta, kind: .series)).episodes
+        let tvShow = show(cinemetaEpisodes.map { ($0.season, $0.episode, "https://tvmaze/\($0.season)/\($0.episode).jpg") })
+        return StubNetwork { url in
+            if url.contains("api.tvmaze.com") {
+                if tvmazeFails { throw HTTPError.status(503, url: url) }
+                if url.contains("/lookup/shows?imdb=tt0903747") { return JSONObject(["id": 169, "name": "Breaking Bad"]) }
+                if url.contains("/shows/169?embed=episodes") { return tvShow }
+                throw HTTPError.status(404, url: url)
+            }
+            return try StubNetwork.cinemeta(url)
+        }
+    }
+
+    @Test func seriesLookupAddsTVmazePicturesAsFallbacks() async throws {
+        let net = try Self.network()
+        let service = MetadataService(db: try AppDatabase.inMemory(), fetch: net.fetch)
+        let bb = Series(id: "s1", sourceId: "src", categoryId: nil, name: "Breaking Bad", providerId: "1", providerOrder: 0)
+        let md = try #require(await service.metadata(for: bb))
+        let episode = try #require(md.episode(season: 1, number: 2))
+        #expect(episode.stillURL != nil) // Cinemeta's own still stays first
+        #expect(episode.fallbackStillURL == "https://tvmaze/1/2.jpg")
+        #expect(await service.cachedMetadata(mediaId: "s1") == md) // cached with the fallbacks
+    }
+
+    @Test func tvmazeOutageKeepsTheMatch() async throws {
+        let net = try Self.network(tvmazeFails: true)
+        let service = MetadataService(db: try AppDatabase.inMemory(), fetch: net.fetch)
+        let bb = Series(id: "s1", sourceId: "src", categoryId: nil, name: "Breaking Bad", providerId: "1", providerOrder: 0)
+        let md = try #require(await service.metadata(for: bb))
+        #expect(md.imdbId == "tt0903747")
+        #expect(md.episodes.allSatisfy { $0.fallbackStillURL == nil })
+    }
+
+    @Test func moviesNeverAskTVmaze() async throws {
+        let net = try Self.network()
+        let service = MetadataService(db: try AppDatabase.inMemory(), fetch: net.fetch)
+        let m = Movie(id: "m1", sourceId: "src", categoryId: nil, name: "Dune Part Two (2024)", providerId: "m1", providerOrder: 0)
+        _ = await service.metadata(for: m)
+        #expect(!net.requests.contains { $0.contains("tvmaze") })
+    }
+}
+
 // MARK: - Online guide catalogue
 
 @Suite("Online guide catalogue")

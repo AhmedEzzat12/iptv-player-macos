@@ -616,8 +616,11 @@ enum VODEnrichment {
         return f
     }()
 
-    /// "Metadata from Cinemeta"
-    static func credit(_ metadata: MediaMetadata) -> String { "Metadata from \(metadata.source)" }
+    /// "Metadata from Cinemeta", plus TVmaze when its episode pictures are used (its data licence requires credit).
+    static func credit(_ metadata: MediaMetadata) -> String {
+        let usesTVmaze = metadata.episodes.contains { [$0.stillURL, $0.fallbackStillURL].contains { $0?.contains("tvmaze.com") == true } }
+        return usesTVmaze ? "Metadata from \(metadata.source) · Episode pictures from TVmaze" : "Metadata from \(metadata.source)"
+    }
 
     /// The title's IMDb page, when the metadata has a valid IMDb id ("tt1160419").
     static func imdbURL(_ metadata: MediaMetadata?) -> URL? {

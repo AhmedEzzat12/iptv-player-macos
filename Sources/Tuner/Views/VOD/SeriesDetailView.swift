@@ -381,6 +381,8 @@ private struct SeriesEpisodeCard: View {
         var urls: [String] = []
         if let own = episode.imageURL?.nilIfEmpty, !showArtwork.contains(own) { urls.append(own) }
         if let online = info?.stillURL?.nilIfEmpty, !urls.contains(online) { urls.append(online) }
+        // Cinemeta lists stills its image host doesn't have for many later seasons; TVmaze's picture is next.
+        if let fallback = info?.fallbackStillURL?.nilIfEmpty, !urls.contains(fallback) { urls.append(fallback) }
         return urls
     }
 
