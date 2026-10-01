@@ -1,0 +1,13 @@
+{
+  "_id": "52542282760ee313280017f9",
+  "air_date": "2008-01-20",
+  "episodes": [
+    {"air_date": "2008-01-20", "episode_number": 1, "id": 62085, "name": "Pilot", "overview": "Walter White, a struggling high school chemistry teacher, is diagnosed with advanced lung cancer.", "runtime": 58, "season_number": 1, "still_path": "/ydlY3iPfeOAvu8gVqrxPoMvzNCn.jpg", "vote_average": 8.3, "vote_count": 300},
+    {"air_date": "2008-01-27", "episode_number": 2, "id": 62086, "name": "Cat's in the Bag...", "overview": "Walt and Jesse attempt to tie up loose ends.", "runtime": 48, "season_number": 1, "still_path": "/tjDNvbokPLtEnpFyFPyXMOd6Zr1.jpg", "vote_average": 8.0, "vote_count": 200}
+  ],
+  "name": "Season 1",
+  "overview": "High school chemistry teacher Walter White's life is suddenly transformed.",
+  "id": 3572,
+  "poster_path": "/1BP4xYv9ZG4ZVHkL7ocOziBbSYH.jpg",
+  "season_number": 1
+}

@@ -1,0 +1,4 @@
+module CMPV {
+    header "CMPV.h"
+    export *
+}

@@ -1,0 +1,69 @@
+{
+  "adult": false,
+  "backdrop_path": "/xOMo8BRK7PfcJv9JCnx7s5hj0PX.jpg",
+  "budget": 190000000,
+  "genres": [{"id": 878, "name": "Science Fiction"}, {"id": 12, "name": "Adventure"}],
+  "id": 693134,
+  "imdb_id": "tt15239678",
+  "origin_country": ["US"],
+  "original_language": "en",
+  "original_title": "Dune: Part Two",
+  "overview": "",
+  "popularity": 393.2,
+  "poster_path": "/1pdfLvkbY9ohJlCjQH2CZjjYVvJ.jpg",
+  "production_countries": [{"iso_3166_1": "US", "name": "United States of America"}, {"iso_3166_1": "CA", "name": "Canada"}],
+  "release_date": "2024-02-27",
+  "runtime": 167,
+  "status": "Released",
+  "tagline": "Long live the fighters.",
+  "title": "Dune: Part Two",
+  "vote_average": 8.153,
+  "vote_count": 6300,
+  "credits": {
+    "cast": [
+      {"id": 505710, "name": "Zendaya", "character": "Chani", "profile_path": "/3WdOloHpjtjL96uVOhFRRCcYSwq.jpg", "order": 1},
+      {"id": 1190668, "name": "Timothée Chalamet", "character": "Paul Atreides", "profile_path": "/BE2sdjpgsa2rNTFa66f7upkaOP.jpg", "order": 0},
+      {"id": 933238, "name": "Rebecca Ferguson", "character": "Jessica", "profile_path": null, "order": 2}
+    ],
+    "crew": [
+      {"id": 137427, "name": "Denis Villeneuve", "department": "Directing", "job": "Director"},
+      {"id": 137427, "name": "Denis Villeneuve", "department": "Writing", "job": "Screenplay"},
+      {"id": 1220, "name": "Jon Spaihts", "department": "Writing", "job": "Screenplay"},
+      {"id": 7520, "name": "Frank Herbert", "department": "Writing", "job": "Novel"},
+      {"id": 9999, "name": "Hans Zimmer", "department": "Sound", "job": "Original Music Composer"}
+    ]
+  },
+  "videos": {
+    "results": [
+      {"iso_639_1": "en", "iso_3166_1": "US", "name": "Behind the Scenes", "key": "bts000", "site": "YouTube", "type": "Featurette", "official": true},
+      {"iso_639_1": "en", "iso_3166_1": "US", "name": "Teaser", "key": "teaser01", "site": "YouTube", "type": "Teaser", "official": true},
+      {"iso_639_1": "en", "iso_3166_1": "US", "name": "Fan trailer", "key": "fan00001", "site": "YouTube", "type": "Trailer", "official": false},
+      {"iso_639_1": "en", "iso_3166_1": "US", "name": "Official Trailer 3", "key": "U2Qp5pL3ovA", "site": "YouTube", "type": "Trailer", "official": true},
+      {"iso_639_1": "ar", "iso_3166_1": "SA", "name": "الإعلان الرسمي", "key": "arTrailer1", "site": "YouTube", "type": "Trailer", "official": true},
+      {"iso_639_1": "en", "iso_3166_1": "US", "name": "Vimeo trailer", "key": "123456", "site": "Vimeo", "type": "Trailer", "official": true}
+    ]
+  },
+  "images": {
+    "backdrops": [
+      {"aspect_ratio": 1.778, "file_path": "/textless-backdrop.jpg", "iso_639_1": null, "vote_average": 5.6, "width": 3840, "height": 2160}
+    ],
+    "logos": [
+      {"aspect_ratio": 4.2, "file_path": "/logo-en-svg.svg", "iso_639_1": "en", "vote_average": 5.9, "width": 1000, "height": 238},
+      {"aspect_ratio": 4.2, "file_path": "/logo-en.png", "iso_639_1": "en", "vote_average": 5.4, "width": 1000, "height": 238},
+      {"aspect_ratio": 4.0, "file_path": "/logo-ar.png", "iso_639_1": "ar", "vote_average": 5.2, "width": 800, "height": 200},
+      {"aspect_ratio": 4.0, "file_path": "/logo-ja.png", "iso_639_1": "ja", "vote_average": 9.0, "width": 800, "height": 200}
+    ],
+    "posters": [
+      {"aspect_ratio": 0.667, "file_path": "/poster-en.jpg", "iso_639_1": "en", "vote_average": 5.5, "width": 2000, "height": 3000}
+    ]
+  },
+  "external_ids": {"imdb_id": "tt15239678", "wikidata_id": "Q61891372", "facebook_id": null},
+  "translations": {
+    "translations": [
+      {"iso_3166_1": "GB", "iso_639_1": "en", "name": "English", "english_name": "English",
+       "data": {"homepage": "", "overview": "GB overview.", "runtime": 167, "tagline": "", "title": ""}},
+      {"iso_3166_1": "US", "iso_639_1": "en", "name": "English", "english_name": "English",
+       "data": {"homepage": "https://www.dunemovie.com", "overview": "Follow the mythic journey of Paul Atreides as he unites with Chani and the Fremen.", "runtime": 167, "tagline": "Long live the fighters.", "title": ""}}
+    ]
+  }
+}

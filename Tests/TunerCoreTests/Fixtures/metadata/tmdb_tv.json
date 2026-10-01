@@ -1,0 +1,45 @@
+{
+  "backdrop_path": "/tsRy63Mu5cu8etL1X7ZLyf7UP1M.jpg",
+  "created_by": [{"id": 66633, "name": "Vince Gilligan", "profile_path": "/z3E0DhBg1V1PZVEtS9vfFPzOWYB.jpg"}],
+  "episode_run_time": [],
+  "first_air_date": "2008-01-20",
+  "genres": [{"id": 18, "name": "Drama"}, {"id": 80, "name": "Crime"}],
+  "id": 1396,
+  "in_production": false,
+  "last_air_date": "2013-09-29",
+  "last_episode_to_air": {"id": 62161, "name": "Felina", "runtime": 56, "season_number": 5, "episode_number": 16},
+  "name": "Breaking Bad",
+  "number_of_episodes": 62,
+  "number_of_seasons": 5,
+  "origin_country": ["US"],
+  "original_language": "en",
+  "original_name": "Breaking Bad",
+  "overview": "Walter White, a New Mexico chemistry teacher, is diagnosed with Stage III cancer.",
+  "poster_path": "/ztkUQFLlC19CCMYHW9o1zWhJRNq.jpg",
+  "seasons": [
+    {"air_date": "2009-02-17", "episode_count": 9, "id": 3577, "name": "Specials", "season_number": 0},
+    {"air_date": "2008-01-20", "episode_count": 7, "id": 3572, "name": "Season 1", "season_number": 1},
+    {"air_date": "2009-03-08", "episode_count": 13, "id": 3573, "name": "Season 2", "season_number": 2},
+    {"air_date": null, "episode_count": 0, "id": 9999, "name": "Season 6", "season_number": 6}
+  ],
+  "status": "Ended",
+  "tagline": "Change the equation.",
+  "vote_average": 8.9,
+  "vote_count": 15000,
+  "credits": {
+    "cast": [
+      {"id": 17419, "name": "Bryan Cranston", "character": "Walter White", "profile_path": "/7Jahy5LZX2Fo8fGJltMreAI49hC.jpg", "order": 0},
+      {"id": 84497, "name": "Aaron Paul", "character": "Jesse Pinkman", "profile_path": "/8Ac9uuoYwZoYVAIJfRLzzLsGGJn.jpg", "order": 1}
+    ],
+    "crew": []
+  },
+  "videos": {"results": [
+    {"iso_639_1": "en", "key": "HhesaQXLuRY", "site": "YouTube", "type": "Trailer", "official": true}
+  ]},
+  "images": {
+    "backdrops": [],
+    "logos": [{"file_path": "/bb-logo.png", "iso_639_1": "en", "vote_average": 5.3}],
+    "posters": []
+  },
+  "external_ids": {"imdb_id": "tt0903747", "tvdb_id": 81189}
+}

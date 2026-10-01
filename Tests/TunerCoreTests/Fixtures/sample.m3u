@@ -1,0 +1,20 @@
+#EXTM3U url-tvg="http://epg.example.com/guide.xml.gz,http://epg2.example.com/g.xml" catchup="shift" catchup-days="5"
+#EXTINF:-1 tvg-id="cnn.us" tvg-name="CNN" tvg-logo="http://logos/cnn.png" group-title="News",CNN HD
+http://example.com/live/cnn.m3u8
+#EXTINF:-1 tvg-id="bbc1.uk" tvg-logo="http://logos/bbc.png" group-title="UK, Entertainment" tvg-chno="101",BBC One, London
+#EXTVLCOPT:http-user-agent=CustomAgent/1.0
+#EXTVLCOPT:http-referrer=http://ref.example.com/
+http://example.com/bbc1.ts
+#EXTINF:-1 tvg-id="cnn.us" group-title="News",CNN Backup
+http://backup.example.com/cnn.ts
+#EXTINF:-1 tvg-id= tvg-name="No Id Channel",No Id Channel
+#EXTGRP:Misc
+udp://239.0.0.1:1234
+#EXTINF:-1 group-title="Movies",The Matrix (1999)
+http://panel.example.com/movie/user/pass/555.mkv
+#EXTINF:-1 group-title="Series",Breaking Bad S01 E02 Cat's in the Bag
+http://panel.example.com/series/user/pass/777.mp4
+#EXTINF:-1 group-title="Series",Breaking Bad S01E01
+http://panel.example.com/series/user/pass/776.mp4
+#EXTINF:-1 tvg-id="xc.1" catchup="xc" group-title="Panel",Panel Channel
+http://panel.example.com/live/user/pass/12345.ts

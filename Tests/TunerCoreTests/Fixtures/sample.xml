@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE tv SYSTEM "xmltv.dtd">
+<tv generator-info-name="test">
+  <channel id="cnn.us">
+    <display-name lang="en">CNN</display-name>
+    <display-name>CNN International</display-name>
+    <icon src="http://logos/cnn-epg.png" />
+  </channel>
+  <channel id="BBC1.uk">
+    <display-name>BBC One</display-name>
+  </channel>
+  <channel id="unused.channel">
+    <display-name>Nobody Watches This</display-name>
+  </channel>
+  <!-- a comment with <programme> inside -->
+  <programme start="20260101120000 +0000" stop="20260101130000 +0000" channel="cnn.us">
+    <title lang="en">News &amp; Views</title>
+    <title lang="fr">Nouvelles</title>
+    <sub-title>Midday</sub-title>
+    <desc><![CDATA[Top <stories> of the day]]></desc>
+    <category>News</category>
+    <episode-num system="xmltv_ns">1.4.0/1</episode-num>
+    <credits><actor>Someone</actor><actor>Else</actor></credits>
+    <icon src="http://img/p1.jpg"/>
+  </programme>
+  <programme start="20260101140000 +0200" stop="20260101150000 +0200" channel="BBC1.uk">
+    <title>Doctor Who</title>
+    <desc>Time &#x26; space &#169;</desc>
+  </programme>
+  <programme start="20260101120000 +0000" stop="20260101130000 +0000" channel="unused.channel">
+    <title>Filtered Out</title>
+  </programme>
+  <programme start="202601011300" stop="202601011400" channel="cnn.us">
+    <title>No Seconds</title>
+  </programme>
+</tv>

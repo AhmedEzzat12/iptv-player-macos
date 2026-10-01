@@ -1,0 +1,17 @@
+{
+  "page": 1,
+  "results": [
+    {"adult": false, "backdrop_path": "/xOMo8BRK7PfcJv9JCnx7s5hj0PX.jpg", "genre_ids": [878, 12], "id": 693134,
+     "original_language": "en", "original_title": "Dune: Part Two", "overview": "Follow the mythic journey of Paul Atreides…",
+     "popularity": 393.2, "poster_path": "/1pdfLvkbY9ohJlCjQH2CZjjYVvJ.jpg", "release_date": "2024-02-27",
+     "title": "Dune: Part Two", "video": false, "vote_average": 8.2, "vote_count": 6300},
+    {"adult": false, "id": 1170608, "original_language": "en", "original_title": "Dune: Part Three",
+     "popularity": 40.1, "poster_path": null, "release_date": "2026-12-16", "title": "Dune: Part Three",
+     "vote_average": 0, "vote_count": 0},
+    {"adult": false, "id": 438631, "original_language": "en", "original_title": "Dune", "popularity": 120.5,
+     "poster_path": "/d5NXSklXo0qyIYkgV94XAgMIckC.jpg", "release_date": "2021-09-15", "title": "Dune",
+     "vote_average": 7.8, "vote_count": 12000}
+  ],
+  "total_pages": 1,
+  "total_results": 3
+}
