@@ -79,6 +79,7 @@ enum ShortcutAction: String, CaseIterable, Identifiable, Codable {
         switch self {
         case .seekBack, .seekForward: "While the player fills the window"
         case .channelUp, .channelDown: "While watching live TV full window"
+        case .volumeUp, .volumeDown: "Arrow keys only while the player fills the window; + and − work anytime"
         case .openPlayer: "While something is playing in the preview or mini player"
         default: nil
         }
@@ -91,8 +92,9 @@ enum ShortcutAction: String, CaseIterable, Identifiable, Codable {
         case .mute: "m"
         case .seekBack: "left"
         case .seekForward: "right"
-        case .volumeUp: "="
-        case .volumeDown: "-"
+        // ↑/↓ change the volume in the player, as in QuickTime and the TV app; channels are on Page Up/Down.
+        case .volumeUp: "up"
+        case .volumeDown: "down"
         case .cycleAudio: "a"
         case .cycleSubtitles: "j"
         case .stats: "i"
@@ -100,8 +102,8 @@ enum ShortcutAction: String, CaseIterable, Identifiable, Codable {
         case .fullScreen: "f"
         case .openPlayer: "return"
         case .exitPlayer: "escape"
-        case .channelUp: "up"
-        case .channelDown: "down"
+        case .channelUp: "pageup"
+        case .channelDown: "pagedown"
         case .previousChannel: "q"
         case .toggleFavorite: ""
         case .recordNow: ""
@@ -122,6 +124,13 @@ enum ShortcutAction: String, CaseIterable, Identifiable, Codable {
 
 /// Key names used in bindings: special keys by name ("space", "left", "f5"…), otherwise the lowercased character.
 enum ShortcutKey {
+    /// Extra keys for an action, used only while no action is bound to them (`=` is the unshifted `+` key).
+    static let aliases: [String: ShortcutAction] = ["=": .volumeUp, "+": .volumeUp, "-": .volumeDown]
+
+    /// Keys that lists, the guide and the sidebar use for navigation. They act as player shortcuts only while the
+    /// player fills the window, and are then always consumed so they can't move the (hidden) sidebar selection.
+    static let navigation: Set<String> = ["up", "down", "left", "right", "pageup", "pagedown", "home", "end"]
+
     static let specialNames: [UInt16: String] = [
         49: "space", 36: "return", 76: "return", 53: "escape", 48: "tab", 51: "delete", 117: "forwarddelete",
         123: "left", 124: "right", 125: "down", 126: "up", 115: "home", 119: "end", 116: "pageup", 121: "pagedown",
@@ -173,9 +182,9 @@ extension Preferences {
         shortcutOverrides[action.rawValue] ?? action.defaultKey
     }
 
-    /// The action bound to a key, if any.
+    /// The action bound to a key, if any. Unclaimed `+`/`−` also change the volume.
     func action(forKey key: String) -> ShortcutAction? {
-        ShortcutAction.allCases.first { self.key(for: $0) == key }
+        ShortcutAction.allCases.first { self.key(for: $0) == key } ?? ShortcutKey.aliases[key]
     }
 
     /// Binds `key` to `action`, unbinding it from any other action. Returns the action that lost the key.
@@ -239,8 +248,11 @@ final class KeyboardShortcuts {
             model.showShortcutHelp = false
             return true
         }
-        guard let action = model.prefs.action(forKey: name) else { return false }
-        return perform(action, model: model, window: window)
+        let isNavigation = ShortcutKey.navigation.contains(name)
+        let full = model.player.isFullWindow
+        if isNavigation, !full { return false }
+        guard let action = model.prefs.action(forKey: name) else { return isNavigation }
+        return perform(action, model: model, window: window) || isNavigation
     }
 
     /// Runs an action if it applies in the current context; returns false to let the key through.
@@ -263,7 +275,7 @@ final class KeyboardShortcuts {
             main.seek(by: action == .seekBack ? -10 : 10)
         case .volumeUp, .volumeDown:
             guard player.hasMedia else { return false }
-            main.volume = min(150, max(0, main.volume + (action == .volumeUp ? 5 : -5)))
+            main.volume = min(PlayerSlot.maxVolume, max(0, main.volume + (action == .volumeUp ? 5 : -5)))
             model.prefs.volume = main.volume
         case .cycleAudio:
             guard player.hasMedia else { return false }
@@ -350,7 +362,7 @@ struct TunerCommands: Commands {
             Button("Last Channel") { model.playPreviousChannel() }.keyboardShortcut("l", modifiers: [.command, .option])
             Divider()
             Button("Volume Up") {
-                model.player.main.volume = min(150, model.player.main.volume + 5)
+                model.player.main.volume = min(PlayerSlot.maxVolume, model.player.main.volume + 5)
                 model.prefs.volume = model.player.main.volume
             }.keyboardShortcut(.upArrow, modifiers: .command)
             Button("Volume Down") {

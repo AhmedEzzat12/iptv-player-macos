@@ -24,6 +24,10 @@ struct RootView: View {
                            containerSize: proxy.size)
             }
         }
+        // Banners must sit above the full-window player, which covers the content column they normally top.
+        .overlay(alignment: .top) {
+            if model.player.isFullWindow { BannerStack().padding(.top, 16) }
+        }
         .background(WindowAccessor { model.mainWindow = $0 })
         .onChange(of: model.player.isFullWindow) { _, full in
             withAnimation(.smooth(duration: 0.35)) { columnVisibility = full ? .detailOnly : .all }
@@ -46,7 +50,9 @@ struct DetailRoot: View {
     var body: some View {
         sectionContent
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .overlay(alignment: .top) { BannerStack().padding(.top, 12) }
+            .overlay(alignment: .top) {
+                if !model.player.isFullWindow { BannerStack().padding(.top, 12) }
+            }
     }
 
     @ViewBuilder

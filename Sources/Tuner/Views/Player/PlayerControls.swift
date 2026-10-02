@@ -134,10 +134,9 @@ struct PlayerVolumeControl: View {
 
             if let sliderWidth {
                 PlayerCapsuleSlider(
-                    fraction: level / 150,
-                    marker: 100.0 / 150,
+                    fraction: level / PlayerSlot.maxVolume,
                     onChange: { fraction in
-                        slot.volume = (fraction * 150).rounded()
+                        slot.volume = (fraction * PlayerSlot.maxVolume).rounded()
                         if slot.isMuted, fraction > 0 { slot.isMuted = false }
                         chrome.isInteracting = true
                         chrome.touch()

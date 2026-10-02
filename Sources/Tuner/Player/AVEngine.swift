@@ -187,8 +187,12 @@ final class AVEngine: NSObject, PlaybackEngine {
         performSeek(to: base + delta, item: item)
     }
 
+    /// `AVPlayer.volume` is linear amplitude, so most of the audible change would crowd into the bottom of the
+    /// slider. mpv applies a cubic curve to its `volume` property (its 130 % maximum is "about double the normal
+    /// level"); using the same curve here makes a given slider position sound the same in both engines.
     func setVolume(_ volume: Double) {
-        player.volume = Float(min(max(volume / 100, 0), 1))
+        let level = min(max(volume / 100, 0), 1)
+        player.volume = Float(level * level * level)
     }
 
     func setMuted(_ muted: Bool) {

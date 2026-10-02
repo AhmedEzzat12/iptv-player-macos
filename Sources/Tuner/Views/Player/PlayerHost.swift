@@ -448,7 +448,7 @@ final class PlayerScrollVolumeMonitor {
         let direction: Double = input.isInverted ? -1 : 1
         let delta = Double(input.deltaY) * direction * (input.isPrecise ? 0.25 : 3)
         let main = model.player.main
-        let volume = min(150, max(0, (main.volume + delta).rounded()))
+        let volume = min(PlayerSlot.maxVolume, max(0, (main.volume + delta).rounded()))
         guard volume != main.volume else { return true }
         main.volume = volume
         if delta > 0, main.isMuted { main.isMuted = false }

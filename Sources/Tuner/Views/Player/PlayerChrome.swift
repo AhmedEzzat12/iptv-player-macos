@@ -226,6 +226,12 @@ struct PlayerControlPanel: View {
     let slot: PlayerSlot
     let chrome: PlayerChromeController
     let compact: Bool
+
+    /// "Next Channel (Page Down)", following the user's key bindings.
+    private func shortcutHelp(_ title: String, _ action: ShortcutAction) -> String {
+        let key = model.prefs.key(for: action)
+        return key.isEmpty ? title : "\(title) (\(ShortcutKey.label(key)))"
+    }
     let isWindowFullScreen: Bool
 
     var body: some View {
@@ -279,7 +285,7 @@ struct PlayerControlPanel: View {
                     Button { model.channelUp(); chrome.touch() } label: { Image(systemName: "chevron.up") }
                         .buttonStyle(PlayerTransportButtonStyle(size: skip, iconSize: skip * 0.45))
                         .disabled(model.zapList.isEmpty)
-                        .help("Previous Channel (↑)")
+                        .help(shortcutHelp("Previous Channel", .channelUp))
                 } else {
                     Button { slot.seek(by: -10); chrome.touch() } label: { Image(systemName: "gobackward.10") }
                         .buttonStyle(PlayerTransportButtonStyle(size: skip, iconSize: skip * 0.5))
@@ -302,7 +308,7 @@ struct PlayerControlPanel: View {
                     Button { model.channelDown(); chrome.touch() } label: { Image(systemName: "chevron.down") }
                         .buttonStyle(PlayerTransportButtonStyle(size: skip, iconSize: skip * 0.45))
                         .disabled(model.zapList.isEmpty)
-                        .help("Next Channel (↓)")
+                        .help(shortcutHelp("Next Channel", .channelDown))
                 } else {
                     Button { slot.seek(by: 10); chrome.touch() } label: { Image(systemName: "goforward.10") }
                         .buttonStyle(PlayerTransportButtonStyle(size: skip, iconSize: skip * 0.5))

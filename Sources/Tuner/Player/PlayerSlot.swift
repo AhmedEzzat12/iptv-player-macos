@@ -61,7 +61,10 @@ final class PlayerSlot: Identifiable {
     /// Live: the programme airing now on `item.channel` (refreshed by AppModel).
     var currentProgram: Program?
 
+    /// 0…`maxVolume`. Both engines map it through the same perceptual curve (see `AVEngine.setVolume`).
     var volume: Double { didSet { engine?.setVolume(volume) } }
+    /// Full volume, no amplification: Apple's player can't boost, so neither engine does (same slider, same sound).
+    static let maxVolume: Double = 100
     var isMuted = false { didSet { applyMute() } }
     /// Only the main slot plays audio in multiview.
     var hasAudioFocus = true { didSet { applyMute() } }
@@ -112,7 +115,7 @@ final class PlayerSlot: Identifiable {
     init(id: Int, services: PlayerServices) {
         self.id = id
         self.services = services
-        self.volume = services.prefs.volume
+        self.volume = min(max(services.prefs.volume, 0), Self.maxVolume)
     }
 
     var isPlaying: Bool { phase == .playing || phase == .buffering }

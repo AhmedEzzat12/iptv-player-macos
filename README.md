@@ -40,7 +40,7 @@ Blender Foundation open movies (CC BY). No provider content is shown.</sub>
   are detected and reopened in mpv automatically, instead of showing a black picture.
 - **Online metadata:** Cinemeta (no account) or TMDB (your API key) adds title logos, backdrops, cast, ratings,
   trailers and episode pictures; episode pictures can be shown, blurred until watched, or hidden.
-- **Keyboard & media keys:** single-key shortcuts (Space, ←/→, ↑/↓, M, F, Esc…), all remappable in
+- **Keyboard & media keys:** single-key shortcuts in the player (Space, ←/→ seek, ↑/↓ volume, Page Up/Down channels, M, F, Esc…), all remappable in
   Settings → Shortcuts (`/` shows the current keys); ⌘ equivalents in the menu bar; hardware media keys,
   AirPods and Control Center's Now Playing control playback (next/previous = channel zap for live TV, next
   episode for shows).

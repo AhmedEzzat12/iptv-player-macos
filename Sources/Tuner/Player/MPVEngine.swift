@@ -90,8 +90,8 @@ final class MPVEngine: PlaybackEngine {
         option("demuxer-max-back-bytes", "\(max(prefs.timeshiftMegabytes, 0))MiB")
         option("network-timeout", "15")
         option("stream-lavf-o", "reconnect=1,reconnect_streamed=1,reconnect_delay_max=5,reconnect_on_network_error=1")
-        option("volume-max", "150")
-        option("volume", format(min(max(prefs.volume, 0), 150)))
+        option("volume-max", "100")
+        option("volume", format(min(max(prefs.volume, 0), PlayerSlot.maxVolume)))
         for (name, value) in userOptions {
             option(name, value) // user-supplied; failures are logged and ignored
         }
@@ -172,7 +172,7 @@ final class MPVEngine: PlaybackEngine {
     }
 
     func setVolume(_ volume: Double) {
-        command(["set", "volume", MPVEngine.format(min(max(volume, 0), 150))])
+        command(["set", "volume", MPVEngine.format(min(max(volume, 0), PlayerSlot.maxVolume))])
     }
 
     func setMuted(_ muted: Bool) {
