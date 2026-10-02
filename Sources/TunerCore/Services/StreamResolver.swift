@@ -159,7 +159,16 @@ public actor StreamResolver {
 
     // MARK: VOD
 
+    /// A completed download of the movie/episode, played from this Mac: works offline and uses no provider connection
+    /// (and no source, so it plays even after its playlist is removed). A completed download whose file has gone is
+    /// marked failed ("File was moved or deleted") and the title streams instead.
+    func downloadedFile(mediaId: String) async -> PlayableStream? {
+        guard let file = await db.completedDownloadFile(mediaId: mediaId) else { return nil }
+        return PlayableStream(url: file, userAgent: HTTPClient.defaultUserAgent, kind: .vod)
+    }
+
     public func movie(_ movie: Movie) async throws -> PlayableStream {
+        if let local = await downloadedFile(mediaId: movie.id) { return local }
         let source = try await source(movie.sourceId)
         let ua = userAgent(source: source)
         switch source.kind {
@@ -175,6 +184,7 @@ public actor StreamResolver {
     }
 
     public func episode(_ episode: Episode) async throws -> PlayableStream {
+        if let local = await downloadedFile(mediaId: episode.id) { return local }
         let source = try await source(episode.sourceId)
         let ua = userAgent(source: source)
         switch source.kind {

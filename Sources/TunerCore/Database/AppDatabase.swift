@@ -330,6 +330,35 @@ public final class AppDatabase: Sendable {
                 t.column("scannedAt", .datetime).notNull()
             }
         }
+
+        // Downloads for offline viewing (`DownloadItem`), one row per movie/episode id. No stream URLs (Xtream URLs
+        // carry the account's password; they're resolved when a transfer starts) and no foreign keys: a download
+        // outlives a resync that drops the title or a removed playlist, and stays playable.
+        m.registerMigration("v5") { db in
+            try db.create(table: "download") { t in
+                t.primaryKey("id", .text)
+                t.column("kind", .text).notNull()
+                t.column("sourceId", .text).notNull()
+                t.column("seriesId", .text)
+                t.column("title", .text).notNull()
+                t.column("subtitle", .text)
+                t.column("season", .integer)
+                t.column("episode", .integer)
+                t.column("artworkURL", .text)
+                t.column("state", .text).notNull()
+                t.column("receivedBytes", .integer).notNull().defaults(to: 0)
+                t.column("totalBytes", .integer)
+                t.column("filePath", .text)
+                t.column("error", .text)
+                t.column("pausedByUser", .boolean).notNull().defaults(to: false)
+                t.column("createdAt", .datetime).notNull()
+                t.column("updatedAt", .datetime).notNull()
+            }
+            // The queue (state = 'queued' ORDER BY createdAt), a show's downloads, and file-name collision checks.
+            try db.create(index: "download_state_created", on: "download", columns: ["state", "createdAt"])
+            try db.create(index: "download_series", on: "download", columns: ["seriesId"])
+            try db.create(index: "download_filePath", on: "download", columns: ["filePath"])
+        }
         return m
     }
 }

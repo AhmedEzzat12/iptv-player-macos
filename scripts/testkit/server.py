@@ -46,6 +46,9 @@ from xml.sax.saxutils import escape
 
 ROOT = Path(__file__).resolve().parents[2]
 MEDIA = Path(os.environ.get("TESTKIT_MEDIA") or (ROOT / "TestMedia")).resolve()
+# Bytes per second for movie and episode files (0 = unlimited). Makes downloads take a while, e.g. to watch their
+# progress or test pausing: TESTKIT_VOD_RATE=200000 python3 scripts/testkit/server.py
+VOD_RATE = int(os.environ.get("TESTKIT_VOD_RATE", "0"))
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8765
 CONFIG = {"host": DEFAULT_HOST, "port": DEFAULT_PORT}
@@ -1111,7 +1114,7 @@ class Handler(BaseHTTPRequestHandler):
         for chunk in reader(start, length):
             self.wfile.write(chunk)
 
-    def send_file(self, path: Path, note: str = ""):
+    def send_file(self, path: Path, note: str = "", rate: int = 0):
         if not path.is_file():
             if not MEDIA.is_dir():
                 raise MediaMissing(f"{MEDIA} does not exist")
@@ -1120,14 +1123,22 @@ class Handler(BaseHTTPRequestHandler):
         ctype = CONTENT_TYPES.get(path.suffix.lower(), "application/octet-stream")
 
         def reader(start, length):
+            # With a rate, small chunks paced against the clock (the sleep is what slows the client down).
+            step = max(1, min(65_536, rate // 10)) if rate else 262_144
+            began, sent = time.monotonic(), 0
             with path.open("rb") as f:
                 f.seek(start)
                 while length > 0:
-                    chunk = f.read(min(262_144, length))
+                    chunk = f.read(min(step, length))
                     if not chunk:
                         break
                     length -= len(chunk)
                     yield chunk
+                    if rate:
+                        sent += len(chunk)
+                        ahead = sent / rate - (time.monotonic() - began)
+                        if ahead > 0:
+                            time.sleep(ahead)
 
         mtime = time.strftime("%a, %d %b %Y %H:%M:%S GMT", time.gmtime(path.stat().st_mtime))
         self.send_ranged(size, reader, ctype, note, headers=[("Last-Modified", mtime)])
@@ -1354,7 +1365,7 @@ def route(h: Handler) -> None:  # noqa: C901 - a flat routing table reads best h
         if not movie:
             return h.send_text(404, f"no such movie {vid}\n")
         note = f"movie {movie['title']}" + (f" (asked .{ext}, serving .{movie['ext']})" if ext and ext != movie["ext"] else "")
-        return h.send_file(MEDIA / movie["file"], note=note)
+        return h.send_file(MEDIA / movie["file"], note=note, rate=VOD_RATE)
     if m := R_SERIES.fullmatch(p):
         user, pw, eid, ext = m.groups()
         if not check_creds(user, pw):
@@ -1363,7 +1374,8 @@ def route(h: Handler) -> None:  # noqa: C901 - a flat routing table reads best h
         if not found:
             return h.send_text(404, f"no such episode {eid}\n")
         s, ep = found
-        return h.send_file(MEDIA / ep["file"], note=f"episode {s['title']} S{ep['season']:02d}E{ep['episode']:02d}")
+        return h.send_file(MEDIA / ep["file"], note=f"episode {s['title']} S{ep['season']:02d}E{ep['episode']:02d}",
+                           rate=VOD_RATE)
     if m := R_TIMESHIFT.fullmatch(p):
         user, pw, minutes, start, sid, ext = m.groups()
         if not check_creds(user, pw):
