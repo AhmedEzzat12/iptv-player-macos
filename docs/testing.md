@@ -60,6 +60,16 @@ what the request resolved to. Live streams log a second line when they end:
 
 Stop it with Ctrl-C.
 
+Downloads finish instantly on localhost. To watch their progress, or to test pausing while you stream on a
+one-connection account (set the source's connections to 1), slow movie and episode files down:
+
+```sh
+TESTKIT_VOD_RATE=150000 python3 scripts/testkit/server.py   # bytes per second
+```
+
+Movie and episode files honour `Range` requests, so resuming a download can be tested too (the server log shows
+`206 … Range:<offset>-`).
+
 ## 3. Add the sources in Tuner
 
 **M3U source**
@@ -189,3 +199,24 @@ mpv http://127.0.0.1:8765/stream/4.ts
 - Credentials are fixed (`test` / `test`). Every Xtream account sees the same catalog.
 - A 64 s loop means the visible timecode is clip time, not wall-clock time. Use the server log to verify catchup start times.
 - The MKV movie needs mpv; AVFoundation playback of raw `.ts` URLs is not expected to work (use HLS).
+
+## Testing automatic updates (Sparkle)
+
+Never against the real feed or your own keychain. Use a throwaway key and a local feed:
+
+1. Make an Ed25519 key in a scratch folder (CryptoKit: `Curve25519.Signing.PrivateKey()`; base64 of
+   `rawRepresentation` is the private key `sign_update --ed-key-file` reads, base64 of the public key's
+   `rawRepresentation` is `SUPublicEDKey`).
+2. `SPARKLE_PUBLIC_KEY=<public> BUILD_DIR=<scratch>/old scripts/build-app.sh release`, then give the copy its own bundle id
+   (`app.tuner.macos.scratch`) and an `LSEnvironment` with `TUNER_DATA_DIR=<scratch>/lib` and
+   `TUNER_UPDATE_FEED=http://127.0.0.1:8799/appcast.xml` (Sparkle relaunches through Launch Services, which drops
+   variables from the shell but applies `LSEnvironment`). Re-sign: `codesign --force --deep -s -`.
+3. Copy it as the "new" version with a higher `CFBundleShortVersionString`/`CFBundleVersion`, re-sign, zip with
+   `ditto -c -k --sequesterRsrc --keepParent`, and write the feed:
+   `SPARKLE_PRIVATE_KEY=<private> APPCAST_DOWNLOAD_URL=http://127.0.0.1:8799/Tuner.zip scripts/make-appcast.sh <version> <build> <zip>`
+   (it writes `build/appcast.xml`). Serve both with `python3 -m http.server 8799 --bind 127.0.0.1`.
+4. `open -n <scratch>/old/Tuner.app`, then Tuner → Check for Updates… → Install Update → Install and Relaunch. The app at
+   the same path should report the new version. A zip modified after signing, or signed with another key, must be
+   refused ("The update is improperly signed").
+5. Delete the key, `defaults delete app.tuner.macos.scratch` and `~/Library/Caches/app.tuner.macos.scratch`.
+

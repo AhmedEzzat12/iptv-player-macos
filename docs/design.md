@@ -51,6 +51,40 @@ Apple frameworks plus SQLite and libmpv.
 - Trailers: `TrailerOverlay` (WKWebView + YouTube IFrame API with an https bundle-id base URL — YouTube refuses embeds
   without one, error 153 — or AVKit for direct links). While a trailer is open, single-key shortcuts are suspended.
 
+### Downloads and offline
+
+- `DownloadService` (TunerCore actor, tested) is a persistent queue in the `download` table (migration v5), one row per
+  movie/episode id. It never stores stream URLs (Xtream URLs carry the password); each transfer resolves its URL through
+  `StreamResolver` when it starts. One transfer at a time, FIFO by `createdAt`.
+- `FileTransfer` gets its own `URLSession` per transfer, so cancelling really closes the provider connection, and writes
+  the body on URLSession's delegate queue (never through the actor). Data goes to `<file>.part` and is renamed into place
+  when complete. A part is resumed with `Range: bytes=<size of the .part>-` (206); a 200 restarts, a 416 either means
+  "already complete" or starts over; a size change on the server also starts over. Redirects keep the User-Agent,
+  Referer and Range headers (VOD URLs 302 to a CDN).
+- Errors become words about what the provider did: 503 = "lists this title but has no playable copy" (seen lasting
+  days), 401/403/404 have their own messages; network loss and "too many connections" statuses re-queue with an
+  exponential backoff instead of failing, and the app retries them as soon as `NWPathMonitor` reports the network back.
+- `StreamResolver.movie/episode` return the completed file when there is one, so a downloaded title plays from disk
+  everywhere (works offline, uses no provider connection). A completed download whose file was moved or deleted is
+  marked failed ("File was moved or deleted") at launch or when played, and comes back if the file reappears.
+- Single-connection accounts: while the player streams from a source with `maxConnections == 1`, `AppModel` calls
+  `suspend()` (the running transfer stops and is marked auto-paused) and `unsuspend()` afterwards; `PlayerSlot.beforeLoad`
+  waits for the connection to be released (up to 2 s) before opening the stream.
+
+### Updates (Sparkle 2)
+
+- Same setup as Soonbar: `UpdaterService` wraps `SPUStandardUpdaterController` and turns on only when the app's
+  `Info.plist` contains `SUPublicEDKey`, which `scripts/release.sh` adds to release builds; local builds never update
+  themselves. Installed copies read `releases/latest/download/appcast.xml` (a release asset, so publishing needs no
+  commit) about once a day.
+- Integrity: the zip's EdDSA signature (key in the maintainer's login keychain) is checked against the installed app's
+  public key before anything is installed. The app is only ad-hoc signed, so Sparkle can't match Apple code signatures
+  between versions; it accepts an update when the EdDSA signature is valid. Verified end to end with a scratch build:
+  1.1.0 → 1.1.1 installs and relaunches; a tampered zip and an intact app signed with another key are both rejected.
+- `scripts/build-app.sh` embeds `Sparkle.framework` in `Contents/Frameworks` (rpath `@executable_path/../Frameworks`)
+  and signs the bundle with `--deep`. `TUNER_UPDATE_FEED` points a test build at a local appcast; scratch runs with
+  `TUNER_DATA_DIR` and no test feed never check.
+
 ## Architecture
 
 ```
@@ -64,16 +98,21 @@ Sources/
                    StableID, CatchupURLBuilder, TitleParser
     Networking/    HTTPClient, LenientJSON
     Providers/     XtreamClient, StalkerClient (actor)
-    Database/      AppDatabase (migrations), Records, +Library (sync writes), +Queries, +User (prefs, progress…)
+    Database/      AppDatabase (migrations), Records, +Library (sync writes), +Queries, +User (prefs, progress…),
+                   +Downloads
+    Downloads/     DownloadService (actor: queue, resume, suspend), FileTransfer (one URLSession per transfer),
+                   DownloadFiles (naming, free space)
     Services/      SyncService (actor), GuideService (actor: ingest + key resolution), StreamResolver (actor),
                    RecordingService (actor, ffmpeg), M3UExporter
   Tuner/       (SwiftUI app, Swift 5 mode)
     App/           TunerApp, AppModel (@Observable root + actions + background loops), Preferences, Navigation,
-                   RootView (sidebar shell + window-level player), KeyboardShortcuts + menu commands
+                   RootView (sidebar shell + window-level player), KeyboardShortcuts + menu commands,
+                   Updates/ (UpdaterService: Sparkle wrapper + "Check for Updates…")
     Player/        PlaybackEngine, AVEngine (primary), MPVEngine + MPVVideoLayer (fallback), PlayerSlot (routing,
                    watchdog, failover, progress), PlayerManager (4 slots, layouts), SlotVideoView, PlaybackItem
     Views/         Live/ (guide), VOD/ (Home, Movies, TV Shows, details, Search), Player/ (presentation,
-                   chrome, multiview, mini), Settings/ (settings, source editor, welcome), Recordings/, Common/
+                   chrome, multiview, mini), Settings/ (settings, source editor, welcome), Recordings/, Downloads/,
+                   Common/
 ```
 
 Data flow: views call `AppModel` actions and read `model.db` in `.task(id:)` blocks keyed on
@@ -87,6 +126,8 @@ Data flow: views call `AppModel` actions and read `model.db` in `.task(id:)` blo
   per source in one transaction** on each sync (resolved guide keys are carried over so the guide doesn't blank).
 - `channelPref`, `categoryPref` — user state (favourite, order, hidden, alias, EPG override) keyed by the stable
   id, stored separately so it survives a channel vanishing for one sync.
+- `download` — downloads for offline viewing, one row per movie/episode id (state, bytes, file path, error); no
+  foreign keys, so a download outlives a resync that drops the title or a removed playlist.
 - `epgFeed`, `epgChannel(key = feedId|xmltvId)`, `program(epgKey, start, end, …)`. `channel.epgKey` is resolved
   after each guide ingest: override → Stalker native → tvg-id → normalised name; preferring keys with programmes,
   then the channel's own source feeds, then global feeds, then other sources' feeds.
