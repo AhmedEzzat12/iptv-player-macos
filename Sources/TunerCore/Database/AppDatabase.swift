@@ -313,6 +313,23 @@ public final class AppDatabase: Sendable {
             try db.execute(sql: "UPDATE mediaMetadata SET fetchedAt = ? WHERE kind = 'series' AND notFound = 0",
                            arguments: [Date(timeIntervalSince1970: 0)])
         }
+
+        // IMDb episode ratings (from IMDb's datasets) per series IMDb id; `imdbRatingScan` also remembers series
+        // that were scanned and have no rated episodes.
+        m.registerMigration("v4") { db in
+            try db.create(table: "imdbEpisodeRating") { t in
+                t.column("seriesId", .text).notNull()
+                t.column("season", .integer).notNull()
+                t.column("episode", .integer).notNull()
+                t.column("rating", .double).notNull()
+                t.column("votes", .integer).notNull()
+                t.primaryKey(["seriesId", "season", "episode"])
+            }
+            try db.create(table: "imdbRatingScan") { t in
+                t.primaryKey("seriesId", .text)
+                t.column("scannedAt", .datetime).notNull()
+            }
+        }
         return m
     }
 }
