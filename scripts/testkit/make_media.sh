@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Generates the Tuner test-kit media into TestMedia/ (repo root): four "channel" clips (MPEG-TS) with
 # big burned-in names + a running timecode, their HLS renditions, seven movies (MP4/MKV, one with two
-# audio and two subtitle tracks), two series (2 seasons x 3 episodes) and posters/backdrops/logos.
+# audio and two subtitle tracks), two series (2 seasons each, up to 10 episodes) and posters/backdrops/logos.
 #
 # Usage: scripts/testkit/make_media.sh            (idempotent: existing files are skipped)
 #        FFMPEG=/path/to/ffmpeg TESTKIT_MEDIA=/elsewhere scripts/testkit/make_media.sh

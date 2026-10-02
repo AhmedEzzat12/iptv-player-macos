@@ -15,6 +15,8 @@ final class AppModel {
     let recorder: RecordingService
     /// Online movie/series metadata (artwork, logos, cast, ratings, episode stills).
     let metadata: MetadataService
+    /// IMDb ratings for TV episodes (IMDb's datasets; see `IMDbRatingsService`).
+    let imdbRatings: IMDbRatingsService
     let prefs: Preferences
     let player: PlayerManager
 
@@ -37,6 +39,10 @@ final class AppModel {
     var searchQuery = ""
     var sourceEditor: SourceEditorRequest?
     var showShortcutHelp = false
+    /// Trailer playing in the in-app trailer overlay (`TrailerOverlay`), if any.
+    private(set) var trailer: TrailerRequest?
+    /// Whether presenting the trailer paused the main player (so dismissing it resumes playback).
+    @ObservationIgnored private var trailerPausedPlayback = false
 
     // MARK: Data
     private(set) var sources: [Source] = []
@@ -73,8 +79,9 @@ final class AppModel {
     @ObservationIgnored private var guideHintShown: Set<String> = []
     @ObservationIgnored private var lastPlayedChannel: Channel?
 
-    init(db: AppDatabase, prefs: Preferences) {
+    init(db: AppDatabase, prefs: Preferences, dataDirectory: URL) {
         self.db = db
+        imdbRatings = IMDbRatingsService(db: db, directory: dataDirectory.appendingPathComponent("IMDb", isDirectory: true))
         self.prefs = prefs
         sync = SyncService(db: db)
         resolver = StreamResolver(db: db, sync: sync)
@@ -297,13 +304,14 @@ final class AppModel {
         }
         slot.onEnded = { [weak self, weak slot] item in
             guard let self, let slot, slot === self.player.main else { return }
-            if case .episode(let ep, let series) = item, self.prefs.autoplayNextEpisode {
+            if case .episode(let ep, let series) = item, self.prefs.autoplayNextEpisode, self.upNextCancelledFor != ep.id {
                 Task { await self.playNextEpisode(after: ep, in: series) }
             }
         }
     }
 
     private func mainItemChanged(_ item: PlaybackItem?) {
+        loadEpisodeContext(for: item)
         guard let channel = item?.channel, item?.isLive == true else { return }
         if let last = lastPlayedChannel, last.id != channel.id { previousChannel = last }
         lastPlayedChannel = channel
@@ -394,13 +402,103 @@ final class AppModel {
     }
 
     func playNextEpisode(after episode: Episode, in series: Series) async {
-        guard let eps = try? await db.episodes(seriesId: series.id),
-              let i = eps.firstIndex(where: { $0.id == episode.id }), i + 1 < eps.count else { return }
-        await play(episode: eps[i + 1], in: series, fromStart: true)
+        await playEpisode(EpisodeNavigation.neighbor(of: episode.id, in: await episodes(of: series), offset: 1), in: series)
+    }
+
+    func playPreviousEpisode(before episode: Episode, in series: Series) async {
+        await playEpisode(EpisodeNavigation.neighbor(of: episode.id, in: await episodes(of: series), offset: -1), in: series)
+    }
+
+    private func playEpisode(_ episode: Episode?, in series: Series) async {
+        guard let episode else { return }
+        await play(episode: episode, in: series, fromStart: true)
+    }
+
+    // MARK: Episode context (player's previous/next, episode list, Up Next)
+
+    /// The show and its episodes when the main player is playing an episode; nil otherwise.
+    private(set) var episodeContext: EpisodeContext?
+    /// The episode whose Up Next countdown the user dismissed: it then doesn't autoplay into the next one.
+    private(set) var upNextCancelledFor: String?
+
+    struct EpisodeContext: Equatable {
+        let series: Series
+        let episodes: [Episode]
+    }
+
+    /// The episode playing in the main player, with its show.
+    var currentEpisode: (episode: Episode, series: Series)? {
+        if case .episode(let episode, let series)? = player.main.item { return (episode, series) }
+        return nil
+    }
+
+    func adjacentEpisode(_ offset: Int) -> Episode? {
+        guard let current = currentEpisode, let context = episodeContext, context.series.id == current.series.id else { return nil }
+        return EpisodeNavigation.neighbor(of: current.episode.id, in: context.episodes, offset: offset)
+    }
+
+    func playAdjacentEpisode(_ offset: Int) {
+        guard let current = currentEpisode, let target = adjacentEpisode(offset) else { return }
+        Task { await play(episode: target, in: current.series, fromStart: true) }
+    }
+
+    /// Hides the Up Next card for the current episode and stops it from rolling into the next one.
+    func cancelUpNext() {
+        upNextCancelledFor = currentEpisode?.episode.id
+    }
+
+    /// IMDb ratings of a show's episodes, keyed by `EpisodeRatingKey`. Empty until the IMDb service knows the show.
+    func episodeRatings(for series: Series) async -> [EpisodeRatingKey: Double] {
+        // The show's IMDb id comes from its online metadata (cached after the first lookup).
+        guard let imdbId = await metadata.metadata(for: series)?.imdbId else { return [:] }
+        // With online lookups turned off, show what's cached but don't download IMDb's data sets.
+        let ratings = await metadata.settings.enabled
+            ? await imdbRatings.ratings(seriesIMDbId: imdbId)
+            : await imdbRatings.cachedRatings(seriesIMDbId: imdbId)
+        return Dictionary(ratings.map { (EpisodeRatingKey(season: $0.season, episode: $0.episode), $0.rating) },
+                          uniquingKeysWith: { first, _ in first })
+    }
+
+    private func episodes(of series: Series) async -> [Episode] {
+        if let context = episodeContext, context.series.id == series.id { return context.episodes }
+        return (try? await db.episodes(seriesId: series.id)) ?? []
+    }
+
+    private func loadEpisodeContext(for item: PlaybackItem?) {
+        upNextCancelledFor = nil
+        guard case .episode(_, let series)? = item else {
+            episodeContext = nil
+            player.isEpisodeListOpen = false
+            return
+        }
+        if episodeContext?.series.id == series.id { return }
+        episodeContext = nil
+        Task {
+            let episodes = (try? await db.episodes(seriesId: series.id)) ?? []
+            guard case .episode(_, let current)? = player.main.item, current.id == series.id else { return }
+            episodeContext = EpisodeContext(series: series, episodes: episodes)
+            // Warm the ratings (and, the first time ever, IMDb's data sets) so the episode list opens with them.
+            _ = await episodeRatings(for: series)
+        }
     }
 
     func stopPlayback() {
         player.stopAll()
+    }
+
+    /// Shows a trailer inside the app, pausing whatever the main player is playing until it's dismissed.
+    func presentTrailer(_ url: URL, title: String) {
+        let main = player.main
+        trailerPausedPlayback = trailer == nil && main.isPlaying
+        if trailerPausedPlayback { main.togglePause() }
+        trailer = TrailerRequest(url: url, title: title)
+    }
+
+    func dismissTrailer() {
+        guard trailer != nil else { return }
+        trailer = nil
+        if trailerPausedPlayback, player.main.phase == .paused { player.main.togglePause() }
+        trailerPausedPlayback = false
     }
 
     func enterFullWindow() {
@@ -411,6 +509,7 @@ final class AppModel {
     func exitFullWindow() {
         guard player.isFullWindow else { return }
         player.isFullWindow = false
+        player.isEpisodeListOpen = false
         // Leaving finite media stops it (progress is saved), like the TV app; live keeps playing in the mini player.
         if let item = player.main.item, !item.isLive, player.layout == .single {
             player.main.stop()
@@ -651,4 +750,17 @@ final class AppModel {
     func dismissBanner(_ id: UUID) {
         banners.removeAll { $0.id == id }
     }
+}
+
+/// A trailer to play in the in-app trailer overlay (a YouTube link/id or a direct video URL).
+struct TrailerRequest: Identifiable, Equatable {
+    let id = UUID()
+    let url: URL
+    let title: String
+}
+
+/// Season and episode number, for looking up per-episode data such as IMDb ratings.
+struct EpisodeRatingKey: Hashable {
+    let season: Int
+    let episode: Int
 }

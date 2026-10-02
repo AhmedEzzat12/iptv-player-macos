@@ -28,6 +28,8 @@ struct RootView: View {
         .overlay(alignment: .top) {
             if model.player.isFullWindow { BannerStack().padding(.top, 16) }
         }
+        // In-app trailers sit above everything, the player and banners included.
+        .overlay { TrailerOverlay() }
         .background(WindowAccessor { model.mainWindow = $0 })
         .onChange(of: model.player.isFullWindow) { _, full in
             withAnimation(.smooth(duration: 0.35)) { columnVisibility = full ? .detailOnly : .all }

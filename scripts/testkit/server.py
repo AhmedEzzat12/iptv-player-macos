@@ -163,7 +163,9 @@ SERIES = [
         "category": "21", "color": (200, 90, 60), "rating": "7.2", "genre": "Comedy",
         "director": "Pat Isserie", "cast": "Crois Sant, Gamma Gateau, Chroma Key", "release": "2022-09-14",
         "plot": "A small bakery that only sells pastries shaped like broadcast test cards.",
-        "seasons": {1: ["Color Bars & Croissants", "Gamma Ray Gateau", "Pixel Pie"],
+        # Season 1 is long enough to overflow episode lists (scrolling tests).
+        "seasons": {1: ["Color Bars & Croissants", "Gamma Ray Gateau", "Pixel Pie", "Sourdough Sync", "Baguette Bitrate",
+                        "Muffin Macroblock", "Scone Scanlines", "Tart Timecode", "Danish Deinterlace", "Brioche Buffering"],
                     2: ["Chroma Key Lime", "Interlaced Pastry", "Final Frame"]},
     },
 ]
@@ -190,9 +192,10 @@ def slugify(text: str) -> str:
 
 def episodes(series: dict) -> list[dict]:
     out = []
-    for season, titles in series["seasons"].items():
+    offset = 0  # episodes in earlier seasons: ids stay unique when seasons differ in length
+    for season, titles in sorted(series["seasons"].items()):
         for i, title in enumerate(titles, start=1):
-            epid = 2000 + series["id"] * 100 + (season - 1) * len(titles) + i
+            epid = 2000 + series["id"] * 100 + offset + i
             out.append({
                 "id": epid, "season": season, "episode": i, "title": title,
                 "file": f"series/{series['slug']}/s{season:02d}e{i:02d}.mp4",
@@ -200,6 +203,7 @@ def episodes(series: dict) -> list[dict]:
                 "plot": f"{series['title']} season {season}, episode {i}: \"{title}\". "
                         f"{EPISODE_SECONDS}-second test episode with burned-in S{season:02d}E{i:02d} title.",
             })
+        offset += len(titles)
     return out
 
 

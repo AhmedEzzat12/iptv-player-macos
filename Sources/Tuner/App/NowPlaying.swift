@@ -158,10 +158,13 @@ extension AppModel {
         }
     }
 
-    /// ⏮ media key: previous channel for live TV, restart for VOD.
+    /// ⏮ media key: previous channel for live TV; for episodes, restart unless you're within the first seconds,
+    /// then the previous episode (the usual music/TV convention); restart for other VOD.
     func mediaKeyPrevious() {
         switch player.main.item {
         case .channel?: channelUp()
+        case .episode(let episode, let series)? where (player.main.snapshot.position ?? 0) < 5:
+            Task { await playPreviousEpisode(before: episode, in: series) }
         default: player.main.seek(to: 0)
         }
     }

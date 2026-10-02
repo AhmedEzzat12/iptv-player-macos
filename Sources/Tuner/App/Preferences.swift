@@ -72,6 +72,8 @@ final class Preferences {
     var maxRetries: Int { didSet { set(maxRetries, "maxRetries") } }
     var resumePlayback: Bool { didSet { set(resumePlayback, "resumePlayback") } }
     var autoplayNextEpisode: Bool { didSet { set(autoplayNextEpisode, "autoplayNextEpisode") } }
+    /// Seconds the "Up Next" card counts down before the next episode starts; 0 = no card (starts right away).
+    var upNextCountdown: Int { didSet { set(upNextCountdown, "upNextCountdown") } }
     var volume: Double { didSet { set(volume, "volume") } }
     var catchupPaddingMinutes: Int { didSet { set(catchupPaddingMinutes, "catchupPaddingMinutes") } }
 
@@ -123,6 +125,7 @@ final class Preferences {
         maxRetries = v("maxRetries", 10)
         resumePlayback = v("resumePlayback", true)
         autoplayNextEpisode = v("autoplayNextEpisode", true)
+        upNextCountdown = v("upNextCountdown", 10)
         volume = v("volume", 100.0)
         catchupPaddingMinutes = v("catchupPaddingMinutes", 0)
 

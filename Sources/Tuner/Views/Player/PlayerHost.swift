@@ -109,7 +109,7 @@ struct PlayerHost: View {
     private var chromePinned: Bool {
         switch model.player.main.phase {
         case .paused, .ended, .failed: true
-        default: chrome.isPinnedByUser
+        default: chrome.isPinnedByUser || model.player.isEpisodeListOpen
         }
     }
 
@@ -132,7 +132,14 @@ struct PlayerHost: View {
                 .opacity(isFull ? 1 : 0)
                 .contentShape(Rectangle())
                 .onTapGesture(count: 2) { model.toggleWindowFullScreen() }
-                .onTapGesture { chrome.toggle() }
+                .onTapGesture {
+                    // A click on the video closes the episode list first, like clicking outside a popover.
+                    if model.player.isEpisodeListOpen {
+                        withAnimation(.smooth(duration: 0.3)) { model.player.isEpisodeListOpen = false }
+                    } else {
+                        chrome.toggle()
+                    }
+                }
                 .allowsHitTesting(isFull)
 
             // Structurally stable video surfaces — never move these into mode-specific branches.
@@ -221,8 +228,44 @@ struct PlayerHost: View {
                     .transition(.opacity)
                     .zIndex(6)
             }
+
+            if player.isEpisodeListOpen, let current = model.currentEpisode, let context = model.episodeContext,
+               context.series.id == current.series.id {
+                let top = PlayerChromeMetrics.topBarBottom + 14
+                let bottom: CGFloat = chromeShown && panelHeight > 0 ? panelHeight + 36 : 24
+                PlayerEpisodesPanel(context: context, current: current.episode)
+                    .frame(width: min(440, safe.width - 40), height: max(220, safe.height - top - bottom))
+                    .padding(.trailing, 20)
+                    .padding(.top, top)
+                    .playerPlaced(in: safe, alignment: .topTrailing)
+                    .transition(.move(edge: .trailing).combined(with: .opacity))
+                    .zIndex(7)
+            }
+
+            if let upNext = upNext {
+                UpNextCard(next: upNext.next, series: upNext.series, secondsLeft: upNext.seconds,
+                           countdown: model.prefs.upNextCountdown)
+                    .padding(.trailing, 24)
+                    .padding(.bottom, chromeShown && panelHeight > 0 ? panelHeight + 40 : 32)
+                    .playerPlaced(in: safe, alignment: .bottomTrailing)
+                    .transition(.move(edge: .trailing).combined(with: .opacity))
+                    .zIndex(8)
+            }
         }
         .frame(width: size.width, height: size.height, alignment: .topLeading)
+        .animation(.smooth(duration: 0.35), value: upNext?.next.id)
+    }
+
+    /// The Up Next card's content while an episode is in its last seconds (see `UpNextCountdown`).
+    private var upNext: (next: Episode, series: Series, seconds: Int)? {
+        guard model.prefs.autoplayNextEpisode, model.player.layout == .single, !model.player.isEpisodeListOpen,
+              let current = model.currentEpisode, model.upNextCancelledFor != current.episode.id,
+              let next = model.adjacentEpisode(1) else { return nil }
+        let main = model.player.main
+        guard main.phase == .playing || main.phase == .paused || main.phase == .buffering,
+              let seconds = UpNextCountdown.secondsLeft(position: main.snapshot.position, duration: main.snapshot.duration,
+                                                        countdown: model.prefs.upNextCountdown) else { return nil }
+        return (next, current.series, seconds)
     }
 
     // MARK: - Geometry
@@ -443,6 +486,8 @@ final class PlayerScrollVolumeMonitor {
     private func handle(_ input: ScrollInput) -> Bool {
         guard let model, model.player.isFullWindow, model.player.hasMedia,
               model.mainWindow?.windowNumber == input.windowNumber else { return false }
+        // The episode list scrolls; the wheel only changes the volume when nothing on screen needs it.
+        guard !model.player.isEpisodeListOpen else { return false }
         // Momentum and mostly-horizontal scrolls are swallowed without changing the volume.
         guard !input.isMomentum, abs(input.deltaY) > abs(input.deltaX) else { return true }
         let direction: Double = input.isInverted ? -1 : 1

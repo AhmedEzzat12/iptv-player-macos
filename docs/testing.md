@@ -31,7 +31,8 @@ What it creates:
   Steel, Elephants Dream; CC BY) in the "Open Movies (CC BY)" category. The files are synthetic clips; the real titles
   let online metadata match them. TMDB finds them, but Cinemeta's search doesn't index them, so without a TMDB key
   they correctly show "no match".
-- `series/`: two series, each with 2 seasons of 3 episodes (30 s each, `SxxEyy` and title burned in).
+- `series/`: two series with 2 seasons each: Signal Lost (3 + 3 episodes) and The Test Pattern Bakery (10 + 3, so episode lists
+  overflow and scroll). 30 s each, `SxxEyy` and title burned in.
 - `img/`: posters (400x600), backdrops (1280x720), episode stills (640x360) and channel logos (400x400; News and Movies are
   solid, Sports and Kids are transparent).
 

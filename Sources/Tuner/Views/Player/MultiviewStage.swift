@@ -83,7 +83,10 @@ struct MultiviewCellOverlay: View {
                 .contentShape(Rectangle())
                 .onTapGesture(count: 2) { model.toggleWindowFullScreen() }
                 .onTapGesture {
-                    if isMain || !hasMedia {
+                    if model.player.isEpisodeListOpen {
+                        // Clicking the video closes the episode list first, like clicking outside a popover.
+                        withAnimation(.smooth(duration: 0.3)) { model.player.isEpisodeListOpen = false }
+                    } else if isMain || !hasMedia {
                         chrome.toggle()
                     } else {
                         model.player.promote(position: position)

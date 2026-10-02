@@ -22,6 +22,8 @@ final class PlayerManager {
     var isFullWindow = false
     /// Show the technical stats overlay.
     var showStats = false
+    /// The in-player episode list (series only); keeps the controls up while open, Esc closes it first.
+    var isEpisodeListOpen = false
     /// The Live TV guide's preview slot, in window-content coordinates (top-left origin), while on screen.
     /// Reported by an AppKit probe because SwiftUI preferences can't cross the NavigationSplitView /
     /// NavigationStack hosting boundaries between the guide and the window-level player.

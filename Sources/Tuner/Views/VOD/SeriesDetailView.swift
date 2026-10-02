@@ -15,6 +15,8 @@ struct SeriesDetailView: View {
     @ViewState private var phase: SeriesEpisodesPhase = .loading
     /// Season chosen by the user; otherwise the page follows the next-up episode.
     @ViewState private var pickedSeason: Int?
+    /// IMDb ratings per episode, filled in once known (the first lookup ever downloads IMDb's data sets).
+    @ViewState private var episodeRatings: [EpisodeRatingKey: Double] = [:]
     @ViewState private var progress: [String: WatchProgress] = [:]
     @ViewState private var isFavorite = false
     @ViewState private var reloadToken = 0
@@ -96,6 +98,10 @@ struct SeriesDetailView: View {
         .task(id: reloadToken) { await loadEpisodes() }
         .task(id: VODMetadataTaskKey(id: series.id, settings: model.prefs.metadataSettings)) { await loadMetadata() }
         .task(id: model.userRevision) { await loadUserState() }
+        .task(id: VODMetadataTaskKey(id: series.id, settings: model.prefs.metadataSettings)) {
+            let ratings = await model.episodeRatings(for: series)
+            withAnimation(.easeOut(duration: 0.25)) { episodeRatings = ratings }
+        }
     }
 
     // MARK: Hero
@@ -142,7 +148,7 @@ struct SeriesDetailView: View {
 
             if let trailer = VODEnrichment.trailerURL(provider: series.trailer, metadata: info) {
                 VODSecondaryButton(title: "Trailer", systemImage: "play.rectangle", iconOnly: density != .full) {
-                    NSWorkspace.shared.open(trailer)
+                    model.presentTrailer(trailer, title: series.name)
                 }
             }
 
@@ -226,7 +232,8 @@ struct SeriesDetailView: View {
                                 artworkURL: episodeArtworkURL,
                                 imdbURL: VODEnrichment.imdbEpisodesURL(info, season: episode.season),
                                 progress: progress[episode.id],
-                                isUpNext: upNext?.episode.id == episode.id
+                                isUpNext: upNext?.episode.id == episode.id,
+                                imdbRating: episodeRatings[EpisodeRatingKey(season: episode.season, episode: episode.number)]
                             )
                         }
                     }
@@ -343,6 +350,8 @@ private struct SeriesEpisodeCard: View {
     let imdbURL: URL?
     let progress: WatchProgress?
     let isUpNext: Bool
+    /// The episode's IMDb rating (IMDb's data sets), when known.
+    var imdbRating: Double?
 
     private let width: CGFloat = 280
 
@@ -399,6 +408,7 @@ private struct SeriesEpisodeCard: View {
                     .font(.headline)
                     .lineLimit(1)
                 HStack(spacing: 6) {
+                    if let imdbRating { IMDbRatingBadge(rating: imdbRating) }
                     if isUpNext {
                         Text(inProgress ? "CONTINUE" : "UP NEXT")
                             .font(.caption2.weight(.bold))
@@ -539,7 +549,7 @@ private struct SeriesEpisodeCard: View {
 /// the show's poster as the "still"), else the show's artwork with a large episode number. When unwatched
 /// episodes are spoiler-protected, a heavily blurred copy (with an eye-slash glyph) is shown instead; the
 /// sharp picture is never displayed for them, not even while loading.
-private struct SeriesEpisodePicture: View {
+struct SeriesEpisodePicture: View {
     let stillURLs: [String]
     let artworkURL: String?
     let seriesName: String

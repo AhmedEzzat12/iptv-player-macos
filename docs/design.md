@@ -39,6 +39,18 @@ Apple frameworks plus SQLite and libmpv.
   with a misleading EPERM). It runs under a `/bin/sh` watchdog that stops ffmpeg when the app's PID disappears
   (crash or force-quit), because macOS has no parent-death signal and an orphan would hold the provider connection.
 
+### Episodes, Up Next, ratings, trailers
+
+- `EpisodeNavigation` (TunerCore, tested) orders episodes by season/number for ⏮/⏭, media keys and autoplay; specials
+  (season 0) are only stepped through while watching one. `AppModel.episodeContext` holds the playing show's episodes.
+- `UpNextCountdown` (tested) shows the card for the last N seconds, driven by the real time left, so it pauses with the
+  video; at zero the episode has ended and the existing autoplay starts the next one unless the user cancelled it.
+- `IMDbRatingsService` (TunerCore, tested) streams IMDb's `title.episode` / `title.ratings` data sets (gzip, byte-level
+  scan, ≈0.5 s per show in release) and caches per-show results in SQLite (migration v4). Cinemeta's per-episode
+  `rating` is *not* IMDb's (e.g. Breaking Bad S1E1: Cinemeta 7.7 vs IMDb 9.1) and is never shown as IMDb.
+- Trailers: `TrailerOverlay` (WKWebView + YouTube IFrame API with an https bundle-id base URL — YouTube refuses embeds
+  without one, error 153 — or AVKit for direct links). While a trailer is open, single-key shortcuts are suspended.
+
 ## Architecture
 
 ```

@@ -242,6 +242,8 @@ final class KeyboardShortcuts {
 
     private func handle(_ event: Key) -> Bool {
         guard !Self.isRecording, let model, let window = NSApp.keyWindow, window === model.mainWindow else { return false }
+        // A trailer covers the app: its own monitor handles Esc, and Space etc. must not drive the paused player below.
+        if model.trailer != nil { return false }
         if window.firstResponder is NSText { return false }
         guard !event.hasModifiers, let name = ShortcutKey.name(code: event.code, characters: event.characters) else { return false }
         if name == "escape", model.showShortcutHelp {
@@ -299,6 +301,10 @@ final class KeyboardShortcuts {
             model.enterFullWindow()
         case .exitPlayer:
             guard full else { return false }
+            if player.isEpisodeListOpen {
+                withAnimation(.smooth(duration: 0.3)) { player.isEpisodeListOpen = false }
+                return true
+            }
             if let window, window.styleMask.contains(.fullScreen) { window.toggleFullScreen(nil) }
             model.exitFullWindow()
         case .channelUp, .channelDown:
@@ -356,6 +362,13 @@ struct TunerCommands: Commands {
                 .keyboardShortcut("p", modifiers: [.command, .option])
             Button("Skip Forward") { model.player.main.seek(by: 10) }.keyboardShortcut(.rightArrow, modifiers: .command)
             Button("Skip Back") { model.player.main.seek(by: -10) }.keyboardShortcut(.leftArrow, modifiers: .command)
+            Divider()
+            Button("Previous Episode") { model.playAdjacentEpisode(-1) }
+                .keyboardShortcut(.leftArrow, modifiers: [.command, .shift])
+                .disabled(model.adjacentEpisode(-1) == nil)
+            Button("Next Episode") { model.playAdjacentEpisode(1) }
+                .keyboardShortcut(.rightArrow, modifiers: [.command, .shift])
+                .disabled(model.adjacentEpisode(1) == nil)
             Divider()
             Button("Next Channel") { model.channelDown() }.keyboardShortcut("]", modifiers: .command)
             Button("Previous Channel") { model.channelUp() }.keyboardShortcut("[", modifiers: .command)

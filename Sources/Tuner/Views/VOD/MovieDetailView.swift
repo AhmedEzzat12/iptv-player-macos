@@ -140,7 +140,7 @@ struct MovieDetailView: View {
 
             if let trailer = trailerURL {
                 VODSecondaryButton(title: "Trailer", systemImage: "play.rectangle", iconOnly: density != .full) {
-                    NSWorkspace.shared.open(trailer)
+                    model.presentTrailer(trailer, title: movie.name)
                 }
             }
 

@@ -36,6 +36,7 @@ let package = Package(
                 .linkedFramework("AVKit"),
                 .linkedFramework("UserNotifications"),
                 .linkedFramework("MediaPlayer"),
+                .linkedFramework("WebKit"),
             ]
         ),
 

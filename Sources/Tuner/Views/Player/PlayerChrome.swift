@@ -270,6 +270,17 @@ struct PlayerControlPanel: View {
             HStack(spacing: compact ? 6 : 8) {
                 PlayerTracksMenu(slot: slot, size: side)
                 PlayerAspectMenu(slot: slot, size: side)
+                if isEpisode {
+                    Button {
+                        withAnimation(.smooth(duration: 0.3)) { model.player.isEpisodeListOpen.toggle() }
+                        chrome.touch()
+                    } label: {
+                        PlayerGlassSymbol(symbol: model.player.isEpisodeListOpen ? "rectangle.stack.fill" : "rectangle.stack", size: side)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Episodes")
+                    .accessibilityLabel("Episodes")
+                }
                 if !item.isLive, !compact { PlayerSpeedMenu(slot: slot, height: side) }
                 Spacer(minLength: 0)
                 PlayerVolumeControl(slot: slot, chrome: chrome, buttonSize: side, sliderWidth: compact ? nil : 110)
@@ -287,6 +298,7 @@ struct PlayerControlPanel: View {
                         .disabled(model.zapList.isEmpty)
                         .help(shortcutHelp("Previous Channel", .channelUp))
                 } else {
+                    if isEpisode { episodeButton(-1, skip: skip) }
                     Button { slot.seek(by: -10); chrome.touch() } label: { Image(systemName: "gobackward.10") }
                         .buttonStyle(PlayerTransportButtonStyle(size: skip, iconSize: skip * 0.5))
                         .disabled(!slot.canSeek)
@@ -314,9 +326,25 @@ struct PlayerControlPanel: View {
                         .buttonStyle(PlayerTransportButtonStyle(size: skip, iconSize: skip * 0.5))
                         .disabled(!slot.canSeek)
                         .help("Forward 10 Seconds (→)")
+                    if isEpisode { episodeButton(1, skip: skip) }
                 }
             }
         }
+    }
+
+    private var isEpisode: Bool { model.currentEpisode != nil && slot === model.player.main }
+
+    /// ⏮ / ⏭ for series: previous or next episode (across seasons), with its code and title as the tooltip.
+    private func episodeButton(_ offset: Int, skip: CGFloat) -> some View {
+        let target = model.adjacentEpisode(offset)
+        let title = offset < 0 ? "Previous Episode" : "Next Episode"
+        return Button { model.playAdjacentEpisode(offset); chrome.touch() } label: {
+            Image(systemName: offset < 0 ? "backward.end.fill" : "forward.end.fill")
+        }
+        .buttonStyle(PlayerTransportButtonStyle(size: skip, iconSize: skip * 0.42))
+        .disabled(target == nil)
+        .help(target.map { "\(title): \(VODFormat.episodeCode($0)) · \($0.title)" } ?? title)
+        .accessibilityLabel(title)
     }
 }
 

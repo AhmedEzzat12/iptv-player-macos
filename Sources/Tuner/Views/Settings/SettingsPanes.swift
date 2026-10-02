@@ -52,6 +52,16 @@ struct SettingsPlaybackPane: View {
             Section("Movies & Shows") {
                 Toggle("Resume where you left off", isOn: $prefs.resumePlayback)
                 Toggle("Play the next episode automatically", isOn: $prefs.autoplayNextEpisode)
+                Picker(selection: $prefs.upNextCountdown) {
+                    Text("Off").tag(0)
+                    ForEach([5, 10, 15, 20, 30], id: \.self) { Text("\($0) seconds").tag($0) }
+                } label: {
+                    Text("“Up Next” countdown")
+                    Text(prefs.upNextCountdown == 0
+                         ? "The next episode starts as soon as one ends."
+                         : "Shows the next episode near the end, with Play Now and Cancel.")
+                }
+                .disabled(!prefs.autoplayNextEpisode)
                 SettingsNumberRow(title: "Catch-up padding", subtitle: "Start catch-up programs a little early.",
                                   value: $prefs.catchupPaddingMinutes, range: 0...30, unit: "min")
             }

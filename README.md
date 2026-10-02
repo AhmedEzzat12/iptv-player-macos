@@ -28,7 +28,12 @@ Blender Foundation open movies (CC BY). No provider content is shown.</sub>
 - **Guide:** XMLTV (gzip, multi-member), provider guides (Xtream `xmltv.php`, M3U `url-tvg`, Stalker), extra and
   global feeds, automatic matching by tvg-id or normalised name, per-source time shift, programme search, reminders
   with auto-switch.
-- **Movies & TV Shows:** browsing with posters, details, seasons/episodes, resume and Continue Watching.
+- **Movies & TV Shows:** browsing with posters, details, seasons/episodes, resume and Continue Watching. Trailers
+  play inside the app (YouTube's official embedded player, or Apple's player for direct links).
+- **Episodes in the player:** ⏮/⏭ previous/next episode (across seasons; ⌘⇧←/→), an Episodes panel to jump to any
+  episode with its picture, progress and **IMDb rating**, and a Netflix-style "Up Next" countdown (Off/5–30 s in
+  Settings → Playback) with Play Now and Cancel. Episode ratings come from IMDb's public data sets (≈64 MB, downloaded
+  on first use and refreshed weekly; Cinemeta's episode ratings aren't IMDb's).
 - **Player:** AVFoundation first (HLS, MP4; PiP, AirPlay), automatic libmpv fallback for raw MPEG-TS/MKV and
   other formats; stall watchdog with failover to duplicate channels and reconnect; audio/subtitle tracks; stats.
 - **Multiview:** single, picture-in-picture, main + 3, 2×2.
