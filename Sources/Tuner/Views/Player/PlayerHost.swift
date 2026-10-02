@@ -260,7 +260,9 @@ struct PlayerHost: View {
     private var upNext: (next: Episode, series: Series, seconds: Int)? {
         guard model.prefs.autoplayNextEpisode, model.player.layout == .single, !model.player.isEpisodeListOpen,
               let current = model.currentEpisode, model.upNextCancelledFor != current.episode.id,
-              let next = model.adjacentEpisode(1) else { return nil }
+              let next = model.adjacentEpisode(1),
+              // Offline, only a downloaded next episode can play.
+              !model.isOffline || model.isDownloaded(next.id) else { return nil }
         let main = model.player.main
         guard main.phase == .playing || main.phase == .paused || main.phase == .buffering,
               let seconds = UpNextCountdown.secondsLeft(position: main.snapshot.position, duration: main.snapshot.duration,

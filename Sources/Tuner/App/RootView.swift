@@ -65,6 +65,7 @@ struct DetailRoot: View {
         case .movies: MoviesView()
         case .series: SeriesView()
         case .recordings: RecordingsView()
+        case .downloads: DownloadsView()
         case .liveTV, .favorites, .recent, .group: LiveTVView()
         }
     }
@@ -88,6 +89,8 @@ struct SidebarView: View {
             Label("Movies", systemImage: "film").tag(SidebarItem.movies)
             Label("TV Shows", systemImage: "tv").tag(SidebarItem.series)
             Label("Recordings", systemImage: "record.circle").tag(SidebarItem.recordings)
+            Label("Downloads", systemImage: "arrow.down.circle").tag(SidebarItem.downloads)
+                .badge(model.activeDownloadCount)
 
             Section {
                 Label("Favorites", systemImage: "star").tag(SidebarItem.favorites)

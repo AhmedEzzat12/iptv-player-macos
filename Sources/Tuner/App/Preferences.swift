@@ -93,6 +93,9 @@ final class Preferences {
     var recordingStartPaddingMinutes: Int { didSet { set(recordingStartPaddingMinutes, "recordingStartPaddingMinutes") } }
     var recordingEndPaddingMinutes: Int { didSet { set(recordingEndPaddingMinutes, "recordingEndPaddingMinutes") } }
 
+    // Downloads (movies and episodes saved for offline viewing)
+    var downloadsPath: String { didSet { set(downloadsPath, "downloadsPath") } }
+
     // Online metadata (Cinemeta by default; TMDB when a key is set)
     var metadataEnabled: Bool { didSet { set(metadataEnabled, "metadataEnabled") } }
     var tmdbAPIKey: String { didSet { set(tmdbAPIKey, "tmdbAPIKey") } }
@@ -143,6 +146,13 @@ final class Preferences {
         recordingsPath = v("recordingsPath", moviesDir.appendingPathComponent("Tuner Recordings").path)
         recordingStartPaddingMinutes = v("recordingStartPaddingMinutes", 1)
         recordingEndPaddingMinutes = v("recordingEndPaddingMinutes", 5)
+        // A scratch library (TUNER_DATA_DIR) never downloads into a folder chosen outside it.
+        let storedDownloadsPath: String = v("downloadsPath", Self.defaultDownloadsPath)
+        if let scratch = TunerApp.dataDirectoryOverride?.standardizedFileURL.path, !storedDownloadsPath.hasPrefix(scratch) {
+            downloadsPath = Self.defaultDownloadsPath
+        } else {
+            downloadsPath = storedDownloadsPath
+        }
 
         metadataEnabled = v("metadataEnabled", true)
         episodeThumbnails = EpisodeThumbnailStyle(rawValue: v("episodeThumbnails", "")) ?? .show
@@ -157,6 +167,16 @@ final class Preferences {
         shortcutOverrides = defaults.dictionary(forKey: "shortcutOverrides") as? [String: String] ?? [:]
         lastChannelId = defaults.string(forKey: "lastChannelId")
         resumeLastChannelOnLaunch = v("resumeLastChannelOnLaunch", true)
+    }
+
+    /// `~/Movies/Tuner Downloads`; test runs with a scratch library (TUNER_DATA_DIR) keep downloads inside it, so they
+    /// never touch the user's folder.
+    static var defaultDownloadsPath: String {
+        if let scratch = TunerApp.dataDirectoryOverride {
+            return scratch.appendingPathComponent("Downloads", isDirectory: true).path
+        }
+        let moviesDir = FileManager.default.urls(for: .moviesDirectory, in: .userDomainMask)[0]
+        return moviesDir.appendingPathComponent("Tuner Downloads", isDirectory: true).path
     }
 
     private func set(_ value: Any?, _ key: String) {

@@ -21,6 +21,12 @@ struct LiveTVView: View {
         GeometryReader { geo in
             let headerHeight = min(380, max(220, (geo.size.height * 0.34).rounded()))
             VStack(spacing: 0) {
+                if model.isOffline {
+                    OfflineBanner()
+                        .padding(.horizontal, 20)
+                        .padding(.top, 10)
+                        .padding(.bottom, 4)
+                }
                 LiveGuideHeader(store: store)
                     .frame(height: headerHeight)
                 LiveGuideFilterBar(store: store, filterText: $filterText)

@@ -17,6 +17,10 @@ struct SeriesDetailView: View {
     @ViewState private var pickedSeason: Int?
     /// Asking whether to mark earlier unwatched episodes too (TV Time style).
     @ViewState private var earlierPrompt: EarlierEpisodesPrompt?
+    /// Asking before a whole season is queued for download.
+    @ViewState private var seasonDownloadPrompt: SeasonDownloadPrompt?
+    /// Asking before a downloaded episode's file is deleted.
+    @ViewState private var pendingDownloadDelete: DownloadItem?
     /// IMDb ratings per episode, filled in once known (the first lookup ever downloads IMDb's data sets).
     @ViewState private var episodeRatings: [EpisodeRatingKey: Double] = [:]
     @ViewState private var progress: [String: WatchProgress] = [:]
@@ -97,7 +101,7 @@ struct SeriesDetailView: View {
         .background(VODTheme.background)
         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { viewHeight = $0 }
         .navigationTitle(series.name)
-        .task(id: reloadToken) { await loadEpisodes() }
+        .task(id: SeriesEpisodesLoadKey(token: reloadToken, offline: model.isOffline)) { await loadEpisodes() }
         .task(id: VODMetadataTaskKey(id: series.id, settings: model.prefs.metadataSettings)) { await loadMetadata() }
         .task(id: model.userRevision) { await loadUserState() }
         .confirmationDialog("Mark earlier episodes as watched too?",
@@ -108,6 +112,24 @@ struct SeriesDetailView: View {
             Button("Cancel", role: .cancel) {}
         } message: { prompt in
             Text(Self.earlierMessage(prompt))
+        }
+        .confirmationDialog(seasonDownloadPrompt.map { "Download \(VODFormat.seasonTitle($0.season))?" } ?? "",
+                            isPresented: Binding(get: { seasonDownloadPrompt != nil }, set: { if !$0 { seasonDownloadPrompt = nil } }),
+                            titleVisibility: .visible, presenting: seasonDownloadPrompt) { prompt in
+            Button(prompt.episodes.count == 1 ? "Download 1 Episode" : "Download \(prompt.episodes.count) Episodes") {
+                model.download(episodes: prompt.episodes, of: series)
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: { prompt in
+            Text(Self.seasonDownloadMessage(prompt, suspended: model.downloadsSuspended))
+        }
+        .confirmationDialog("Delete this download?",
+                            isPresented: Binding(get: { pendingDownloadDelete != nil }, set: { if !$0 { pendingDownloadDelete = nil } }),
+                            titleVisibility: .visible, presenting: pendingDownloadDelete) { item in
+            Button("Delete Download", role: .destructive) { model.deleteDownload(item.id) }
+            Button("Cancel", role: .cancel) {}
+        } message: { item in
+            Text("\(item.subtitle ?? item.title) is removed from this Mac. You can still stream it or download it again.")
         }
         .task(id: VODMetadataTaskKey(id: series.id, settings: model.prefs.metadataSettings)) {
             let ratings = await model.episodeRatings(for: series)
@@ -209,6 +231,7 @@ struct SeriesDetailView: View {
                     Text(watched > 0 ? "\(watched) of \(seasonEpisodes.count) watched" : (seasonEpisodes.count == 1 ? "1 episode" : "\(seasonEpisodes.count) episodes"))
                         .font(.callout)
                         .foregroundStyle(.secondary)
+                    seasonDownloadControl
                 }
             }
             .padding(.horizontal, VODMetrics.inset)
@@ -245,7 +268,8 @@ struct SeriesDetailView: View {
                                 progress: progress[episode.id],
                                 isUpNext: upNext?.episode.id == episode.id,
                                 imdbRating: episodeRatings[EpisodeRatingKey(season: episode.season, episode: episode.number)],
-                                onSetWatched: { requestSetWatched(episode, watched: $0) }
+                                onSetWatched: { requestSetWatched(episode, watched: $0) },
+                                onDeleteDownload: { pendingDownloadDelete = $0 }
                             )
                         }
                     }
@@ -294,6 +318,54 @@ struct SeriesDetailView: View {
         }
     }
 
+    // MARK: Downloads
+
+    /// "Download Season" (asks first, with the episode count); "Downloading 3 of 10" while the season downloads;
+    /// "Downloaded" once every episode is on this Mac.
+    @ViewBuilder
+    private var seasonDownloadControl: some View {
+        let list = seasonEpisodes
+        if let season = selectedSeason, !list.isEmpty {
+            let downloads = list.map { model.downloadsById[$0.id] }
+            let missing = zip(list, downloads).filter { $0.1 == nil || $0.1?.state == .failed }.map(\.0)
+            let saved = downloads.filter { $0?.state == .completed }.count
+            if missing.isEmpty {
+                Button {
+                    model.sidebarSelection = .downloads
+                } label: {
+                    Label(saved == list.count ? "Downloaded" : "Downloading \(saved) of \(list.count)",
+                          systemImage: saved == list.count ? "arrow.down.circle.fill" : "arrow.down.circle")
+                        .monospacedDigit()
+                }
+                .buttonStyle(.borderless)
+                .foregroundStyle(.secondary)
+                .help("Show in Downloads")
+            } else {
+                Button {
+                    seasonDownloadPrompt = SeasonDownloadPrompt(season: season, episodes: missing, others: list.count - missing.count)
+                } label: {
+                    Label(missing.count == list.count ? "Download Season" : "Download \(missing.count) More", systemImage: "arrow.down.circle")
+                }
+                .buttonStyle(.bordered)
+                .buttonBorderShape(.capsule)
+                .disabled(model.isOffline)
+                .help(model.isOffline ? "You're offline" : "Download every episode of \(VODFormat.seasonTitle(season)) to watch offline")
+            }
+        }
+    }
+
+    static func seasonDownloadMessage(_ prompt: SeasonDownloadPrompt, suspended: Bool) -> String {
+        let count = prompt.episodes.count
+        var text = count == 1
+            ? "1 episode will be saved to this Mac so you can watch it offline."
+            : "\(count) episodes will be saved to this Mac, one at a time and in order, so you can watch them offline."
+        if prompt.others > 0 {
+            text += prompt.others == 1 ? " The other episode is already downloaded or on its way." : " The other \(prompt.others) are already downloaded or on their way."
+        }
+        if suspended { text += " Downloads start when you stop watching." }
+        return text
+    }
+
     // MARK: Loading
 
     private func loadEpisodes() async {
@@ -301,6 +373,11 @@ struct SeriesDetailView: View {
         let cached = (try? await model.db.episodes(seriesId: series.id)) ?? []
         if !cached.isEmpty, episodes.isEmpty {
             episodes = cached
+        }
+        // Offline the library's episodes are what there is (downloaded ones play); they refresh when back online.
+        if model.isOffline, !episodes.isEmpty {
+            phase = .loaded
+            return
         }
         do {
             let fresh = try await model.sync.episodes(for: series)
@@ -369,6 +446,19 @@ struct SeriesDetailView: View {
     }
 }
 
+private struct SeriesEpisodesLoadKey: Hashable {
+    let token: Int
+    let offline: Bool
+}
+
+/// A season's episodes to download (`others` are already downloaded or queued).
+struct SeasonDownloadPrompt: Identifiable {
+    let id = UUID()
+    let season: Int
+    let episodes: [Episode]
+    let others: Int
+}
+
 private enum SeriesEpisodesPhase: Equatable {
     case loading
     case loaded
@@ -395,6 +485,8 @@ private struct SeriesEpisodeCard: View {
     var imdbRating: Double?
     /// Mark as Watched/Unwatched; the show page decides whether to offer earlier episodes too.
     var onSetWatched: (Bool) -> Void = { _ in }
+    /// Delete Download (the show page asks first).
+    var onDeleteDownload: (DownloadItem) -> Void = { _ in }
 
     private let width: CGFloat = 280
 
@@ -506,6 +598,9 @@ private struct SeriesEpisodeCard: View {
             } label: {
                 Label(isWatched ? "Mark as Unwatched" : "Mark as Watched", systemImage: isWatched ? "eye.slash" : "checkmark.circle")
             }
+            Divider()
+            EpisodeDownloadMenuItems(episode: episode, series: series, confirmDelete: onDeleteDownload)
+            Divider()
             Button {
                 VODActions.copyToPasteboard("\(series.name) – \(VODFormat.episodeCode(episode)) – \(title)")
             } label: {
@@ -555,6 +650,11 @@ private struct SeriesEpisodeCard: View {
                         .shadow(color: .black.opacity(0.4), radius: 4)
                         .padding(8)
                 }
+            }
+            .overlay(alignment: .topLeading) {
+                DownloadStatusBadge(item: model.downloadsById[episode.id], size: 22)
+                    .padding(8)
+                    .animation(.smooth(duration: 0.25), value: model.downloadsById[episode.id]?.state)
             }
             .clipShape(RoundedRectangle(cornerRadius: VODMetrics.landscapeCorner, style: .continuous))
             .overlay {

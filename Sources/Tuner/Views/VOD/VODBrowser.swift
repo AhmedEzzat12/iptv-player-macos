@@ -106,6 +106,11 @@ struct VODBrowser: View {
             }
             .padding(.horizontal, VODMetrics.inset)
 
+            if model.isOffline {
+                OfflineBanner()
+                    .padding(.horizontal, VODMetrics.inset)
+            }
+
             if !visibleCategories.isEmpty {
                 ScrollView(.horizontal) {
                     LazyHStack(spacing: 8) {

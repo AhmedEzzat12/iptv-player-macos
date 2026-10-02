@@ -54,6 +54,16 @@ enum PlaybackItem: Hashable, Identifiable {
         return false
     }
 
+    /// The playlist (source) the item streams from; nil for recordings (files on this Mac).
+    var sourceId: String? {
+        switch self {
+        case .channel(let c), .catchup(let c, _): c.sourceId
+        case .movie(let m): m.sourceId
+        case .episode(let e, _): e.sourceId
+        case .recording: nil
+        }
+    }
+
     /// Key for resume progress (movies and episodes only).
     var progressKey: String? {
         switch self {

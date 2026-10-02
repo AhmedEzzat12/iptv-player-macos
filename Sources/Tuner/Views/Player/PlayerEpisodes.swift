@@ -127,6 +127,10 @@ struct PlayerEpisodesPanel: View {
                                 .padding(5)
                         }
                     }
+                    .overlay(alignment: .topLeading) {
+                        DownloadStatusBadge(item: model.downloadsById[episode.id], size: 18)
+                            .padding(5)
+                    }
                     .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
 
                 VStack(alignment: .leading, spacing: 3) {

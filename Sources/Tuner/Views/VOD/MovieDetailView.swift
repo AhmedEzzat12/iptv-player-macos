@@ -84,7 +84,7 @@ struct MovieDetailView: View {
         .background(VODTheme.background)
         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { viewHeight = $0 }
         .navigationTitle(movie.name)
-        .task(id: movie.id) { await loadDetails() }
+        .task(id: MovieDetailLoadKey(id: movie.id, offline: model.isOffline)) { await loadDetails() }
         .task(id: VODMetadataTaskKey(id: movie.id, settings: model.prefs.metadataSettings)) { await loadMetadata() }
         .task(id: model.userRevision) { await loadUserState() }
     }
@@ -138,6 +138,8 @@ struct MovieDetailView: View {
                 }
             }
 
+            MovieDownloadButton(movie: movie, density: density)
+
             if let trailer = trailerURL {
                 VODSecondaryButton(title: "Trailer", systemImage: "play.rectangle", iconOnly: density != .full) {
                     model.presentTrailer(trailer, title: movie.name)
@@ -188,6 +190,8 @@ struct MovieDetailView: View {
 
     private func loadDetails() async {
         if let fresh = try? await model.db.movie(id: movie.id) { movie = fresh }
+        // Offline the page shows what the library has (downloads still play); details load next time.
+        guard !model.isOffline else { return }
         loadingDetails = true
         defer { loadingDetails = false }
         guard let details = try? await model.sync.movieDetails(movie), !Task.isCancelled else { return }
@@ -240,6 +244,12 @@ struct MovieDetailView: View {
         let watched = progress?.completed != true
         Task { try? await model.db.markWatched(base, watched: watched) }
     }
+}
+
+/// Reloads details when the movie changes or the Mac comes back online.
+private struct MovieDetailLoadKey: Hashable {
+    let id: String
+    let offline: Bool
 }
 
 // MARK: - Shared detail pieces

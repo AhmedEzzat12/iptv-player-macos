@@ -9,6 +9,7 @@ enum SidebarItem: Hashable {
     case movies
     case series
     case recordings
+    case downloads
     case favorites
     case recent
     case group(String)

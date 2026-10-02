@@ -355,6 +355,7 @@ struct TunerCommands: Commands {
             Button("Movies") { model.sidebarSelection = .movies }.keyboardShortcut("3", modifiers: .command)
             Button("TV Shows") { model.sidebarSelection = .series }.keyboardShortcut("4", modifiers: .command)
             Button("Recordings") { model.sidebarSelection = .recordings }.keyboardShortcut("5", modifiers: .command)
+            Button("Downloads") { model.sidebarSelection = .downloads }.keyboardShortcut("6", modifiers: .command)
             Button("Search") { model.sidebarSelection = .search }.keyboardShortcut("f", modifiers: .command)
         }
         CommandMenu("Playback") {

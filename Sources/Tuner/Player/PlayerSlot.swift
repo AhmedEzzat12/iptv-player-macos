@@ -75,6 +75,9 @@ final class PlayerSlot: Identifiable {
     @ObservationIgnored var onItemChange: ((PlaybackItem?) -> Void)?
     /// Called when finite media finishes (autoplay next episode).
     @ObservationIgnored var onEnded: ((PlaybackItem) -> Void)?
+    /// Awaited before each load resolves and opens its stream (e.g. pausing downloads that hold a
+    /// single-connection account's only connection).
+    @ObservationIgnored var beforeLoad: ((PlaybackItem) async -> Void)?
 
     @ObservationIgnored private let services: PlayerServices
     @ObservationIgnored private var avEngine: AVEngine?
@@ -421,6 +424,8 @@ final class PlayerSlot: Identifiable {
         let mpvOK = EngineFactory.mpvAvailable
         loadTask = Task { [weak self] in
             guard let self else { return }
+            await self.beforeLoad?(item)
+            guard gen == self.generation, !Task.isCancelled else { return }
             do {
                 // Native first: ask Xtream panels for HLS, which AVFoundation plays; fall back to TS for mpv.
                 // Items whose video AVFoundation already failed to decode go straight to mpv.

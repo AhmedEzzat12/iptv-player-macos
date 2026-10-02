@@ -54,6 +54,11 @@ private struct HomeContent: View {
                         .padding(.top, 12)
                 }
 
+                if model.isOffline {
+                    OfflineBanner()
+                        .padding(.horizontal, VODMetrics.inset)
+                }
+
                 if !personal.continueWatching.isEmpty {
                     VODShelf("Continue Watching") {
                         ForEach(personal.continueWatching) { progress in

@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import Network
 import Observation
 import TunerCore
 import UserNotifications
@@ -17,6 +18,8 @@ final class AppModel {
     let metadata: MetadataService
     /// IMDb ratings for TV episodes (IMDb's datasets; see `IMDbRatingsService`).
     let imdbRatings: IMDbRatingsService
+    /// Movies and episodes saved for offline viewing (one at a time; see `downloadItems`).
+    let downloads: DownloadService
     let prefs: Preferences
     let player: PlayerManager
 
@@ -57,6 +60,21 @@ final class AppModel {
     private(set) var banners: [Banner] = []
     private(set) var reminders: [Reminder] = []
     private(set) var recordings: [Recording] = []
+
+    // MARK: Downloads & connectivity
+    /// Every download, newest first. Refreshed about every second while something is queued or downloading,
+    /// every 10 s otherwise, and right after each download action.
+    private(set) var downloadItems: [DownloadItem] = []
+    /// `downloadItems` keyed by movie/episode id.
+    private(set) var downloadsById: [String: DownloadItem] = [:]
+    /// Smoothed transfer rate in bytes per second of running downloads, by id.
+    private(set) var downloadSpeeds: [String: Double] = [:]
+    /// Queued, downloading or automatically paused downloads (the sidebar badge).
+    private(set) var activeDownloadCount = 0
+    /// True while downloads wait because the player streams from an account that allows a single connection.
+    private(set) var downloadsSuspended = false
+    /// No usable network path (NWPathMonitor). Downloads stay playable; streaming and lookups fail quietly.
+    private(set) var isOffline = false
     /// The list the user is browsing; channel up/down walks it.
     var zapList: [Channel] = []
     /// Incremented on every channel change of the main player (overlays flash the channel banner).
@@ -78,6 +96,13 @@ final class AppModel {
     @ObservationIgnored private var autoSwitched: Set<String> = []
     @ObservationIgnored private var guideHintShown: Set<String> = []
     @ObservationIgnored private var lastPlayedChannel: Channel?
+    @ObservationIgnored private var downloadSamples: [String: (bytes: Int64, time: Date)] = [:]
+    @ObservationIgnored private var downloadSuspensionTask: Task<Void, Never>?
+    @ObservationIgnored private var downloadSuspensionBannerShown = false
+    /// Episodes of a show finished while more of it is still downloading: one banner when the batch is done.
+    @ObservationIgnored private var finishedEpisodesBySeries: [String: Int] = [:]
+    @ObservationIgnored private var pathMonitor: NWPathMonitor?
+    @ObservationIgnored private var offlineSince: Date?
 
     init(db: AppDatabase, prefs: Preferences, dataDirectory: URL) {
         self.db = db
@@ -86,6 +111,7 @@ final class AppModel {
         sync = SyncService(db: db)
         resolver = StreamResolver(db: db, sync: sync)
         recorder = RecordingService(db: db, resolver: resolver, directory: URL(fileURLWithPath: prefs.recordingsPath))
+        downloads = DownloadService(db: db, resolver: resolver, directory: URL(fileURLWithPath: prefs.downloadsPath, isDirectory: true))
         metadata = MetadataService(db: db)
         player = PlayerManager(services: PlayerServices(db: db, resolver: resolver, prefs: prefs))
         for slot in player.slots { wire(slot) }
@@ -105,6 +131,8 @@ final class AppModel {
         await reloadUserData()
         sources = (try? await db.sources()) ?? []
         sourcesLoaded = true
+        startNetworkMonitor()
+        startDownloads()
 
         tasks.append(Task { [weak self] in
             guard let self else { return }
@@ -148,6 +176,7 @@ final class AppModel {
 
     func shutdown() {
         tasks.forEach { $0.cancel() }
+        pathMonitor?.cancel()
         player.shutdown()
         Task { await recorder.stopAll() }
     }
@@ -160,6 +189,7 @@ final class AppModel {
             startPadding: TimeInterval(prefs.recordingStartPaddingMinutes * 60),
             endPadding: TimeInterval(prefs.recordingEndPaddingMinutes * 60)
         )
+        await downloads.setDirectory(URL(fileURLWithPath: prefs.downloadsPath, isDirectory: true))
     }
 
     private func observe(_ tables: [String], _ bump: @escaping @MainActor (AppModel) -> Void) {
@@ -305,8 +335,13 @@ final class AppModel {
         slot.onEnded = { [weak self, weak slot] item in
             guard let self, let slot, slot === self.player.main else { return }
             if case .episode(let ep, let series) = item, self.prefs.autoplayNextEpisode, self.upNextCancelledFor != ep.id {
+                // Offline, only a downloaded next episode can play.
+                if self.isOffline, let next = self.adjacentEpisode(1), !self.isDownloaded(next.id) { return }
                 Task { await self.playNextEpisode(after: ep, in: series) }
             }
+        }
+        slot.beforeLoad = { [weak self] item in
+            await self?.freeConnectionForPlayback(item)
         }
     }
 
@@ -462,10 +497,11 @@ final class AppModel {
 
     /// IMDb ratings of a show's episodes, keyed by `EpisodeRatingKey`. Empty until the IMDb service knows the show.
     func episodeRatings(for series: Series) async -> [EpisodeRatingKey: Double] {
-        // The show's IMDb id comes from its online metadata (cached after the first lookup).
-        guard let imdbId = await metadata.metadata(for: series)?.imdbId else { return [:] }
-        // With online lookups turned off, show what's cached but don't download IMDb's data sets.
-        let ratings = await metadata.settings.enabled
+        // The show's IMDb id comes from its online metadata (cached after the first lookup). Offline, only the cache.
+        let info = isOffline ? await metadata.cachedMetadata(mediaId: series.id) : await metadata.metadata(for: series)
+        guard let imdbId = info?.imdbId else { return [:] }
+        // With online lookups turned off (or no network), show what's cached but don't download IMDb's data sets.
+        let ratings = await metadata.settings.enabled && !isOffline
             ? await imdbRatings.ratings(seriesIMDbId: imdbId)
             : await imdbRatings.cachedRatings(seriesIMDbId: imdbId)
         return Dictionary(ratings.map { (EpisodeRatingKey(season: $0.season, episode: $0.episode), $0.rating) },
@@ -745,6 +781,351 @@ final class AppModel {
             await recorder.cancel(id: recording.id)
             if deleteFile, let path = recording.filePath { try? FileManager.default.trashItem(at: URL(fileURLWithPath: path), resultingItemURL: nil) }
             try? await db.deleteRecording(id: recording.id)
+        }
+    }
+
+    // MARK: - Downloads
+
+    private func startDownloads() {
+        tasks.append(Task { [weak self] in
+            await self?.downloads.start()
+            var idleSeconds = 10
+            while !Task.isCancelled, let self {
+                // Every second while something moves; otherwise every 10 s (engine-side changes such as an automatic
+                // resume). Actions refresh right away on their own.
+                if self.downloadItems.contains(where: { $0.state == .queued || $0.state == .downloading }) || idleSeconds >= 10 {
+                    idleSeconds = 0
+                    await self.refreshDownloads()
+                } else {
+                    idleSeconds += 1
+                }
+                try? await Task.sleep(for: .seconds(1))
+            }
+        })
+        trackDownloadSuspension()
+    }
+
+    /// Reloads the download list from the service (cheap: one actor call).
+    func refreshDownloads() async {
+        applyDownloads(await downloads.items())
+    }
+
+    private func applyDownloads(_ items: [DownloadItem]) {
+        let now = Date()
+        let previous = downloadsById
+
+        // Transfer rate from consecutive samples, smoothed so the label doesn't flicker.
+        var speeds: [String: Double] = [:]
+        var samples: [String: (bytes: Int64, time: Date)] = [:]
+        for item in items where item.state == .downloading {
+            if let sample = downloadSamples[item.id] {
+                let elapsed = now.timeIntervalSince(sample.time)
+                if elapsed >= 0.5 {
+                    let instant = max(0, Double(item.receivedBytes - sample.bytes) / elapsed)
+                    speeds[item.id] = downloadSpeeds[item.id].map { $0 * 0.6 + instant * 0.4 } ?? instant
+                    samples[item.id] = (item.receivedBytes, now)
+                } else {
+                    speeds[item.id] = downloadSpeeds[item.id]
+                    samples[item.id] = sample
+                }
+            } else {
+                samples[item.id] = (item.receivedBytes, now)
+            }
+        }
+        downloadSamples = samples
+        if speeds != downloadSpeeds { downloadSpeeds = speeds }
+
+        if items != downloadItems {
+            downloadItems = items
+            downloadsById = Dictionary(items.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        }
+        let active = items.filter(\.isPending).count
+        if active != activeDownloadCount { activeDownloadCount = active }
+
+        for item in items {
+            guard let old = previous[item.id], old.state != item.state else { continue }
+            switch item.state {
+            case .completed: announceDownloaded(item)
+            case .failed: announceDownloadFailed(item)
+            default: break
+            }
+        }
+    }
+
+    private func announceDownloaded(_ item: DownloadItem) {
+        // A season downloads episode by episode: announce the batch once, when the show has nothing left in the queue.
+        if item.kind == .episode, let seriesId = item.seriesId {
+            if downloadItems.contains(where: { $0.seriesId == seriesId && $0.isPending }) {
+                finishedEpisodesBySeries[seriesId, default: 0] += 1
+                return
+            }
+            let count = (finishedEpisodesBySeries.removeValue(forKey: seriesId) ?? 0) + 1
+            if count > 1 {
+                notify(Banner(symbol: "arrow.down.circle.fill", title: "Downloaded \(count) episodes of “\(item.title)”",
+                              message: "Ready to watch, even offline.", actionTitle: "Show") { [weak self] in
+                    self?.sidebarSelection = .downloads
+                })
+                return
+            }
+        }
+        notify(Banner(symbol: "arrow.down.circle.fill", title: "Downloaded “\(item.title)”",
+                      message: item.kind == .episode ? item.subtitle : "Ready to watch, even offline.",
+                      actionTitle: "Play") { [weak self] in
+            guard let self else { return }
+            Task { await self.playDownload(item) }
+        })
+    }
+
+    private func announceDownloadFailed(_ item: DownloadItem) {
+        let what = [item.title, item.kind == .episode ? item.subtitle : nil].compactMap { $0 }.joined(separator: " · ")
+        notify(Banner(symbol: "exclamationmark.triangle.fill", title: "Couldn't download “\(item.title)”",
+                      message: item.error?.nilIfEmpty ?? what, actionTitle: "Try Again", action: { [weak self] in
+            self?.resumeDownload(item.id)
+        }, isError: true))
+    }
+
+    /// Whether a movie/episode is saved on this Mac.
+    func isDownloaded(_ mediaId: String) -> Bool {
+        downloadsById[mediaId]?.state == .completed
+    }
+
+    func download(movie: Movie) {
+        Task {
+            do {
+                try await downloads.enqueue(movie: movie)
+                await refreshDownloads()
+                announceQueuedWhileSuspended()
+            } catch {
+                notify(Banner(symbol: "exclamationmark.triangle.fill", title: "Couldn't download “\(movie.name)”",
+                              message: error.localizedDescription, isError: true))
+            }
+        }
+    }
+
+    /// Queues episodes in watch order (already queued or downloaded ones are skipped by the service).
+    func download(episodes: [Episode], of series: Series) {
+        guard !episodes.isEmpty else { return }
+        let ordered = episodes.sorted { ($0.season, $0.number) < ($1.season, $1.number) }
+        Task {
+            do {
+                try await downloads.enqueue(episodes: ordered, of: series)
+                await refreshDownloads()
+                announceQueuedWhileSuspended()
+            } catch {
+                notify(Banner(symbol: "exclamationmark.triangle.fill", title: "Couldn't download \(series.name)",
+                              message: error.localizedDescription, isError: true))
+            }
+        }
+    }
+
+    func pauseDownload(_ id: String) {
+        Task {
+            await downloads.pause(id: id)
+            await refreshDownloads()
+        }
+    }
+
+    /// Resumes a paused download, or retries a failed one.
+    func resumeDownload(_ id: String) {
+        Task {
+            await downloads.resume(id: id)
+            await refreshDownloads()
+        }
+    }
+
+    /// Stops an unfinished download and discards what was saved so far.
+    func cancelDownload(_ id: String) {
+        Task {
+            await downloads.cancel(id: id)
+            await refreshDownloads()
+        }
+    }
+
+    /// Removes a download and its file.
+    func deleteDownload(_ id: String) {
+        stopIfPlayingDownload(ids: [id])
+        Task {
+            await downloads.delete(id: id)
+            await refreshDownloads()
+        }
+    }
+
+    func pauseAllDownloads() {
+        let ids = downloadItems.filter(\.isPending).map(\.id)
+        Task {
+            for id in ids { await downloads.pause(id: id) }
+            await refreshDownloads()
+        }
+    }
+
+    /// Resumes user-paused downloads and retries failed ones.
+    func resumeAllDownloads() {
+        let ids = downloadItems.filter { $0.isPausedByUser || $0.state == .failed }
+            .sorted { $0.createdAt < $1.createdAt }
+            .map(\.id)
+        Task {
+            for id in ids { await downloads.resume(id: id) }
+            await refreshDownloads()
+        }
+    }
+
+    /// Deletes every download and its file (unfinished ones are cancelled).
+    func deleteAllDownloads() {
+        let items = downloadItems
+        stopIfPlayingDownload(ids: Set(items.map(\.id)))
+        Task {
+            for item in items {
+                if item.state == .completed { await downloads.delete(id: item.id) } else { await downloads.cancel(id: item.id) }
+            }
+            await refreshDownloads()
+        }
+    }
+
+    /// The file being deleted can't keep playing.
+    private func stopIfPlayingDownload(ids: Set<String>) {
+        for slot in player.slots {
+            if let key = slot.item?.progressKey, ids.contains(key), slot.stream?.url.isFileURL == true { slot.stop() }
+        }
+    }
+
+    /// Plays a download, preferring the library's current records (progress, artwork) and falling back to what the
+    /// download remembers when the playlist no longer lists the title.
+    func playDownload(_ item: DownloadItem) async {
+        switch item.kind {
+        case .movie:
+            var movie = (try? await db.movie(id: item.id)) ?? Movie(id: item.id, sourceId: item.sourceId, categoryId: nil,
+                                                                     name: item.title, providerId: "", providerOrder: 0)
+            if movie.posterURL == nil { movie.posterURL = item.artworkURL }
+            await play(movie: movie)
+        case .episode:
+            let seriesId = item.seriesId ?? ""
+            var episode = (try? await db.episode(id: item.id)) ?? Episode(
+                id: item.id, seriesId: seriesId, sourceId: item.sourceId, season: item.season ?? 1, number: item.episode ?? 1,
+                title: Self.episodeTitle(fromSubtitle: item.subtitle) ?? item.title, providerId: "")
+            if episode.imageURL == nil { episode.imageURL = item.artworkURL }
+            var series = (try? await db.series(id: seriesId)) ?? Series(id: seriesId, sourceId: item.sourceId, categoryId: nil,
+                                                                       name: item.title, providerId: seriesId, providerOrder: 0)
+            if series.coverURL == nil { series.coverURL = item.artworkURL }
+            await play(episode: episode, in: series)
+        }
+    }
+
+    /// "S1, E3 · Pilot" → "Pilot".
+    static func episodeTitle(fromSubtitle subtitle: String?) -> String? {
+        guard let subtitle, let range = subtitle.range(of: " · ") else { return nil }
+        return String(subtitle[range.upperBound...]).nilIfEmpty
+    }
+
+    /// Changes the folder for new downloads.
+    func setDownloadsFolder(_ url: URL) {
+        prefs.downloadsPath = url.path
+        Task { await downloads.setDirectory(url) }
+    }
+
+    // MARK: Single-connection accounts
+
+    /// The account a slot streams from over the network; nil when it's idle or playing a file on this Mac.
+    private func networkSourceId(of slot: PlayerSlot) -> String? {
+        guard let item = slot.item, slot.phase.isActive else { return nil }
+        let isLocal: Bool
+        if slot.phase != .loading, let stream = slot.stream {
+            isLocal = stream.url.isFileURL
+        } else if case .recording = item {
+            isLocal = true
+        } else {
+            // While loading, `stream` may still be the previous item's: a completed download plays from its file.
+            isLocal = item.progressKey.map(isDownloaded) ?? false
+        }
+        return isLocal ? nil : item.sourceId
+    }
+
+    /// Downloads wait while the player streams from an account that allows only one connection (the provider would
+    /// otherwise refuse the stream or cut the download).
+    private var downloadsShouldSuspend: Bool {
+        let streaming = Set(player.slots.compactMap(networkSourceId))
+        guard !streaming.isEmpty else { return false }
+        return sources.contains { streaming.contains($0.id) && $0.maxConnections == 1 }
+    }
+
+    /// Re-evaluates `downloadsShouldSuspend` whenever anything it reads changes (players, sources, downloads).
+    private func trackDownloadSuspension() {
+        let shouldSuspend = withObservationTracking {
+            downloadsShouldSuspend
+        } onChange: { [weak self] in
+            Task { @MainActor [weak self] in self?.trackDownloadSuspension() }
+        }
+        setDownloadsSuspended(shouldSuspend)
+    }
+
+    private func setDownloadsSuspended(_ suspended: Bool) {
+        guard suspended != downloadsSuspended else { return }
+        downloadsSuspended = suspended
+        let service = downloads
+        let previous = downloadSuspensionTask
+        downloadSuspensionTask = Task { [weak self] in
+            await previous?.value
+            if suspended { await service.suspend() } else { await service.unsuspend() }
+            await self?.refreshDownloads()
+        }
+        if suspended { announceQueuedWhileSuspended() }
+    }
+
+    /// "Downloads paused while you watch", once per launch and only when a download is actually waiting.
+    private func announceQueuedWhileSuspended() {
+        guard downloadsSuspended, !downloadSuspensionBannerShown,
+              downloadItems.contains(where: \.isPending)
+        else { return }
+        downloadSuspensionBannerShown = true
+        notify(Banner(symbol: "pause.circle.fill", title: "Downloads paused while you watch",
+                      message: "Your account allows one stream at a time. Downloads continue when you stop watching."))
+    }
+
+    /// Runs before a player slot resolves and opens a stream: on a single-connection account the download has to let go
+    /// of the connection first, or the provider refuses the stream.
+    private func freeConnectionForPlayback(_ item: PlaybackItem) async {
+        guard let sourceId = item.sourceId, sources.first(where: { $0.id == sourceId })?.maxConnections == 1,
+              !downloadItems.isEmpty else { return }
+        if let key = item.progressKey, await downloads.localFile(mediaId: key) != nil { return }
+        setDownloadsSuspended(true)
+        guard let pending = downloadSuspensionTask else { return }
+        // Don't hold playback hostage if the service is slow to pause.
+        await withTaskGroup(of: Void.self) { group in
+            group.addTask { await pending.value }
+            group.addTask { try? await Task.sleep(for: .seconds(2)) }
+            await group.next()
+            group.cancelAll()
+        }
+    }
+
+    // MARK: - Connectivity
+
+    private func startNetworkMonitor() {
+        guard pathMonitor == nil else { return }
+        let monitor = NWPathMonitor()
+        monitor.pathUpdateHandler = { [weak self] path in
+            let offline = path.status != .satisfied
+            Task { @MainActor [weak self] in self?.setOffline(offline) }
+        }
+        monitor.start(queue: DispatchQueue(label: "app.tuner.macos.network", qos: .utility))
+        pathMonitor = monitor
+    }
+
+    private func setOffline(_ offline: Bool) {
+        guard offline != isOffline else { return }
+        isOffline = offline
+        if offline {
+            offlineSince = Date()
+            return
+        }
+        // Back online: retry now what's waiting out a network backoff, and what failed while the network was gone.
+        let since = (offlineSince ?? Date()).addingTimeInterval(-30)
+        offlineSince = nil
+        let retry = downloadItems.filter {
+            ($0.state == .queued && $0.error != nil) || ($0.state == .failed && $0.updatedAt >= since)
+        }.map(\.id)
+        Task {
+            for id in retry { await downloads.resume(id: id) }
+            await refreshDownloads()
         }
     }
 
