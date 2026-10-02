@@ -362,6 +362,9 @@ struct VODDetailHeader<Actions: View>: View {
                             .frame(maxWidth: 600, alignment: .leading)
                     }
                     actions()
+                        // macOS gives the first button keyboard focus on appear and rings it in blue; the glass
+                        // buttons have their own hover/press look (as in the TV app), so no focus ring here.
+                        .focusEffectDisabled()
                         .padding(.top, 8)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)

@@ -644,6 +644,11 @@ final class PlayerSlot: Identifiable {
             return "Your provider no longer has \(what) on its server (HTTP \(status))."
         case 429, 458, 509:
             return "Your provider says too many streams are open (HTTP \(status)). Close other players using this account and try again."
+        // Panels answer 503 themselves (no redirect to a video server) when they list a title but have no playable
+        // copy, e.g. its storage server is gone or the file was taken down. Seen lasting for days, so don't promise
+        // "later": point at the provider.
+        case 503 where !item.isLive:
+            return "Your provider lists \(what) but has no playable copy of it (HTTP 503). This is on their side and usually lasts until they upload it again, so it's worth telling them. Other titles still play."
         case 500..<600:
             return "Your provider couldn't deliver \(what) right now (HTTP \(status)). Other titles should still play — try this one again later."
         default:
