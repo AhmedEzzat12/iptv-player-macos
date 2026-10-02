@@ -442,6 +442,19 @@ final class AppModel {
         Task { await play(episode: target, in: current.series, fromStart: true) }
     }
 
+    /// Marks episodes watched or unwatched in one write, keeping any existing progress records' details.
+    func setWatched(_ episodes: [Episode], in series: Series, watched: Bool, existing: [String: WatchProgress]) async {
+        let records = episodes.map { episode in
+            existing[episode.id] ?? WatchProgress(
+                mediaId: episode.id, kind: .episode, sourceId: episode.sourceId, seriesId: series.id, title: series.name,
+                subtitle: "S\(episode.season), E\(episode.number) · \(episode.title)",
+                posterURL: episode.imageURL ?? series.backdropURL ?? series.coverURL,
+                position: 0, duration: Double(episode.durationSeconds ?? 1)
+            )
+        }
+        try? await db.markWatched(records, watched: watched)
+    }
+
     /// Hides the Up Next card for the current episode and stops it from rolling into the next one.
     func cancelUpNext() {
         upNextCancelledFor = currentEpisode?.episode.id

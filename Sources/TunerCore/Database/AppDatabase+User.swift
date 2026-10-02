@@ -118,6 +118,22 @@ extension AppDatabase {
         }
     }
 
+    /// Marks many items watched (played to the end) or unwatched (back to the start) in one transaction.
+    public func markWatched(_ items: [WatchProgress], watched: Bool) async throws {
+        guard !items.isEmpty else { return }
+        try await writer.write { db in
+            let now = Date()
+            for item in items {
+                var p = item
+                p.duration = max(p.duration, 1)
+                p.completed = watched
+                p.position = watched ? p.duration : 0
+                p.updatedAt = now
+                try p.save(db)
+            }
+        }
+    }
+
     public func deleteProgress(mediaId: String) async throws {
         try await writer.write { db in _ = try WatchProgress.deleteOne(db, key: mediaId) }
     }

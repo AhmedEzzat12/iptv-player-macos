@@ -15,6 +15,8 @@ struct SeriesDetailView: View {
     @ViewState private var phase: SeriesEpisodesPhase = .loading
     /// Season chosen by the user; otherwise the page follows the next-up episode.
     @ViewState private var pickedSeason: Int?
+    /// Asking whether to mark earlier unwatched episodes too (TV Time style).
+    @ViewState private var earlierPrompt: EarlierEpisodesPrompt?
     /// IMDb ratings per episode, filled in once known (the first lookup ever downloads IMDb's data sets).
     @ViewState private var episodeRatings: [EpisodeRatingKey: Double] = [:]
     @ViewState private var progress: [String: WatchProgress] = [:]
@@ -98,6 +100,15 @@ struct SeriesDetailView: View {
         .task(id: reloadToken) { await loadEpisodes() }
         .task(id: VODMetadataTaskKey(id: series.id, settings: model.prefs.metadataSettings)) { await loadMetadata() }
         .task(id: model.userRevision) { await loadUserState() }
+        .confirmationDialog("Mark earlier episodes as watched too?",
+                            isPresented: Binding(get: { earlierPrompt != nil }, set: { if !$0 { earlierPrompt = nil } }),
+                            titleVisibility: .visible, presenting: earlierPrompt) { prompt in
+            Button("Mark All \(prompt.earlier.count + 1) as Watched") { setWatched(prompt.earlier + [prompt.episode], watched: true) }
+            Button("Only This Episode") { setWatched([prompt.episode], watched: true) }
+            Button("Cancel", role: .cancel) {}
+        } message: { prompt in
+            Text(Self.earlierMessage(prompt))
+        }
         .task(id: VODMetadataTaskKey(id: series.id, settings: model.prefs.metadataSettings)) {
             let ratings = await model.episodeRatings(for: series)
             withAnimation(.easeOut(duration: 0.25)) { episodeRatings = ratings }
@@ -233,7 +244,8 @@ struct SeriesDetailView: View {
                                 imdbURL: VODEnrichment.imdbEpisodesURL(info, season: episode.season),
                                 progress: progress[episode.id],
                                 isUpNext: upNext?.episode.id == episode.id,
-                                imdbRating: episodeRatings[EpisodeRatingKey(season: episode.season, episode: episode.number)]
+                                imdbRating: episodeRatings[EpisodeRatingKey(season: episode.season, episode: episode.number)],
+                                onSetWatched: { requestSetWatched(episode, watched: $0) }
                             )
                         }
                     }
@@ -313,6 +325,35 @@ struct SeriesDetailView: View {
         withAnimation(.easeInOut(duration: 0.4)) { info = result }
     }
 
+    // MARK: Watched
+
+    /// Marking an episode watched while earlier ones aren't asks whether to mark those too (TV Time behaviour);
+    /// marking unwatched only changes that episode.
+    private func requestSetWatched(_ episode: Episode, watched: Bool) {
+        guard watched else { return setWatched([episode], watched: false) }
+        let done = Set(progress.values.filter(\.completed).map(\.mediaId))
+        let earlier = EpisodeNavigation.unwatched(before: episode.id, in: episodes, watched: done)
+        if earlier.isEmpty {
+            setWatched([episode], watched: true)
+        } else {
+            earlierPrompt = EarlierEpisodesPrompt(episode: episode, earlier: earlier)
+        }
+    }
+
+    private func setWatched(_ list: [Episode], watched: Bool) {
+        let series = self.series
+        let existing = progress
+        Task { await model.setWatched(list, in: series, watched: watched, existing: existing) }
+    }
+
+    static func earlierMessage(_ prompt: EarlierEpisodesPrompt) -> String {
+        let count = prompt.earlier.count
+        let from = prompt.earlier.first.map { " (from \(VODFormat.episodeCode($0)))" } ?? ""
+        return count == 1
+            ? "1 earlier episode\(from) isn't marked as watched."
+            : "\(count) earlier episodes\(from) aren't marked as watched."
+    }
+
     private func loadUserState() async {
         let id = series.id
         progress = (try? await model.db.progress(seriesId: id)) ?? [:]
@@ -352,6 +393,8 @@ private struct SeriesEpisodeCard: View {
     let isUpNext: Bool
     /// The episode's IMDb rating (IMDb's data sets), when known.
     var imdbRating: Double?
+    /// Mark as Watched/Unwatched; the show page decides whether to offer earlier episodes too.
+    var onSetWatched: (Bool) -> Void = { _ in }
 
     private let width: CGFloat = 280
 
@@ -459,7 +502,7 @@ private struct SeriesEpisodeCard: View {
             }
             Divider()
             Button {
-                markWatched(!isWatched)
+                onSetWatched(!isWatched)
             } label: {
                 Label(isWatched ? "Mark as Unwatched" : "Mark as Watched", systemImage: isWatched ? "eye.slash" : "checkmark.circle")
             }
@@ -534,15 +577,6 @@ private struct SeriesEpisodeCard: View {
         return patterns.contains { t.range(of: $0, options: [.regularExpression, .caseInsensitive]) != nil }
     }
 
-    private func markWatched(_ watched: Bool) {
-        let base = progress ?? WatchProgress(
-            mediaId: episode.id, kind: .episode, sourceId: episode.sourceId, seriesId: series.id, title: series.name,
-            subtitle: "S\(episode.season), E\(episode.number) · \(title)",
-            posterURL: episode.imageURL ?? series.backdropURL ?? series.coverURL,
-            position: 0, duration: Double(episode.durationSeconds ?? 1)
-        )
-        Task { try? await model.db.markWatched(base, watched: watched) }
-    }
 }
 
 /// An episode's picture: the first candidate still that loads and is landscape (providers sometimes send
@@ -707,4 +741,11 @@ enum VODStillLoader {
         let output = small.clampedToExtent().applyingGaussianBlur(sigma: 9).cropped(to: extent)
         return ciContext.createCGImage(output, from: extent)
     }
+}
+
+/// An episode being marked watched and the earlier unwatched episodes to offer as well.
+struct EarlierEpisodesPrompt: Identifiable {
+    let id = UUID()
+    let episode: Episode
+    let earlier: [Episode]
 }

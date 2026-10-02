@@ -155,3 +155,30 @@ struct MigrationTests {
         #expect(abs(try #require(fetched["movie"]).timeIntervalSince(recent)) < 1)
     }
 }
+
+@Suite("Mark watched in bulk")
+struct BulkWatchedTests {
+    static func record(_ id: String, position: Double = 0) -> WatchProgress {
+        WatchProgress(mediaId: id, kind: .episode, sourceId: "src", seriesId: "show", title: "Show", position: position, duration: 1200)
+    }
+
+    @Test func marksEveryEpisodeAtOnceAndUnmarksBack() async throws {
+        let db = try AppDatabase.inMemory()
+        try await db.saveProgress(Self.record("e2", position: 300)) // part-watched beforehand
+        try await db.markWatched([Self.record("e1"), Self.record("e2", position: 300), Self.record("e3")], watched: true)
+        var progress = try await db.progress(seriesId: "show")
+        #expect(progress.values.filter(\.completed).map(\.mediaId).sorted() == ["e1", "e2", "e3"])
+        #expect(progress["e2"]?.position == 1200) // completed = played to the end
+
+        try await db.markWatched([Self.record("e1"), Self.record("e3")], watched: false)
+        progress = try await db.progress(seriesId: "show")
+        #expect(progress.values.filter(\.completed).map(\.mediaId) == ["e2"])
+        #expect(progress["e1"]?.position == 0)
+    }
+
+    @Test func emptyListIsANoOp() async throws {
+        let db = try AppDatabase.inMemory()
+        try await db.markWatched([], watched: true)
+        #expect(try await db.progress(seriesId: "show").isEmpty)
+    }
+}

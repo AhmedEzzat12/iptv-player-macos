@@ -35,6 +35,27 @@ struct EpisodeNavigationTests {
     }
 }
 
+@Suite("Mark earlier episodes watched")
+struct EarlierEpisodesTests {
+    let episodes = [EpisodeNavigationTests.ep(1, 1), EpisodeNavigationTests.ep(1, 2), EpisodeNavigationTests.ep(2, 1),
+                    EpisodeNavigationTests.ep(2, 2), EpisodeNavigationTests.ep(0, 1)]
+
+    @Test func listsUnwatchedEpisodesBeforeIncludingEarlierSeasons() {
+        let earlier = EpisodeNavigation.unwatched(before: "s2e2", in: episodes, watched: ["s1e2"])
+        #expect(earlier.map(\.id) == ["s1e1", "s2e1"]) // in watch order; S1E2 already watched; no specials
+    }
+
+    @Test func nothingToAskForTheFirstEpisodeOrWhenAllAreWatched() {
+        #expect(EpisodeNavigation.unwatched(before: "s1e1", in: episodes, watched: []).isEmpty)
+        #expect(EpisodeNavigation.unwatched(before: "s2e2", in: episodes, watched: ["s1e1", "s1e2", "s2e1"]).isEmpty)
+        #expect(EpisodeNavigation.unwatched(before: "missing", in: episodes, watched: []).isEmpty)
+    }
+
+    @Test func specialsOnlyAskAboutEarlierSpecials() {
+        #expect(EpisodeNavigation.unwatched(before: "s0e1", in: episodes, watched: []).isEmpty)
+    }
+}
+
 @Suite("Up Next countdown")
 struct UpNextCountdownTests {
     @Test func showsOnlyDuringTheLastSecondsRoundedUp() {

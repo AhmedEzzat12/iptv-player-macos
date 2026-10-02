@@ -14,6 +14,18 @@ public enum EpisodeNavigation {
         let target = index + offset
         return ordered.indices.contains(target) ? ordered[target] : nil
     }
+
+    /// Episodes before `episodeId` in watch order (earlier seasons included, same specials rule as `neighbor`)
+    /// that aren't in `watched`: what to offer to mark as well when marking an episode watched, as TV Time does.
+    public static func unwatched(before episodeId: String, in episodes: [Episode], watched: Set<String>) -> [Episode] {
+        guard let current = episodes.first(where: { $0.id == episodeId }) else { return [] }
+        let watchingSpecial = current.season == 0
+        let ordered = episodes
+            .filter { ($0.season == 0) == watchingSpecial }
+            .sorted { ($0.season, $0.number) < ($1.season, $1.number) }
+        guard let index = ordered.firstIndex(where: { $0.id == episodeId }) else { return [] }
+        return ordered[..<index].filter { !watched.contains($0.id) }
+    }
 }
 
 /// The "Up Next" card: shown for the last `countdown` seconds of an episode, counting down with the actual time
