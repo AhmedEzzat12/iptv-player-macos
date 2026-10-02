@@ -1,6 +1,6 @@
 # iPhone / iPad port: handover
 
-Date: 2026-10-01. **Status: paused at Ahmed's request.** No iOS code has been written and nothing in the repo was changed for
+Date: 2026-10-01, updated 2026-10-02. **Status: resumed 2026-10-02: the owner wants it on their personal iPhone.** No iOS code has been written and nothing in the repo was changed for
 iOS. This file is the starting point for whoever resumes. The detailed research is in
 [`ios-port-research.md`](ios-port-research.md), which was written before the distribution decision below. Read this file first:
 it records the decision, what was verified on this Mac, and which parts of the research it makes obsolete.
@@ -9,9 +9,10 @@ it records the decision, what was verified on this Mac, and which parts of the r
 
 | Decision | Status | Source |
 |---|---|---|
-| **Personal use only**: never the public App Store | **Decided** (Ahmed, 2026-10-01) | Answer to research §10 Q1 |
-| Minimum OS iOS/iPadOS 18 (tvOS 18 later) | Proposed, not confirmed | Research §10 Q4 |
-| Keep AVFoundation as the first engine and add an mpv fallback on iOS | Recommended, not started | Research §2 |
+| **Personal use only**: never the public App Store | **Decided** (owner, 2026-10-01) | Answer to research §10 Q1 |
+| Minimum OS **iOS/iPadOS 26** (tvOS later) | **Decided** (owner, 2026-10-02) | Research §10 Q4 |
+| Signing: **free Personal Team** with an automated re-sign/reinstall about every 6 days | **Decided** (owner, 2026-10-02) | §2a |
+| **Same engine routing as macOS:** AVFoundation first (HLS/MP4), mpv (MPVKit) second: chosen up front for MKV/raw TS by `PlayerSlot.route`, and as the fallback when AVFoundation fails or drops HEVC video. **mpv must be in the first build installed on the phone**, because 78% of the owner's episodes (1,070/1,376) and 45% of movies (18,413/41,083) are MKV | **Decided** (owner, 2026-10-02; replaced a short-lived "mpv first" proposal) | Research §2.3 |
 | SPM libraries plus a thin `Tuner.xcodeproj` for the iOS app target | Recommended, not started | Research §1.1 |
 
 ## 2. What "personal use only" changes
@@ -23,7 +24,7 @@ re-verified with sources**. Confirm them before relying on them.
   rating or privacy policy are needed.
 - **GPL builds become acceptable.** GPL obligations are triggered by distributing the software; building it for your own devices
   isn't distribution. That re-opens **MPVKit's GPL build** (more codecs and demuxers) alongside the LGPL one that research §2
-  recommended. Pick whichever MPVKit product plays the most of Ahmed's library; the rendering plan (GLES render API →
+  recommended. Pick whichever MPVKit product plays the most of the owner's library; the rendering plan (GLES render API →
   `CVPixelBuffer` → `AVSampleBufferDisplayLayer`, for system PiP) is unchanged.
 - **KSPlayer stays out.** The last finding before the pass was stopped: its free GPL tier is deliberately limited (FFmpeg 6.1, not
   all demuxers and decoders, no live-stream rewind).
@@ -32,7 +33,7 @@ re-verified with sources**. Confirm them before relying on them.
 - **DVR:** no longer a review issue, but iOS still can't record while the app is suspended. For a personal setup, the attractive
   option is **the Mac app as the DVR and AirPlay hub, with iPhone/iPad scheduling and playing back** (research §9 "Later").
 - **Signing/installing on own devices:** researched with sources (2026-10-01). Details are in §2a.
-  - **Open:** is Ahmed enrolled, or willing to be? (research §10 Q9)
+  - **Open:** is the owner enrolled, or willing to be? (research §10 Q9)
 
 ### 2a. Installing on your own iPhone, iPad and Apple TV
 
@@ -78,13 +79,13 @@ path works only if you drop iCloud and accept a weekly rebuild. Your 3 devices w
 | Xcode | `/Applications/Xcode.app`, **Xcode 27.0 (27A266a)**, with the iOS 27 and tvOS 27 SDKs |
 | Using Xcode without switching | Works: `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild …` runs without `sudo xcode-select`, so the macOS build (Command Line Tools, `scripts/build-app.sh`) is unaffected |
 | Xcode licence | **Accepted.** `IDEXcodeVersionForAgreedToGMLicense = 27.0` and `xcodebuild` runs. Research §0 says "not accepted"; that is now out of date. |
-| iOS Simulator runtime | Not installed when checked. **Ahmed was downloading it at handover time.** Verify with `xcrun simctl list runtimes`. |
+| iOS Simulator runtime | Not installed when checked. **It was being downloaded at handover time.** Verify with `xcrun simctl list runtimes`. |
 | `TunerCore` for iOS, as the repo is today | `xcodebuild -scheme TunerCore -destination 'generic/platform=iOS'` **fails**, mostly with availability errors because `Package.swift` declares only macOS: `Task.sleep(for:)`, `Locale.Region`, `Locale.LanguageCode` and `isoRegions` need iOS 16+ (`HTTPClient.swift`, `TitleMatcher.swift`, `OnlineGuideCatalog.swift`). |
 | `TunerCore` with `.iOS(.v18)` added (tested in a scratch copy only) | The **only** remaining errors are `Process` in `Sources/TunerCore/Services/RecordingService.swift` (lines 7, 107, 117). GRDB 7 and the `CZlib` target compile for iOS as they are. This confirms research §1.2. |
 
 ## 4. First steps when work resumes
 
-1. **Ahmed:** finish the simulator download (`xcodebuild -downloadPlatform iOS`) and decide on the Apple Developer Program.
+1. **Owner:** finish the simulator download (`xcodebuild -downloadPlatform iOS`) and decide on the Apple Developer Program.
 2. `Package.swift`: change `platforms` to `[.macOS(.v15), .iOS(.v18)]`.
 3. `RecordingService`: wrap the ffmpeg `Process` code (`processes`, `start`, `stop`, `finished`) in `#if os(macOS)`. On iOS,
    `start` should throw a "recording isn't available on this device" error. Keep the scheduling and `tick()` logic shared.
@@ -100,7 +101,7 @@ path works only if you drop iCloud and accept a weekly rebuild. Your 3 devices w
 
 ## 5. macOS lessons that carry over to iOS (don't re-learn them)
 
-- **HEVC in MPEG-TS HLS:** AVFoundation plays the audio and silently drops the video, with no error. Many of Ahmed's sports and
+- **HEVC in MPEG-TS HLS:** AVFoundation plays the audio and silently drops the video, with no error. Many of the test provider's sports and
   4K channels are like this. The detection in `AVEngine` (`videoMissing` → `EngineEvent.videoUnsupported`) and the fallback in
   `PlayerSlot.videoUnsupported()` must come along to iOS, otherwise those channels show a black screen there too. Until the mpv
   fallback lands on iOS (Phase 2), those channels will show the "No picture for this stream" notice.
@@ -111,18 +112,18 @@ path works only if you drop iCloud and accept a weekly rebuild. Your 3 devices w
   blocks plain-HTTP IPTV servers. On iOS, add `NSLocalNetworkUsageDescription` for the AirPlay bridge.
 - **Undocumented asset option:** `AVEngine` passes `"AVURLAssetHTTPHeaderFieldsKey"`, which isn't public API. That's harmless for
   personal use, but it may change between OS versions.
-- **Ahmed's provider:**
+- **The provider used for real-world testing:**
   - one simultaneous connection: always stop the old stream before opening a new one;
   - about 12k channels, 41k movies (about 45% MKV, so they need mpv) and 15k series;
   - no EPG;
   - it sometimes returns malformed JSON (handled by lenient parsing and retries in `HTTPClient`);
   - some episodes return HTTP 503 from the provider (not an app bug).
-- **Real-data testing:** the metadata matcher crashed on Ahmed's library (an `Int.max + 1` overflow for still-running series),
+- **Real-data testing:** the metadata matcher crashed on the owner's real library (an `Int.max + 1` overflow for still-running series),
   although every test and fixture passed. Test new builds against a copy of the real library before shipping. On iOS that's a copy
   of `tuner.sqlite`.
-- **Credentials:** Ahmed's Xtream login is never stored in the repo, docs or memory. He enters it in the app himself.
+- **Credentials:** The owner's Xtream login is never stored in the repo, docs or memory. They enter it in the app themselves.
 
-## 6. Open questions for Ahmed
+## 6. Open questions for the owner
 
 1. Apple Developer Program membership: paid ($99/year: 1-year installs, TestFlight) or free Apple ID (re-install about every 7 days)?
 2. Is iOS/iPadOS 18 acceptable as the minimum?

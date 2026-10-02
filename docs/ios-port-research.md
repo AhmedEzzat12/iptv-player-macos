@@ -24,7 +24,7 @@ Sources are linked inline. Anything not confirmed from a primary source is marke
 - **Scheduled DVR:** iOS cannot run recordings while the app is suspended.
 - **tvOS UI:** the core and engines carry over, but focus-driven UI is a separate project.
 
-**Before any code:** decide whether this goes to the **public App Store** or stays personal. That one answer changes the licensing work, the review risk and the feature set (see [Open questions](#10-open-questions-for-ahmed)).
+**Before any code:** decide whether this goes to the **public App Store** or stays personal. That one answer changes the licensing work, the review risk and the feature set (see [Open questions](#10-open-questions-for-the-owner)).
 
 **Rough effort:** one developer, with uncertainty of about ±50%.
 - iPhone/iPad with AVFoundation only: about 3–4 weeks.
@@ -439,7 +439,7 @@ Comparable approved apps (iTunes lookup, 2026-10-01):
 
 ---
 
-## 10. Open questions for Ahmed
+## 10. Open questions for the owner
 
 1. **Distribution:** public App Store, or personal use (TestFlight / dev-signed on your own devices)? Personal use removes most of §7, and GPL builds, DVR and Cinemeta become non-issues. This is the biggest fork in the plan.
 2. **Open source?** If Tuner's source will be public under a permissive licence, LGPL compliance for the static MPVKit frameworks is simple. If not, you need an object-file relinking offer or a dynamic-framework repackage.
