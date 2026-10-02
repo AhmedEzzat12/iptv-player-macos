@@ -17,6 +17,7 @@ struct TunerApp: App {
 
     init() {
         ImageCacheSetup.configure()
+        _ = UpdaterService.shared // starts Sparkle's scheduled checks (release builds only)
         let prefs = Preferences()
         let db: AppDatabase
         do {
@@ -38,7 +39,10 @@ struct TunerApp: App {
         }
         .defaultSize(width: 1360, height: 860)
         .windowToolbarStyle(.unified(showsTitle: false))
-        .commands { TunerCommands(model: model) }
+        .commands {
+            TunerCommands(model: model)
+            UpdateCommands(updater: .shared)
+        }
 
         Settings {
             SettingsView()

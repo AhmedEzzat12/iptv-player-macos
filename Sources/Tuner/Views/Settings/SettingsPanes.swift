@@ -367,6 +367,8 @@ struct SettingsShortcutsPane: View {
 // MARK: - About
 
 struct SettingsAboutPane: View {
+    @Bindable private var updater = UpdaterService.shared
+
     var body: some View {
         Form {
             Section {
@@ -394,10 +396,28 @@ struct SettingsAboutPane: View {
                 .padding(.vertical, 12)
             }
 
+            Section("Updates") {
+                if updater.isEnabled {
+                    Toggle("Check for updates automatically", isOn: $updater.automaticallyChecks)
+                    LabeledContent {
+                        Button("Check for Updates…") { updater.checkForUpdates() }
+                            .disabled(!updater.canCheck)
+                    } label: {
+                        Text("Last checked")
+                        Text(updater.lastCheck.map { $0.formatted(.relative(presentation: .named)) } ?? "Never")
+                    }
+                } else {
+                    Text("Automatic updates are available in builds downloaded from GitHub Releases.")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
             Section("Acknowledgements") {
                 LabeledContent("mpv / libmpv", value: "Video playback")
                 LabeledContent("FFmpeg", value: "Recording")
                 LabeledContent("GRDB.swift", value: "SQLite toolkit")
+                LabeledContent("Sparkle", value: "Automatic updates")
                 LabeledContent("ynotv", value: "The IPTV player that inspired Tuner")
             }
 

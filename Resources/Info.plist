@@ -18,6 +18,8 @@
 	<string>Tuner</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
+	<!-- scripts/build-app.sh stamps both versions into the built app: CFBundleShortVersionString from the
+	     VERSION file, CFBundleVersion from the git commit count. These values are placeholders. -->
 	<key>CFBundleShortVersionString</key>
 	<string>1.0.0</string>
 	<key>CFBundleVersion</key>
@@ -40,6 +42,12 @@
 	</dict>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Tuner connects to IPTV servers and media on your local network.</string>
+	<!-- Sparkle: installed copies follow the appcast attached to the newest GitHub release. Updates turn on only in
+	     builds that carry SUPublicEDKey, which scripts/release.sh adds; local builds never self-update. -->
+	<key>SUFeedURL</key>
+	<string>https://github.com/AhmedEzzat12/iptv-player-macos/releases/latest/download/appcast.xml</string>
+	<key>SUEnableAutomaticChecks</key>
+	<true/>
 	<key>NSHumanReadableCopyright</key>
 	<string>Tuner — a native macOS IPTV player.</string>
 </dict>
