@@ -89,8 +89,10 @@ struct SidebarView: View {
             Label("Movies", systemImage: "film").tag(SidebarItem.movies)
             Label("TV Shows", systemImage: "tv").tag(SidebarItem.series)
             Label("Recordings", systemImage: "record.circle").tag(SidebarItem.recordings)
-            Label("Downloads", systemImage: "arrow.down.circle").tag(SidebarItem.downloads)
+            // The tag has to be the outermost modifier: after .badge the List can't see it and the row won't select.
+            Label("Downloads", systemImage: "arrow.down.circle")
                 .badge(model.activeDownloadCount)
+                .tag(SidebarItem.downloads)
 
             Section {
                 Label("Favorites", systemImage: "star").tag(SidebarItem.favorites)
