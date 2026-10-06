@@ -100,9 +100,15 @@ enum NSEvent {
 final class NSWorkspace {
     static let shared = NSWorkspace()
 
+    /// Web links open in the browser/app; local folders and files open in the Files app.
     @discardableResult
     func open(_ url: URL) -> Bool {
-        UIApplication.shared.open(url)
+        if url.isFileURL {
+            guard let files = URL(string: "shareddocuments://" + url.path) else { return false }
+            UIApplication.shared.open(files)
+        } else {
+            UIApplication.shared.open(url)
+        }
         return true
     }
 

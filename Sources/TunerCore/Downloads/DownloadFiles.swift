@@ -129,6 +129,14 @@ enum DownloadFiles {
             n += 1
         }
         try fm.moveItem(at: part, to: target)
+        #if !os(macOS)
+        // iPhone/iPad keep downloads in Documents (visible in the Files app); films can be fetched again, so they
+        // stay out of iCloud backups.
+        var excluded = target
+        var values = URLResourceValues()
+        values.isExcludedFromBackup = true
+        try? excluded.setResourceValues(values)
+        #endif
         return target
     }
 

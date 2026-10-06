@@ -177,7 +177,8 @@ struct VODBrowser: View {
             .fixedSize()
             .help("Organise categories: pin, hide and choose how names read")
             .sheet(isPresented: $showCategoryManager) {
-                VODCategoryManager(kind: kind).environment(model)
+                VODCategoryManager(kind: kind, selectedId: selectedCategoryId, onSelect: { select($0) })
+                    .environment(model)
             }
         }
     }

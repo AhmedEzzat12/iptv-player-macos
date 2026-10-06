@@ -3,12 +3,17 @@ import TunerCore
 
 /// Search across channels, guide programmes, movies and shows (bound to `model.searchQuery`).
 struct SearchView: View {
+    @Environment(AppModel.self) private var model
     @ViewState private var path: [VODRoute] = []
 
     var body: some View {
         NavigationStack(path: $path) {
             SearchContent()
                 .vodDestinations()
+        }
+        .onChange(of: path.count) { old, new in
+            // Opening a movie or show from the results.
+            if new > old { model.prefs.rememberSearch(model.searchQuery) }
         }
     }
 }
@@ -51,6 +56,10 @@ private struct SearchContent: View {
             await runSearch(query)
         }
         .onChange(of: query) { showAllPrograms = false }
+        .onChange(of: model.player.main.item?.id) { _, id in
+            // Playing a channel or programme from the results.
+            if id != nil, results?.isEmpty == false { model.prefs.rememberSearch(query) }
+        }
     }
 
     // MARK: Field
@@ -66,7 +75,10 @@ private struct SearchContent: View {
                 .font(.system(size: 22, weight: .medium))
                 .focused($fieldFocused)
                 .focusEffectDisabled()
-                .onSubmit { fieldFocused = false }
+                .onSubmit {
+                    fieldFocused = false
+                    model.prefs.rememberSearch(model.searchQuery)
+                }
             if isSearching {
                 ProgressView().controlSize(.small)
             }
@@ -96,12 +108,16 @@ private struct SearchContent: View {
     @ViewBuilder
     private var resultsBody: some View {
         if query.count < 2 {
-            ContentUnavailableView {
-                Label("Search Tuner", systemImage: "magnifyingglass")
-            } description: {
-                Text("Find channels, what's on TV, movies and shows across all your playlists.")
+            if query.isEmpty, !model.prefs.recentSearches.isEmpty {
+                recentSearches
+            } else {
+                ContentUnavailableView {
+                    Label("Search Tuner", systemImage: "magnifyingglass")
+                } description: {
+                    Text("Find channels, what's on TV, movies and shows across all your playlists.")
+                }
+                .frame(maxWidth: .infinity, minHeight: 360)
             }
-            .frame(maxWidth: .infinity, minHeight: 360)
         } else if let results {
             if results.isEmpty {
                 ContentUnavailableView.search(text: results.query)
@@ -114,6 +130,48 @@ private struct SearchContent: View {
                 .controlSize(.large)
                 .frame(maxWidth: .infinity, minHeight: 360)
         }
+    }
+
+    /// Recent searches, newest first: tap to search again, long-press (right-click) to remove one.
+    private var recentSearches: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            ShelfHeader(title: "Recent Searches", subtitle: nil, actionTitle: "Clear", action: {
+                withAnimation(.smooth(duration: 0.25)) { model.prefs.recentSearches = [] }
+            })
+            VStack(alignment: .leading, spacing: 0) {
+                ForEach(model.prefs.recentSearches, id: \.self) { recent in
+                    Button {
+                        model.searchQuery = recent
+                    } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: "clock.arrow.circlepath")
+                                .foregroundStyle(.secondary)
+                            Text(recent)
+                                .lineLimit(1)
+                            Spacer(minLength: 8)
+                            Image(systemName: "arrow.up.backward")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.tertiary)
+                        }
+                        .font(.body)
+                        .padding(.vertical, 11)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .contextMenu {
+                        Button("Remove from Recent Searches", role: .destructive) {
+                            withAnimation(.smooth(duration: 0.25)) { model.prefs.recentSearches.removeAll { $0 == recent } }
+                        }
+                    }
+                    .accessibilityHint("Searches again")
+                    if recent != model.prefs.recentSearches.last {
+                        Divider()
+                    }
+                }
+            }
+            .frame(maxWidth: 760, alignment: .leading)
+        }
+        .padding(.horizontal, VODMetrics.inset)
     }
 
     @ViewBuilder

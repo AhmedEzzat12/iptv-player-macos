@@ -89,6 +89,19 @@ final class Preferences {
     var pinnedCategoryIds: [String] { didSet { set(pinnedCategoryIds, "pinnedCategoryIds") } }
     /// How bilingual provider category names are shown (English part, Arabic part, or as named).
     var categoryNameStyle: CategoryNameStyle { didSet { set(categoryNameStyle.rawValue, "categoryNameStyle") } }
+    /// Searches the user acted on (submitted, or opened/played a result from), newest first.
+    var recentSearches: [String] { didSet { set(recentSearches, "recentSearches") } }
+
+    static let recentSearchLimit = 12
+
+    /// Moves `query` to the front of the recent searches (case-insensitive, so "Batman" replaces "batman").
+    func rememberSearch(_ query: String) {
+        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.count >= 2 else { return }
+        var list = recentSearches.filter { $0.caseInsensitiveCompare(trimmed) != .orderedSame }
+        list.insert(trimmed, at: 0)
+        if list != recentSearches { recentSearches = Array(list.prefix(Self.recentSearchLimit)) }
+    }
     var reminderLeadMinutes: Int { didSet { set(reminderLeadMinutes, "reminderLeadMinutes") } }
     var showChannelBannerOnZap: Bool { didSet { set(showChannelBannerOnZap, "showChannelBannerOnZap") } }
 
@@ -145,6 +158,7 @@ final class Preferences {
         posterSize = v("posterSize", 150.0)
         pinnedCategoryIds = v("pinnedCategoryIds", [String]())
         categoryNameStyle = CategoryNameStyle(rawValue: v("categoryNameStyle", "")) ?? .automatic
+        recentSearches = v("recentSearches", [String]())
         reminderLeadMinutes = v("reminderLeadMinutes", 2)
         showChannelBannerOnZap = v("showChannelBannerOnZap", true)
 
@@ -181,8 +195,14 @@ final class Preferences {
         if let scratch = TunerApp.dataDirectoryOverride {
             return scratch.appendingPathComponent("Downloads", isDirectory: true).path
         }
+        #if os(macOS)
         let moviesDir = FileManager.default.urls(for: .moviesDirectory, in: .userDomainMask)[0]
         return moviesDir.appendingPathComponent("Tuner Downloads", isDirectory: true).path
+        #else
+        // Files app: On My iPhone › Tuner › Downloads.
+        let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        return documents.appendingPathComponent("Downloads", isDirectory: true).path
+        #endif
     }
 
     private func set(_ value: Any?, _ key: String) {

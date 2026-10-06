@@ -42,9 +42,13 @@ echo "Installing on $UDID"
 
 xcodegen generate --quiet
 DERIVED="../.build/xcode-device"
+# Same version numbers as the Mac build (scripts/build-app.sh): VERSION file + commit count.
+VERSION="$(tr -d '[:space:]' < ../VERSION)"
+BUILD="$(git rev-list --count HEAD 2>/dev/null || echo 1)"
 xcodebuild -project TunerIOS.xcodeproj -scheme TunerIOS -configuration Release \
   -destination "id=$UDID" -derivedDataPath "$DERIVED" \
   -allowProvisioningUpdates -allowProvisioningDeviceRegistration \
+  MARKETING_VERSION="$VERSION" CURRENT_PROJECT_VERSION="$BUILD" \
   build -quiet
 xcrun devicectl device install app --device "$UDID" "$DERIVED/Build/Products/Release-iphoneos/Tuner.app"
 echo "Installed. With a free Personal Team, run this again within 7 days."

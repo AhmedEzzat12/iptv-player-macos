@@ -98,6 +98,10 @@ struct VODCategoryManager: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
     let kind: VODBrowseKind
+    /// The category the browse page shows (checkmarked here).
+    var selectedId: String?
+    /// Tapping a category shows it on the browse page and closes the sheet.
+    var onSelect: (String) -> Void = { _ in }
 
     @ViewState private var categories: [ChannelCategory] = []
     @ViewState private var search = ""
@@ -165,18 +169,33 @@ struct VODCategoryManager: View {
     private func row(_ category: ChannelCategory) -> some View {
         let isPinned = model.prefs.pinnedCategoryIds.contains(category.id)
         return HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(category.presentedName(style))
-                    .foregroundStyle(category.isHidden ? .secondary : .primary)
-                // The provider's name underneath, unless it only differs by spacing.
-                if style != .original, category.presentedName(style).filter { !$0.isWhitespace } != category.name.filter { !$0.isWhitespace } {
-                    Text(category.name).font(.caption).foregroundStyle(.tertiary).lineLimit(1)
+            // Name and count: tap to show this category (hidden ones can't be shown until unhidden).
+            Button {
+                onSelect(category.id)
+                dismiss()
+            } label: {
+                HStack(spacing: 12) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(category.presentedName(style))
+                            .foregroundStyle(category.isHidden ? .secondary : .primary)
+                        // The provider's name underneath, unless it only differs by spacing.
+                        if style != .original, category.presentedName(style).filter({ !$0.isWhitespace }) != category.name.filter({ !$0.isWhitespace }) {
+                            Text(category.name).font(.caption).foregroundStyle(.tertiary).lineLimit(1)
+                        }
+                    }
+                    Spacer(minLength: 8)
+                    if category.id == selectedId {
+                        Image(systemName: "checkmark").foregroundStyle(Color.accentColor)
+                    }
+                    Text(category.itemCount.formatted())
+                        .font(.callout.monospacedDigit())
+                        .foregroundStyle(.tertiary)
                 }
+                .contentShape(Rectangle())
             }
-            Spacer(minLength: 8)
-            Text(category.itemCount.formatted())
-                .font(.callout.monospacedDigit())
-                .foregroundStyle(.tertiary)
+            .buttonStyle(.plain)
+            .disabled(category.isHidden)
+            .help(category.isHidden ? "Show this category first" : "Show \(category.presentedName(style))")
             Button { togglePin(category) } label: {
                 Image(systemName: isPinned ? "pin.fill" : "pin")
                     .foregroundStyle(isPinned ? Color.accentColor : .secondary)

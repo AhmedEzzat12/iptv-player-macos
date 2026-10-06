@@ -19,6 +19,7 @@ struct SettingsDownloadsPane: View {
     var body: some View {
         Form {
             Section("Location") {
+                #if os(macOS)
                 LabeledContent {
                     HStack(spacing: 8) {
                         Button("Show in Finder") { DownloadActions.revealFolder(model: model) }
@@ -36,6 +37,15 @@ struct SettingsDownloadsPane: View {
                             .frame(width: 22, height: 22)
                     }
                 }
+                #else
+                // iPhone/iPad: a fixed folder (a picked folder's access wouldn't survive a relaunch).
+                LabeledContent {
+                    Button("Show in Files") { DownloadActions.revealFolder(model: model) }
+                } label: {
+                    Text("Saved in the Files app")
+                    Text("On My iPhone › Tuner › Downloads")
+                }
+                #endif
             }
 
             Section {

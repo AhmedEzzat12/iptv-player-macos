@@ -48,6 +48,8 @@ struct PlayerHost: View {
     @ViewState private var zapBannerTask: Task<Void, Never>?
     @ViewState private var isWindowFullScreen = false
     @Environment(\.tunerCompact) private var compact
+    /// Touch screens: how far the full-screen player has been dragged down (swipe down to close).
+    @ViewState private var dismissOffset: CGFloat = 0
 
     var body: some View {
         GeometryReader { outer in
@@ -136,7 +138,9 @@ struct PlayerHost: View {
             Color.black
                 .opacity(isFull ? 1 : 0)
                 .contentShape(Rectangle())
+                #if os(macOS)
                 .onTapGesture(count: 2) { model.toggleWindowFullScreen() }
+                #endif
                 .onTapGesture {
                     // A click on the video closes the episode list first, like clicking outside a popover.
                     if model.player.isEpisodeListOpen {
@@ -146,6 +150,8 @@ struct PlayerHost: View {
                     }
                 }
                 .allowsHitTesting(isFull)
+                // Narrow touch screens: swipe down on the video to close the player, like the close button.
+                .simultaneousGesture(dismissDrag(height: size.height), including: self.compact && isFull ? .all : .subviews)
 
             // Structurally stable video surfaces — never move these into mode-specific branches.
             ForEach(player.slots) { slot in
@@ -166,6 +172,7 @@ struct PlayerHost: View {
             }
         }
         .frame(width: size.width, height: size.height, alignment: .topLeading)
+        .offset(y: isFull ? dismissOffset : 0)
         .animation(.spring(response: 0.5, dampingFraction: 0.86),
                    value: PlayerStageAnimationKey(mode: mode, layout: player.layout, order: player.order))
         .onChange(of: isFull && !chromeShown) { _, hidden in
@@ -273,6 +280,26 @@ struct PlayerHost: View {
               let seconds = UpNextCountdown.secondsLeft(position: main.snapshot.position, duration: main.snapshot.duration,
                                                         countdown: model.prefs.upNextCountdown) else { return nil }
         return (next, current.series, seconds)
+    }
+
+    // MARK: - Swipe to close
+
+    /// Drag down to close (touch screens). Past a quarter of the height, or a quick flick, closes; otherwise it
+    /// springs back. Mostly-horizontal drags are ignored (the scrubber and episode list scroll sideways/vertically
+    /// in their own views).
+    private func dismissDrag(height: CGFloat) -> some Gesture {
+        DragGesture(minimumDistance: 12)
+            .onChanged { value in
+                guard value.translation.height > 0, value.translation.height > abs(value.translation.width) else { return }
+                dismissOffset = value.translation.height
+            }
+            .onEnded { value in
+                let flicked = value.predictedEndTranslation.height > height * 0.45
+                if dismissOffset > height * 0.25 || (dismissOffset > 40 && flicked) {
+                    model.exitFullWindow()
+                }
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) { dismissOffset = 0 }
+            }
     }
 
     // MARK: - Geometry

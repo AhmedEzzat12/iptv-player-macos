@@ -37,7 +37,9 @@ struct MobileRootView: View {
                 SearchView()
             }
         }
-        .tabViewStyle(.sidebarAdaptable)
+        // iPad: a top tab bar that can open as a sidebar. iPhone: a plain tab bar (the adaptable style left a
+        // sidebar handle on the screen's left edge).
+        .modifier(TabStyleForWidth(compact: sizeClass == .compact))
         // The persistent player sits above the tabs (one engine view per slot, moved between presentations).
         .overlay {
             GeometryReader { proxy in
@@ -102,5 +104,17 @@ struct MobileRootView: View {
             let item = model.sidebarSelection ?? .home
             return item.showsLiveTV ? .liveTV : item
         }, set: { model.sidebarSelection = $0 })
+    }
+}
+
+private struct TabStyleForWidth: ViewModifier {
+    let compact: Bool
+
+    func body(content: Content) -> some View {
+        if compact {
+            content.tabViewStyle(.tabBarOnly)
+        } else {
+            content.tabViewStyle(.sidebarAdaptable)
+        }
     }
 }

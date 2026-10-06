@@ -87,6 +87,7 @@ struct PlayerChrome: View {
     let isShown: Bool
     let isWindowFullScreen: Bool
     let onPanelHeight: (CGFloat) -> Void
+    @Environment(\.tunerCompact) private var phone
 
     var body: some View {
         let main = model.player.main
@@ -108,6 +109,12 @@ struct PlayerChrome: View {
                 .padding(.horizontal, 20)
                 .frame(width: safe.width, height: PlayerChromeMetrics.topBarHeight)
                 .position(x: safe.midX, y: safe.minY + PlayerChromeMetrics.topBarTop + PlayerChromeMetrics.topBarHeight / 2)
+
+            // Phones: the transport sits large in the middle of the video (PlayerTouchControls.swift).
+            if phone, main.item != nil {
+                PlayerCenterTransport(slot: main, chrome: chrome)
+                    .position(x: controlsRect.midX, y: controlsRect.midY)
+            }
 
             if main.item != nil {
                 PlayerControlPanel(slot: main, chrome: chrome, compact: compact, isWindowFullScreen: isWindowFullScreen)
@@ -132,6 +139,7 @@ private struct PlayerTopBar: View {
     /// The AirPlay picker is an AppKit view; only mount it while the chrome is visible so the
     /// invisible chrome can't swallow clicks.
     let isShown: Bool
+    @Environment(\.tunerCompact) private var phone
 
     var body: some View {
         @Bindable var player = model.player
@@ -149,6 +157,7 @@ private struct PlayerTopBar: View {
 
             Spacer(minLength: 12)
 
+            if !phone {
             Menu {
                 Picker("Layout", selection: $player.layout) {
                     ForEach(MultiviewLayout.allCases) { layout in
@@ -162,6 +171,7 @@ private struct PlayerTopBar: View {
             }
             .playerMenuStyle()
             .help("Multiview Layout")
+            }
 
             if slot.isPictureInPicturePossible {
                 let active = slot.isPictureInPictureActive
@@ -191,11 +201,15 @@ private struct PlayerTopBar: View {
                 }
             }
 
-            Button { player.showStats.toggle() } label: {
-                Image(systemName: player.showStats ? "info.circle.fill" : "info.circle")
+            if phone {
+                PlayerMoreMenu(slot: slot)
+            } else {
+                Button { player.showStats.toggle() } label: {
+                    Image(systemName: player.showStats ? "info.circle.fill" : "info.circle")
+                }
+                .buttonStyle(PlayerGlassButtonStyle(size: 40))
+                .help(player.showStats ? "Hide Statistics" : "Show Statistics")
             }
-            .buttonStyle(PlayerGlassButtonStyle(size: 40))
-            .help(player.showStats ? "Hide Statistics" : "Show Statistics")
         }
         .onHover { chrome.isHoveringControls = $0 }
     }
@@ -237,6 +251,7 @@ struct PlayerControlPanel: View {
         return key.isEmpty ? title : "\(title) (\(ShortcutKey.label(key)))"
     }
     let isWindowFullScreen: Bool
+    @Environment(\.tunerCompact) private var phone
 
     var body: some View {
         if let item = slot.item {
@@ -248,7 +263,11 @@ struct PlayerControlPanel: View {
                 } else {
                     PlayerScrubber(slot: slot, chrome: chrome)
                 }
-                transport(item)
+                if phone {
+                    PlayerTouchControlRow(slot: slot, chrome: chrome)
+                } else {
+                    transport(item)
+                }
             }
             .padding(compact ? 14 : 20)
             .frame(maxWidth: compact ? 640 : 920)
@@ -437,6 +456,7 @@ private struct PlayerInfoRow: View {
             .buttonStyle(PlayerGlassButtonStyle(size: size))
             .help(isFavorite ? "Remove from Favorites" : "Add to Favorites")
 
+            #if os(macOS)
             Button {
                 if let recording { model.cancelRecording(recording) } else { model.recordNow(channel) }
             } label: {
@@ -446,6 +466,7 @@ private struct PlayerInfoRow: View {
             }
             .buttonStyle(PlayerGlassButtonStyle(size: size))
             .help(recording != nil ? "Stop Recording" : "Record Now")
+            #endif
         }
     }
 
