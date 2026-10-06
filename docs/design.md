@@ -1,7 +1,7 @@
 # Tuner — native macOS IPTV player (design)
 
 Date: 2026-10-01. Goal: a native macOS counterpart of ynotv (see `ynotv-reference.md`) covering its core
-IPTV experience — sources, guide, live TV, VOD, catchup, multiview, DVR, reminders — built only with
+IPTV experience — sources, guide, live TV, VOD, catchup, DVR, reminders — built only with
 Apple frameworks plus SQLite and libmpv.
 
 ## Decisions
@@ -109,9 +109,9 @@ Sources/
                    RootView (sidebar shell + window-level player), KeyboardShortcuts + menu commands,
                    Updates/ (UpdaterService: Sparkle wrapper + "Check for Updates…")
     Player/        PlaybackEngine, AVEngine (primary), MPVEngine + MPVVideoLayer (fallback), PlayerSlot (routing,
-                   watchdog, failover, progress), PlayerManager (4 slots, layouts), SlotVideoView, PlaybackItem
+                   watchdog, failover, progress), PlayerManager (the slot, presentation), SlotVideoView, PlaybackItem
     Views/         Live/ (guide), VOD/ (Home, Movies, TV Shows, details, Search), Player/ (presentation,
-                   chrome, multiview, mini), Settings/ (settings, source editor, welcome), Recordings/, Downloads/,
+                   chrome, video overlay, mini), Settings/ (settings, source editor, welcome), Recordings/, Downloads/,
                    Common/
 ```
 
@@ -143,9 +143,9 @@ Data flow: views call `AppModel` actions and read `model.db` in `.task(id:)` blo
   and episode cards with progress; autoplay of the next episode.
 - Live TV: 16:9 live preview + now/next header, category chips + source picker, guide grid (sticky ruler and
   channel column, now-line, catchup/reminder/recording markers), channel context menu.
-- Player: one persistent video view per slot that moves between **full window** (sidebar collapses, TV-app glass
+- Player: one persistent video view that moves between **full window** (sidebar collapses, TV-app glass
   controls that auto-hide), the guide **preview**, and a **mini player** while browsing — never recreated.
-  Multiview: single / PiP / main + 3 / 2×2; clicking a cell promotes it (audio follows).
+  (Multiview was removed on 2026-10-06 at the owner's request.)
 - Settings window (⌘,): Playlists (+ global guide feeds), Playback, Guide & Library, Recording, Appearance,
   Shortcuts, About. First run: Welcome screen with source cards.
 
@@ -161,12 +161,29 @@ Data flow: views call `AppModel` actions and read `model.db` in `.task(id:)` blo
 - No SwiftUI hover region over the stage (it swallows clicks beneath); full-window pointer tracking uses an
   `NSEvent` monitor.
 
+## iPhone and iPad (one codebase)
+
+The iPhone/iPad app (iOS/iPadOS 26+, personal installs, never the App Store) compiles the Mac app's sources. History
+and the original research: `ios-handover.md`, `ios-port-research.md`.
+
+| Concern | Decision | Why |
+|---|---|---|
+| Project | `iOS/project.yml` (XcodeGen) → `TunerIOS.xcodeproj` (git-ignored) with target sources `../Sources/Tuner` + `iOS/Sources`; `TunerCore` from the local package | No file moves: the Mac app keeps building with SwiftPM and the Command Line Tools; the `.pbxproj` is generated, not reviewed |
+| Shared code | Mac-only code behind `#if os(macOS)` (imports, whole declarations, a few modifiers). iOS versions of AppKit-only types keep the **same names and initialisers** (`AVPlayerHostView`, `MPVRenderer`/`MPVVideoLayer`/`MPVVideoView`, `SlotVideoView`, `TunerApp`…) | Shared files compile unchanged on both; the Mac binary is the same code as before |
+| AppKit names | `iOS/Sources/Support/AppKitCompat.swift` maps simple AppKit API onto UIKit (`NSImage`, `NSWorkspace.open` → Files/Safari, `NSPasteboard`, `NSOpenPanel` → document picker, `NSViewRepresentable` → `UIViewRepresentable`); no-ops for Mac-only concepts (window full screen, cursor) | Keeps `#if` out of view bodies |
+| Layout | `EnvironmentValues.tunerCompact` (set from the horizontal size class on iOS, never on the Mac) switches shared views to iPhone layouts: channel list instead of the guide grid, stacked headers, touch player controls | One flag; the Mac always takes the regular path |
+| Engines | Same routing as the Mac (AVFoundation first, mpv fallback, HEVC-in-TS detection). mpv is MPVKit 1.0.0 (GPL build, linked statically), rendering through the same libmpv OpenGL render API into a `CAEAGLLayer` (OpenGL ES 3) | `MPVEngine` is shared; only the renderer differs. GPL is fine for builds that are never distributed |
+| mpv decoding | Device: `hwdec=videotoolbox-copy`; simulator: `hwdec=no` | Zero-copy VideoToolbox frames rendered a solid colour into the GLES context; the simulator's VideoToolbox corrupts HEVC |
+| Background | GLES draws stop in the background (iOS kills apps that use the GPU there) and mpv's video track is switched off, so audio continues; AVPlayer's layer is detached unless Picture in Picture is showing it | Background audio for both engines |
+| Not on iOS | Recording (needs the ffmpeg process), the ffmpeg AirPlay bridge, Sparkle, the shortcut editor, choosing a downloads folder, PiP for mpv content | Platform limits; the owner declined mpv PiP |
+| Downloads | Documents/Downloads (visible in Files), excluded from iCloud backup | Re-downloadable, large |
+
 ## Improvements over ynotv
 
 Per-channel `#EXTVLCOPT` user-agent/referrer, URL-encoded credentials, commas in titles, M3U VOD grouping,
 user state that survives resyncs, failed syncs retried and errors cleared on success, native-first engine routing
-(`.m3u8` for AVFoundation, `.ts`/MKV to mpv), no wasted second connection on definitive HTTP errors, multiview
-connection-limit warning, empty-guide detection with guidance.
+(`.m3u8` for AVFoundation, `.ts`/MKV to mpv), no wasted second connection on definitive HTTP errors,
+empty-guide detection with guidance.
 
 ## Testing
 

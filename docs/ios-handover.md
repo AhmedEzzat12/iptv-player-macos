@@ -1,7 +1,8 @@
 # iPhone / iPad port: handover
 
-Date: 2026-10-01, updated 2026-10-02. **Status: resumed 2026-10-02: the owner wants it on their personal iPhone.** No iOS code has been written and nothing in the repo was changed for
-iOS. This file is the starting point for whoever resumes. The detailed research is in
+Date: 2026-10-01, updated 2026-10-06. **Status: built and merged into `main` (2026-10-06); runs on the owner's
+iPhone. Current documentation: README → iPhone and iPad, `design.md` → iPhone and iPad, `testing.md`. The rest of this
+file is the original handover, kept for its history.** The detailed research is in
 [`ios-port-research.md`](ios-port-research.md), which was written before the distribution decision below. Read this file first:
 it records the decision, what was verified on this Mac, and which parts of the research it makes obsolete.
 

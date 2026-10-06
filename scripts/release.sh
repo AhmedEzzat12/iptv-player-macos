@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Publishes a release from this Mac — no GitHub Actions, nothing to pay for (same flow as Soonbar).
-#   1. runs the tests and builds the app with the version in VERSION (build number = commit count)
+#   1. runs the tests, checks that the iPhone/iPad app still compiles, and builds the Mac app with the version in
+#      VERSION (build number = commit count)
 #   2. signs the update with your Sparkle key (login keychain; created on first run — Keychain may ask)
 #   3. writes appcast.xml and creates GitHub release v<version> with the zip and appcast attached
 # Installed copies find the new version through the appcast and update themselves.
@@ -41,6 +42,11 @@ export SPARKLE_PUBLIC_KEY="$("$SPARKLE_BIN/generate_keys" -p)"
 export BUILD_NUMBER="$(git rev-list --count HEAD)"
 
 scripts/test.sh
+# The iPhone/iPad app shares the sources: never tag a commit that breaks it. Needs Xcode + XcodeGen;
+# SKIP_IOS_CHECK=1 skips it (e.g. on a Mac without Xcode).
+if [[ "${SKIP_IOS_CHECK:-}" != "1" ]]; then
+  iOS/scripts/check-build.sh
+fi
 scripts/build-app.sh release
 # Stable asset name so releases/latest/download/Tuner.zip always points at the newest build.
 ZIP="build/Tuner.zip"

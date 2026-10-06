@@ -1,7 +1,7 @@
 # Working on Tuner (instructions for coding agents)
 
-Tuner is a native macOS IPTV player (SwiftUI + AppKit, Swift Package, no Xcode project) with an Apple TV app–style
-UI. Read `README.md` for features, `docs/design.md` for architecture and decisions, `docs/testing.md` for the local
+Tuner is a native IPTV player for macOS (SwiftUI + AppKit, Swift Package) and iPhone/iPad (the same sources built by
+an XcodeGen project in `iOS/`) with an Apple TV app–style UI. Read `README.md` for features, `docs/design.md` for architecture and decisions, `docs/testing.md` for the local
 test kit. The repository is **public**.
 
 ## Ground rules
@@ -35,6 +35,16 @@ scripts/build-app.sh release    # build/Tuner.app (version from VERSION, build n
 - Match the surrounding code's style and comment density. Logging: `Logger(subsystem: "app.tuner.macos", category: …)`.
 - Shell quirks on the maintainer's Mac: use `/usr/bin/log` (zsh has a `log` builtin) and `/usr/bin/grep` / `/bin/ls`
   when output matters; use `ffmpeg -nostdin` inside `while read` loops.
+
+## One codebase for Mac and iPhone/iPad
+
+- `Sources/Tuner` is compiled by both apps. Keep Mac-only code behind `#if os(macOS)` (AppKit, `NSEvent`, `Process`,
+  Sparkle, window APIs). When a Mac-only type is needed on iOS, add an iOS version with the same name in `iOS/Sources`
+  or map a simple AppKit name in `iOS/Sources/Support/AppKitCompat.swift`.
+- iPhone layouts go behind `@Environment(\.tunerCompact)` (never set on the Mac), so the Mac UI doesn't change.
+- New features go to both apps unless the platform can't do them; list exceptions in README → iPhone and iPad.
+- Check both before committing: `scripts/test.sh`, `swift build --product Tuner`, `iOS/scripts/check-build.sh`.
+- Never commit `iOS/Config/Local.xcconfig` (the owner's team ID) or generated `*.xcodeproj`.
 
 ## Testing the app end to end
 

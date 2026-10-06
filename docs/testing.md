@@ -220,3 +220,24 @@ Never against the real feed or your own keychain. Use a throwaway key and a loca
    refused ("The update is improperly signed").
 5. Delete the key, `defaults delete app.tuner.macos.scratch` and `~/Library/Caches/app.tuner.macos.scratch`.
 
+## Testing the iPhone/iPad app
+
+- **Does it still compile?** `iOS/scripts/check-build.sh` (unsigned build for a generic iOS device). `scripts/release.sh`
+  runs it before every release.
+- **Simulator:** `cd iOS && xcodegen generate`, then build the `TunerIOS` scheme for a simulator
+  (`xcodebuild -project TunerIOS.xcodeproj -scheme TunerIOS -destination 'platform=iOS Simulator,name=<device>' build`)
+  and install it with `xcrun simctl install booted <…>/Debug-iphonesimulator/Tuner.app`. The test kit works as on the
+  Mac (`http://127.0.0.1:8765` is the Mac itself from the simulator).
+- **Scratch library:** `SIMCTL_CHILD_TUNER_DATA_DIR=<scratch>/lib xcrun simctl launch --terminate-running-process booted <bundle id>`.
+- **Debug launch arguments** (Debug builds only, `iOS/Sources/Support/DebugLaunch.swift`): `-TunerDebugAddM3U <url>`,
+  `-TunerDebugPlayMovie <name>`, `-TunerDebugPlayChannel <name>` play the first match full screen and log
+  `TunerDebug: t+6s engine=… phase=… video=… hw=…` every 6 s (`-TunerDebugReportSeconds 42` for longer), so each engine
+  can be checked from `xcrun simctl spawn booted log show --predicate 'process == "Tuner"'`. Boolean preferences take
+  plist syntax: `-hardwareDecoding "<false/>"`.
+- **HEVC in MPEG-TS** (AVFoundation plays the sound only, so the app must switch to mpv): make one from a test-kit feed
+  with `ffmpeg -i TestMedia/channels/feed2-sports.ts -c:v libx265 -c:a copy -f hls -hls_segment_type mpegts …` and serve
+  it with `python3 -m http.server`.
+- **A real device:** `iOS/scripts/install-device.sh`; screenshots with
+  `xcrun devicectl device capture screenshot --device <udid> --destination shot.png`. Picture in Picture, background
+  audio, AirPlay and hardware decoding can only be checked on a device.
+- The simulator's display lags several seconds behind input: take a second screenshot before deciding a tap failed.
