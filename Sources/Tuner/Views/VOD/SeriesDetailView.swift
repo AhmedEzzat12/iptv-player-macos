@@ -1,4 +1,8 @@
+#if os(macOS)
 import AppKit
+#else
+import UIKit
+#endif
 import CoreImage
 import ImageIO
 import SwiftUI
@@ -9,6 +13,7 @@ import TunerCore
 /// Online metadata (Cinemeta / TMDB) fills what the provider lacks, including episode pictures and plots.
 struct SeriesDetailView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.tunerCompact) private var compact
     @ViewState private var series: Series
     @ViewState private var info: MediaMetadata?
     @ViewState private var episodes: [Episode] = []
@@ -223,18 +228,30 @@ struct SeriesDetailView: View {
     @ViewBuilder
     private var episodesSection: some View {
         VStack(alignment: .leading, spacing: 4) {
-            HStack(alignment: .center, spacing: 14) {
-                seasonPicker
-                Spacer(minLength: 8)
-                if !seasonEpisodes.isEmpty {
-                    let watched = seasonEpisodes.filter { progress[$0.id]?.completed == true }.count
-                    Text(watched > 0 ? "\(watched) of \(seasonEpisodes.count) watched" : (seasonEpisodes.count == 1 ? "1 episode" : "\(seasonEpisodes.count) episodes"))
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                    seasonDownloadControl
+            if compact {
+                // Narrow screens: seasons on their own row, the count and Download below.
+                VStack(alignment: .leading, spacing: 10) {
+                    seasonPicker
+                    if !seasonEpisodes.isEmpty {
+                        HStack(spacing: 14) {
+                            seasonCount
+                            Spacer(minLength: 8)
+                            seasonDownloadControl
+                        }
+                    }
                 }
+                .padding(.horizontal, VODMetrics.inset)
+            } else {
+                HStack(alignment: .center, spacing: 14) {
+                    seasonPicker
+                    Spacer(minLength: 8)
+                    if !seasonEpisodes.isEmpty {
+                        seasonCount
+                        seasonDownloadControl
+                    }
+                }
+                .padding(.horizontal, VODMetrics.inset)
             }
-            .padding(.horizontal, VODMetrics.inset)
 
             switch phase {
             case .failed(let message) where episodes.isEmpty:
@@ -279,6 +296,13 @@ struct SeriesDetailView: View {
             }
         }
         .animation(.smooth(duration: 0.3), value: selectedSeason)
+    }
+
+    private var seasonCount: some View {
+        let watched = seasonEpisodes.filter { progress[$0.id]?.completed == true }.count
+        return Text(watched > 0 ? "\(watched) of \(seasonEpisodes.count) watched" : (seasonEpisodes.count == 1 ? "1 episode" : "\(seasonEpisodes.count) episodes"))
+            .font(.callout)
+            .foregroundStyle(.secondary)
     }
 
     @ViewBuilder

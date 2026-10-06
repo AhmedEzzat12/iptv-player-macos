@@ -646,7 +646,9 @@ private struct LiveGuideProgramDetails: View {
             VStack(alignment: .leading, spacing: 10) {
                 if !hasReminder {
                     Toggle("Switch to channel when it starts", isOn: $autoSwitch)
+                        #if os(macOS)
                         .toggleStyle(.checkbox)
+                        #endif
                         .font(.callout)
                 }
                 HStack(spacing: 8) {

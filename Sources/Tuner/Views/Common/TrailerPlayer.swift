@@ -1,4 +1,8 @@
+#if os(macOS)
 import AppKit
+#else
+import UIKit
+#endif
 import AVKit
 import SwiftUI
 import WebKit
@@ -496,6 +500,8 @@ private final class WeakScriptMessageHandler: NSObject, WKScriptMessageHandler {
 
 // MARK: - Direct video
 
+#if os(macOS)
+// (iOS: iOS/Sources/Support/TrailerPlatform.swift)
 private struct NativeTrailerView: NSViewRepresentable {
     let requestID: UUID
     let url: URL
@@ -575,9 +581,12 @@ private struct NativeTrailerView: NSViewRepresentable {
         }
     }
 }
+#endif
 
 // MARK: - AppKit plumbing
 
+#if os(macOS)
+// (iOS: iOS/Sources/Support/TrailerPlatform.swift)
 /// Rounded black host for the trailer's AppKit video view. Corners are Core Animation properties and the fade
 /// is the view's alpha: SwiftUI clip shapes drawn at an embedded AppKit view's rect cover it, and SwiftUI
 /// opacity doesn't reach it (docs/design.md).
@@ -620,6 +629,7 @@ final class TrailerVideoContainer: NSView {
         }
     }
 }
+#endif
 
 /// The overlay's handle on the trailer's media, so dismissal silences it at once (the views themselves are
 /// torn down only after the overlay's fade-out).
@@ -647,6 +657,8 @@ final class TrailerPlaybackController {
     }
 }
 
+#if os(macOS)
+// (iOS: iOS/Sources/Support/TrailerPlatform.swift)
 /// Esc closes the trailer. A local key monitor, installed only while the trailer shows, so the key is consumed
 /// here instead of reaching the app's own Esc handling (leaving the player). Esc in another window — such as
 /// the web view's own full screen — is left alone.
@@ -680,3 +692,4 @@ final class TrailerEscapeMonitor {
         return true
     }
 }
+#endif

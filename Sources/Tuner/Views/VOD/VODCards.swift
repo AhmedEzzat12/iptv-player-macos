@@ -1,4 +1,8 @@
+#if os(macOS)
 import AppKit
+#else
+import UIKit
+#endif
 import SwiftUI
 import TunerCore
 
@@ -9,7 +13,11 @@ import TunerCore
 
 enum VODMetrics {
     /// Leading/trailing inset of shelves and page content.
+    #if os(macOS)
     static let inset: CGFloat = 32
+    #else
+    static let inset: CGFloat = 20
+    #endif
     static let shelfSpacing: CGFloat = 18
     static let posterWidth: CGFloat = 150
     static let landscapeWidth: CGFloat = 300

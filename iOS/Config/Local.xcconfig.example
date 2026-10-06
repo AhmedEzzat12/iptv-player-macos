@@ -1,0 +1,5 @@
+// Copy to Local.xcconfig (git-ignored). Only needed to install on a device; the simulator needs no signing.
+// Team ID: Xcode → Settings → Accounts → your team. A free "Personal Team" works (installs last 7 days).
+DEVELOPMENT_TEAM = ABCDE12345
+// Free teams need a bundle ID nobody else has registered; a personal suffix avoids clashes.
+TUNER_BUNDLE_ID = app.tuner.ios.yourname

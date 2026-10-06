@@ -3,7 +3,8 @@ import PackageDescription
 
 let package = Package(
     name: "Tuner",
-    platforms: [.macOS(.v15)],
+    // iOS: only TunerCore is built for it (the iPhone/iPad app lives in iOS/, see docs/ios-handover.md).
+    platforms: [.macOS(.v15), .iOS("26.0")],
     products: [
         .executable(name: "Tuner", targets: ["Tuner"]),
         .library(name: "TunerCore", targets: ["TunerCore"]),

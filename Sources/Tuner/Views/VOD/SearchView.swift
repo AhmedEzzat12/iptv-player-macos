@@ -36,10 +36,17 @@ private struct SearchContent: View {
         }
         .background(VODTheme.background)
         .navigationTitle("Search")
+        #if os(macOS)
         .task {
             try? await Task.sleep(for: .milliseconds(120))
             fieldFocused = true
         }
+        #else
+        // Touch screens: the keyboard would cover the tab bar, so it only opens when the field is tapped and
+        // scrolling the results puts it away. The page's own field replaces the navigation bar.
+        .scrollDismissesKeyboard(.immediately)
+        .toolbar(.hidden, for: .navigationBar)
+        #endif
         .task(id: SearchKey(query: query, library: model.libraryRevision, guide: model.guideRevision)) {
             await runSearch(query)
         }

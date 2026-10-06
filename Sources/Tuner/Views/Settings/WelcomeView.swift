@@ -1,4 +1,8 @@
+#if os(macOS)
 import AppKit
+#else
+import UIKit
+#endif
 import SwiftUI
 import TunerCore
 import UniformTypeIdentifiers
@@ -6,6 +10,7 @@ import UniformTypeIdentifiers
 /// First-run onboarding, shown in Home / Live TV while there are no sources.
 struct WelcomeView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.tunerCompact) private var compact
 
     var body: some View {
         GeometryReader { proxy in
@@ -23,36 +28,51 @@ struct WelcomeView: View {
             hero
                 .padding(.bottom, 36)
 
-            HStack(spacing: 16) {
-                ForEach(WelcomeOption.all) { option in
-                    WelcomeOptionCard(option: option) {
-                        model.sourceEditor = SourceEditorRequest(source: nil, kind: option.kind)
-                    }
-                }
+            if compact {
+                VStack(spacing: 12) { optionCards }
+                    .padding(.bottom, 24)
+                VStack(spacing: 12) { fileButtons }
+                    .buttonStyle(.bordered)
+                    .buttonBorderShape(.capsule)
+                    .controlSize(.large)
+                    .padding(.bottom, 24)
+            } else {
+                HStack(spacing: 16) { optionCards }
+                    .padding(.bottom, 28)
+                HStack(spacing: 12) { fileButtons }
+                    .buttonStyle(.bordered)
+                    .buttonBorderShape(.capsule)
+                    .controlSize(.large)
+                    .padding(.bottom, 28)
             }
-            .padding(.bottom, 28)
-
-            HStack(spacing: 12) {
-                Button(action: openFile) {
-                    Label("Open M3U File…", systemImage: "doc")
-                }
-                Button(action: addFreeChannels) {
-                    Label("Try Free Channels", systemImage: "sparkles.tv")
-                }
-                .help("Adds the free, public iptv-org playlist of US channels")
-            }
-            .buttonStyle(.bordered)
-            .buttonBorderShape(.capsule)
-            .controlSize(.large)
-            .padding(.bottom, 28)
 
             Text("Tuner doesn't provide any channels — add a playlist from your provider.")
                 .font(.footnote)
                 .foregroundStyle(.tertiary)
                 .multilineTextAlignment(.center)
         }
-        .padding(.horizontal, 40)
-        .padding(.vertical, 48)
+        .padding(.horizontal, compact ? 20 : 40)
+        .padding(.vertical, compact ? 32 : 48)
+    }
+
+    @ViewBuilder
+    private var optionCards: some View {
+        ForEach(WelcomeOption.all) { option in
+            WelcomeOptionCard(option: option, compact: compact) {
+                model.sourceEditor = SourceEditorRequest(source: nil, kind: option.kind)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var fileButtons: some View {
+        Button(action: openFile) {
+            Label("Open M3U File…", systemImage: "doc")
+        }
+        Button(action: addFreeChannels) {
+            Label("Try Free Channels", systemImage: "sparkles.tv")
+        }
+        .help("Adds the free, public iptv-org playlist of US channels")
     }
 
     private var hero: some View {
@@ -118,6 +138,7 @@ private struct WelcomeOption: Identifiable {
 
 private struct WelcomeOptionCard: View {
     let option: WelcomeOption
+    var compact = false
     let action: () -> Void
 
     var body: some View {
@@ -143,7 +164,8 @@ private struct WelcomeOptionCard: View {
                 Spacer(minLength: 0)
             }
             .padding(20)
-            .frame(width: 210, height: 196, alignment: .topLeading)
+            .frame(width: compact ? nil : 210, height: compact ? nil : 196, alignment: .topLeading)
+            .frame(maxWidth: compact ? .infinity : nil, alignment: .leading)
             .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 22, style: .continuous)

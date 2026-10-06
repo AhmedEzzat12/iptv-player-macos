@@ -138,7 +138,12 @@ struct ShelfHeader: View {
             if let subtitle { Text(subtitle).font(.callout).foregroundStyle(.secondary) }
             Spacer()
             if let actionTitle, let action {
-                Button(actionTitle, action: action).buttonStyle(.link)
+                Button(actionTitle, action: action)
+                    #if os(macOS)
+                    .buttonStyle(.link)
+                    #else
+                    .buttonStyle(.borderless)
+                    #endif
             }
         }
     }
@@ -208,6 +213,8 @@ private struct PlayerPreviewFrameProbe: View {
     }
 }
 
+#if os(macOS)
+// (iOS: iOS/Sources/Support/PlayerPreviewFrameReporter.swift)
 private struct PlayerPreviewFrameReporter: NSViewRepresentable {
     let onChange: (CGRect?) -> Void
 
@@ -267,3 +274,4 @@ private struct PlayerPreviewFrameReporter: NSViewRepresentable {
         }
     }
 }
+#endif

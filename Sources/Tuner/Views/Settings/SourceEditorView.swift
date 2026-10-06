@@ -1,4 +1,8 @@
+#if os(macOS)
 import AppKit
+#else
+import UIKit
+#endif
 import SwiftUI
 import TunerCore
 import UniformTypeIdentifiers
@@ -51,8 +55,10 @@ struct SourceEditorView: View {
             Divider()
             footer
         }
+        #if os(macOS)
         .frame(width: 560)
         .frame(minHeight: 440, idealHeight: 520, maxHeight: 860)
+        #endif
         .onAppear { if !isEditing { focus = .url } }
         .onDisappear { testTask?.cancel() }
         .onChange(of: draft.url) { _, newValue in splitXtreamLinkIfNeeded(newValue) }
@@ -153,6 +159,7 @@ struct SourceEditorView: View {
 
             TextField("Name", text: $draft.name, prompt: Text(defaultName ?? "My Provider"))
                 .focused($focus, equals: .name)
+                .sourceEditorRow("Name")
         }
     }
 
@@ -164,6 +171,7 @@ struct SourceEditorView: View {
                 TextField("Playlist URL", text: $draft.url, prompt: Text("https://provider.com/playlist.m3u"))
                     .focused($focus, equals: .url)
                     .autocorrectionDisabled()
+                    .sourceEditorRow("Playlist URL", input: .url)
                 LabeledContent {
                     Button("Choose File…", action: chooseFile)
                 } label: {
@@ -188,9 +196,11 @@ struct SourceEditorView: View {
                 TextField("Server", text: $draft.url, prompt: Text("http://provider.com:8080"))
                     .focused($focus, equals: .url)
                     .autocorrectionDisabled()
+                    .sourceEditorRow("Server", input: .url)
                 TextField("Username", text: optional(\.username), prompt: Text("Required"))
                     .focused($focus, equals: .username)
                     .autocorrectionDisabled()
+                    .sourceEditorRow("Username", input: .verbatim)
                 LabeledContent("Password") {
                     HStack(spacing: 6) {
                         Group {
@@ -204,6 +214,9 @@ struct SourceEditorView: View {
                         .labelsHidden()
                         .multilineTextAlignment(.trailing)
                         .focused($focus, equals: .password)
+                        #if os(iOS)
+                        .textInputAutocapitalization(.never)
+                        #endif
                         Button {
                             showPassword.toggle()
                         } label: {
@@ -228,6 +241,7 @@ struct SourceEditorView: View {
                 TextField("Portal URL", text: $draft.url, prompt: Text("http://portal.provider.com/c/"))
                     .focused($focus, equals: .url)
                     .autocorrectionDisabled()
+                    .sourceEditorRow("Portal URL", input: .url)
                 LabeledContent("MAC address") {
                     TextField("MAC address", text: optional(\.mac), prompt: Text("00:1A:79:XX:XX:XX"))
                         .labelsHidden()
@@ -235,6 +249,9 @@ struct SourceEditorView: View {
                         .font(.body.monospaced())
                         .focused($focus, equals: .mac)
                         .autocorrectionDisabled()
+                        #if os(iOS)
+                        .textInputAutocapitalization(.characters)
+                        #endif
                 }
             } footer: {
                 if let error = urlErrorText {
@@ -299,6 +316,7 @@ struct SourceEditorView: View {
                 TextField("Guide URL", text: optional(\.epgURL),
                           prompt: Text(draft.discoveredEPGURL ?? "Use provider guide"))
                     .autocorrectionDisabled()
+                    .sourceEditorRow("Guide URL", input: .url)
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Extra guide URLs")
                     SettingsFooter("One per line. Used to fill in programs the main guide is missing.")
@@ -318,6 +336,7 @@ struct SourceEditorView: View {
             Section("Connection") {
                 TextField("User agent", text: optional(\.userAgent), prompt: Text("Default"))
                     .autocorrectionDisabled()
+                    .sourceEditorRow("User agent", input: .verbatim)
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Backup server URLs")
                     SettingsFooter("One per line. Tried in order when the main address doesn't respond.")
@@ -573,5 +592,32 @@ private struct SourceEditorTextBox: View {
                         .allowsHitTesting(false)
                 }
             }
+    }
+}
+
+// MARK: - Rows
+
+/// What a source editor field holds, for the iOS keyboard.
+private enum SourceEditorInput {
+    case text, url, verbatim
+}
+
+private extension View {
+    /// macOS grouped forms label text fields themselves ("Server ……… value"). iOS shows only the prompt, so there
+    /// each field gets the same explicit label as the Password row, and URLs/credentials never get auto-capitalised
+    /// (a capitalised username fails the login).
+    @ViewBuilder
+    func sourceEditorRow(_ title: String, input: SourceEditorInput = .text) -> some View {
+        #if os(macOS)
+        self
+        #else
+        LabeledContent(title) {
+            self
+                .labelsHidden()
+                .multilineTextAlignment(.trailing)
+                .textInputAutocapitalization(input == .text ? .words : .never)
+                .keyboardType(input == .url ? .URL : .default)
+        }
+        #endif
     }
 }

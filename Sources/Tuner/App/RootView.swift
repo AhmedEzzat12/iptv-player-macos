@@ -1,7 +1,13 @@
+#if os(macOS)
 import AppKit
+#else
+import UIKit
+#endif
 import SwiftUI
 import TunerCore
 
+#if os(macOS)
+// (iOS: iOS/Sources/App/MobileRootView.swift)
 /// Window root: native sidebar + section content, with the persistent player layered in the detail column.
 struct RootView: View {
     @Environment(AppModel.self) private var model
@@ -44,6 +50,7 @@ struct RootView: View {
         .tint(model.prefs.accent.color)
     }
 }
+#endif
 
 /// Section content (the player is layered above the whole split view by `RootView`).
 struct DetailRoot: View {
@@ -218,6 +225,7 @@ struct BannerStack: View {
     }
 }
 
+#if os(macOS)
 // MARK: - Window access
 
 /// Captures the hosting NSWindow (for full screen toggling and keyboard routing).
@@ -240,3 +248,4 @@ struct WindowAccessor: NSViewRepresentable {
         }
     }
 }
+#endif

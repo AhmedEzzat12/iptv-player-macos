@@ -85,6 +85,10 @@ final class Preferences {
     var vodRefreshHours: Int { didSet { set(vodRefreshHours, "vodRefreshHours") } }
     var vodSort: VODSort { didSet { set(vodSort.rawValue, "vodSort") } }
     var posterSize: Double { didSet { set(posterSize, "posterSize") } }
+    /// Movie/series categories pinned as chips at the start of the browse pages (in pin order).
+    var pinnedCategoryIds: [String] { didSet { set(pinnedCategoryIds, "pinnedCategoryIds") } }
+    /// How bilingual provider category names are shown (English part, Arabic part, or as named).
+    var categoryNameStyle: CategoryNameStyle { didSet { set(categoryNameStyle.rawValue, "categoryNameStyle") } }
     var reminderLeadMinutes: Int { didSet { set(reminderLeadMinutes, "reminderLeadMinutes") } }
     var showChannelBannerOnZap: Bool { didSet { set(showChannelBannerOnZap, "showChannelBannerOnZap") } }
 
@@ -139,6 +143,8 @@ final class Preferences {
         vodRefreshHours = v("vodRefreshHours", 24)
         vodSort = VODSort(rawValue: v("vodSort", "")) ?? .added
         posterSize = v("posterSize", 150.0)
+        pinnedCategoryIds = v("pinnedCategoryIds", [String]())
+        categoryNameStyle = CategoryNameStyle(rawValue: v("categoryNameStyle", "")) ?? .automatic
         reminderLeadMinutes = v("reminderLeadMinutes", 2)
         showChannelBannerOnZap = v("showChannelBannerOnZap", true)
 

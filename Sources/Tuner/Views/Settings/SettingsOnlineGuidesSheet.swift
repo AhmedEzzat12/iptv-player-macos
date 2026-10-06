@@ -1,4 +1,8 @@
+#if os(macOS)
 import AppKit
+#else
+import UIKit
+#endif
 import SwiftUI
 import TunerCore
 
@@ -111,7 +115,11 @@ struct SettingsOnlineGuidesSheet: View {
                         onAdd: { addGuide(guide) }
                     )
                 }
+                #if os(macOS)
                 .listStyle(.inset(alternatesRowBackgrounds: true))
+                #else
+                .listStyle(.insetGrouped)
+                #endif
             }
         }
     }

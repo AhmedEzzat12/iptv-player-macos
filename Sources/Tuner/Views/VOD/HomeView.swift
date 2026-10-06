@@ -383,6 +383,7 @@ private struct HomeHero: View {
     let metadata: [String: MediaMetadata]
     let height: CGFloat
 
+    @Environment(\.tunerCompact) private var compact
     @ViewState private var index = 0
     @ViewState private var hovering = false
 
@@ -433,7 +434,8 @@ private struct HomeHero: View {
         .frame(height: height)
         .frame(maxWidth: .infinity)
         .overlay(alignment: .trailing) {
-            if !hasBackdrop(item), let poster = item.posterURL ?? info?.posterURL?.nilIfEmpty {
+            // Narrow screens skip it: it would cover the title, and it flashed up until the metadata backdrop arrived.
+            if !compact, !hasBackdrop(item), let poster = item.posterURL ?? info?.posterURL?.nilIfEmpty {
                 Color.clear
                     .aspectRatio(2 / 3, contentMode: .fit)
                     .overlay { RemoteImage(url: poster) { Color.clear } }
@@ -445,10 +447,14 @@ private struct HomeHero: View {
                     .transition(.opacity)
             }
         }
-        .overlay(alignment: .bottomTrailing) {
-            if items.count > 1 { dots.padding(.trailing, VODMetrics.inset).padding(.bottom, 40) }
+        .overlay(alignment: compact ? .bottom : .bottomTrailing) {
+            if items.count > 1 {
+                // Narrow screens: centred under the buttons (beside them, they'd collide).
+                dots.padding(.trailing, compact ? 0 : VODMetrics.inset).padding(.bottom, compact ? 12 : 40)
+            }
         }
         .clipped()
+        .simultaneousGesture(swipe, including: compact ? .all : .subviews)
         .environment(\.colorScheme, .dark)
         .overlay(alignment: .bottom) { VODTheme.heroBottomFade }
         .onHover { hovering = $0 }
@@ -507,7 +513,19 @@ private struct HomeHero: View {
         .foregroundStyle(.white)
         .frame(maxWidth: 480, alignment: .leading)
         .padding(.leading, VODMetrics.inset)
-        .padding(.bottom, 40)
+        .padding(.trailing, compact ? VODMetrics.inset : 0)
+        .padding(.bottom, compact ? 52 : 40)
+    }
+
+    /// Touch screens: swipe the hero sideways to change the featured title.
+    private var swipe: some Gesture {
+        DragGesture(minimumDistance: 24)
+            .onEnded { value in
+                guard items.count > 1, abs(value.translation.width) > abs(value.translation.height) * 1.5,
+                      abs(value.translation.width) > 50 else { return }
+                let step = value.translation.width < 0 ? 1 : -1
+                withAnimation(.easeInOut(duration: 0.6)) { index = (index + step + items.count) % items.count }
+            }
     }
 
     private var dots: some View {

@@ -1,4 +1,8 @@
+#if os(macOS)
 import AppKit
+#else
+import UIKit
+#endif
 import SwiftUI
 import TunerCore
 
@@ -302,6 +306,7 @@ struct VODDetailHeader<Actions: View>: View {
     var isLoading = false
     let height: CGFloat
     @ViewBuilder var actions: () -> Actions
+    @Environment(\.tunerCompact) private var compact
 
     var body: some View {
         ZStack(alignment: .bottomLeading) {
@@ -321,7 +326,8 @@ struct VODDetailHeader<Actions: View>: View {
             LinearGradient(colors: [.black.opacity(0.55), .clear], startPoint: .leading, endPoint: UnitPoint(x: 0.7, y: 0.5))
 
             HStack(alignment: .bottom, spacing: 28) {
-                if let posterURL {
+                // Narrow screens: no poster beside the text (the backdrop fills the hero, as in the TV app).
+                if let posterURL, !compact {
                     Color.clear
                         .aspectRatio(2 / 3, contentMode: .fit)
                         .overlay {
@@ -343,8 +349,8 @@ struct VODDetailHeader<Actions: View>: View {
                     VODTitleArtwork(
                         title: title,
                         logoURL: logoURL,
-                        fontSize: 38,
-                        maxLogoWidth: 420,
+                        fontSize: compact ? 30 : 38,
+                        maxLogoWidth: compact ? 300 : 420,
                         maxLogoHeight: min(120, max(70, height * 0.2))
                     )
                     HStack(spacing: 8) {

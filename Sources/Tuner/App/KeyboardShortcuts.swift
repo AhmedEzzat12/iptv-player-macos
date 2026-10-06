@@ -1,4 +1,8 @@
+#if os(macOS)
 import AppKit
+#else
+import UIKit
+#endif
 import SwiftUI
 
 // MARK: - Actions & bindings
@@ -206,6 +210,7 @@ extension Preferences {
     }
 }
 
+#if os(macOS)
 // MARK: - Dispatcher
 
 /// Single-key shortcuts, active only in the main window and never while typing in a text field.
@@ -335,6 +340,7 @@ final class KeyboardShortcuts {
         return true
     }
 }
+#endif
 
 // MARK: - Menus
 

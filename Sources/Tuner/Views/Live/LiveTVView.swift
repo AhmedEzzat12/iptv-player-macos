@@ -5,6 +5,7 @@ import TunerCore
 /// Shown for Live TV, Favorites, Recently Watched and custom groups; the list follows `model.liveScope`.
 struct LiveTVView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.tunerCompact) private var compact
     @ViewState private var store = LiveGuideStore()
     @ViewState private var filterText = ""
     @ViewState private var search = ""
@@ -27,8 +28,11 @@ struct LiveTVView: View {
                         .padding(.top, 10)
                         .padding(.bottom, 4)
                 }
-                LiveGuideHeader(store: store)
-                    .frame(height: headerHeight)
+                // Narrow screens skip the preview header: a tap watches the channel full screen.
+                if !compact {
+                    LiveGuideHeader(store: store)
+                        .frame(height: headerHeight)
+                }
                 LiveGuideFilterBar(store: store, filterText: $filterText)
                     // Its horizontal ScrollView is vertically greedy; keep the bar at its natural height.
                     .fixedSize(horizontal: false, vertical: true)
@@ -98,7 +102,11 @@ struct LiveTVView: View {
     @ViewBuilder
     private var guide: some View {
         if !store.channels.isEmpty {
-            LiveGuideGrid(store: store)
+            if compact {
+                LiveChannelList(store: store)
+            } else {
+                LiveGuideGrid(store: store)
+            }
         } else if !store.hasLoaded {
             Color.clear
         } else if model.isSyncing, isBrowseScope {

@@ -11,41 +11,37 @@ struct LiveGuideFilterBar: View {
     @ViewState private var renaming: ChannelCategory?
     @ViewState private var renameText = ""
 
+    @Environment(\.tunerCompact) private var compact
+
     var body: some View {
-        HStack(spacing: 10) {
-            if model.sources.count > 1 {
-                sourcePicker
-            }
-            chips
-            Button { showBrowser.toggle() } label: {
-                Label("Categories", systemImage: "list.bullet")
-            }
-            .buttonStyle(LiveGuideChipButtonStyle(selected: false))
-            .help("Browse all categories")
-            .popover(isPresented: $showBrowser, arrowEdge: .bottom) {
-                LiveCategoryBrowser(
-                    current: model.liveScope,
-                    onSelect: { category in
-                        showBrowser = false
-                        select(.category(category.id))
-                    },
-                    onRename: { category in
-                        showBrowser = false
-                        renameText = category.displayName
-                        // Let the popover close before presenting the alert.
-                        Task {
-                            try? await Task.sleep(for: .milliseconds(250))
-                            renaming = category
-                        }
+        Group {
+            if compact {
+                // Narrow screens: filter + buttons on one row, the chips scrolling below.
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 10) {
+                        searchField
+                        categoriesButton
+                        sortMenu
                     }
-                )
-                .environment(model)
+                    .padding(.horizontal, VODMetrics.inset)
+                    chips
+                        .contentMargins(.horizontal, VODMetrics.inset, for: .scrollContent)
+                }
+                .padding(.vertical, 8)
+            } else {
+                HStack(spacing: 10) {
+                    if model.sources.count > 1 {
+                        sourcePicker
+                    }
+                    chips
+                    categoriesButton
+                    searchField
+                    sortMenu
+                }
+                .padding(.horizontal, 24)
+                .padding(.vertical, 8)
             }
-            searchField
-            sortMenu
         }
-        .padding(.horizontal, 24)
-        .padding(.vertical, 8)
         .onAppear {
             if case .source(let id) = model.liveScope { store.sourceFilter = id }
         }
@@ -70,6 +66,33 @@ struct LiveGuideFilterBar: View {
             Button("Cancel", role: .cancel) {}
         } message: {
             Text(renaming.map { "Original name: \($0.name)" } ?? "")
+        }
+    }
+
+    private var categoriesButton: some View {
+        Button { showBrowser.toggle() } label: {
+            Label("Categories", systemImage: "list.bullet")
+        }
+        .buttonStyle(LiveGuideChipButtonStyle(selected: false))
+        .help("Browse all categories")
+        .popover(isPresented: $showBrowser, arrowEdge: .bottom) {
+            LiveCategoryBrowser(
+                current: model.liveScope,
+                onSelect: { category in
+                    showBrowser = false
+                    select(.category(category.id))
+                },
+                onRename: { category in
+                    showBrowser = false
+                    renameText = category.displayName
+                    // Let the popover close before presenting the alert.
+                    Task {
+                        try? await Task.sleep(for: .milliseconds(250))
+                        renaming = category
+                    }
+                }
+            )
+            .environment(model)
         }
     }
 
@@ -216,7 +239,9 @@ struct LiveGuideFilterBar: View {
                 .foregroundStyle(.secondary)
             TextField("Filter channels", text: $filterText)
                 .textFieldStyle(.plain)
+                #if os(macOS)
                 .onExitCommand { filterText = "" }
+                #endif
             if !filterText.isEmpty {
                 Button { filterText = "" } label: {
                     Image(systemName: "xmark.circle.fill")
@@ -229,7 +254,8 @@ struct LiveGuideFilterBar: View {
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
         .background(Capsule().fill(Color.primary.opacity(0.08)))
-        .frame(width: 190)
+        .frame(width: compact ? nil : 190)
+        .frame(maxWidth: compact ? .infinity : nil)
     }
 
     private var sortMenu: some View {

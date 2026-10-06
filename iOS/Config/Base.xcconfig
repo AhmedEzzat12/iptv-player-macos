@@ -1,0 +1,6 @@
+// Shared build settings for the iOS app. Personal signing values live in Local.xcconfig (git-ignored):
+//   cp Config/Local.xcconfig.example Config/Local.xcconfig   then fill in your team ID.
+MARKETING_VERSION = 1.1.0
+CURRENT_PROJECT_VERSION = 1
+TUNER_BUNDLE_ID = app.tuner.ios
+#include? "Local.xcconfig"

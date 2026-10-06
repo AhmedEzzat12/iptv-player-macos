@@ -1,4 +1,8 @@
+#if os(macOS)
 import AppKit
+#else
+import UIKit
+#endif
 import AVFoundation
 import AVKit
 import CoreMedia
@@ -100,7 +104,15 @@ final class AVEngine: NSObject, PlaybackEngine {
            let pip = AVPictureInPictureController(playerLayer: videoView.playerLayer) {
             pip.delegate = self
             pipController = pip
+            #if os(iOS)
+            // Swiping home while full screen moves the video into Picture in Picture (the system decides when).
+            pip.canStartPictureInPictureAutomaticallyFromInline = true
+            #endif
         }
+        #if os(iOS)
+        // In the background without PiP the host view detaches the layer so audio keeps playing.
+        videoView.isPictureInPictureActive = { [weak self] in self?.isPictureInPictureActive ?? false }
+        #endif
         // A failed AVPlayer (e.g. media services reset) cannot be reused for further items.
         playerStatusObservation = player.observe(\.status, options: [.new]) { [weak self] player, _ in
             guard player.status == .failed else { return }
@@ -961,6 +973,8 @@ private struct MediaInfo {
 
 // MARK: - Video view
 
+#if os(macOS)
+// (iOS: iOS/Sources/Player/AVPlayerHostView.swift)
 /// Layer-backed view hosting the `AVPlayerLayer`; black letterboxing, no AVKit controls.
 final class AVPlayerHostView: NSView {
     let playerLayer: AVPlayerLayer
@@ -1044,3 +1058,4 @@ final class AVPlayerHostView: NSView {
         CATransaction.commit()
     }
 }
+#endif

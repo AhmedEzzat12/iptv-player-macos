@@ -1,4 +1,8 @@
+#if os(macOS)
 import AppKit
+#else
+import UIKit
+#endif
 import SwiftUI
 import TunerCore
 
@@ -43,6 +47,7 @@ struct PlayerHost: View {
     @ViewState private var showZapBanner = false
     @ViewState private var zapBannerTask: Task<Void, Never>?
     @ViewState private var isWindowFullScreen = false
+    @Environment(\.tunerCompact) private var compact
 
     var body: some View {
         GeometryReader { outer in
@@ -278,7 +283,9 @@ struct PlayerHost: View {
         }
         let width = min(340, max(200, safe.width * 0.45)).rounded()
         let height = (width * 9 / 16).rounded()
-        return CGRect(x: safe.maxX - 20 - width, y: safe.maxY - 20 - height, width: width, height: height)
+        // Narrow screens: float above the bottom tab bar (the stage covers it).
+        let bottomGap: CGFloat = compact ? 104 : 20
+        return CGRect(x: safe.maxX - 20 - width, y: safe.maxY - bottomGap - height, width: width, height: height)
     }
 
     private func placement(for slot: PlayerSlot, mode: PlayerPresentationMode, cells: [CGRect],
@@ -430,6 +437,8 @@ extension View {
     }
 }
 
+#if os(macOS)
+// (iOS: iOS/Sources/Player/PlayerHostSupport.swift)
 /// Fades the traffic-light buttons with the full-window chrome (as the TV app does). Never in macOS
 /// full screen, where the title bar already auto-hides.
 @MainActor
@@ -522,3 +531,4 @@ final class PlayerScrollVolumeMonitor {
         }
     }
 }
+#endif

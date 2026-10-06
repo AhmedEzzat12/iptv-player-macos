@@ -4,7 +4,12 @@ import Foundation
 public actor RecordingService {
     let db: AppDatabase
     let resolver: StreamResolver
+    #if os(macOS)
     private var processes: [String: Process] = [:]
+    #else
+    /// iOS/tvOS can't launch child processes, so nothing is ever recording there.
+    private var processes: [String: Never] = [:]
+    #endif
     private var stopRequested: Set<String> = []
 
     public var directory: URL
@@ -95,6 +100,7 @@ public actor RecordingService {
     // MARK: Process control
 
     func start(_ rec: inout Recording) async throws {
+        #if os(macOS)
         guard let ffmpeg = Self.ffmpegPath() else {
             throw RecordingError.ffmpegMissing
         }
@@ -125,6 +131,9 @@ public actor RecordingService {
         rec.filePath = output.path
         rec.error = nil
         try await db.save(rec)
+        #else
+        throw RecordingError.unavailableOnThisDevice
+        #endif
     }
 
     public static func arguments(stream: PlayableStream, duration: TimeInterval, output: String) -> [String] {
@@ -141,6 +150,7 @@ public actor RecordingService {
     }
 
     func stop(id: String) {
+        #if os(macOS)
         guard let process = processes[id], process.isRunning else { return }
         stopRequested.insert(id)
         // "q" asks ffmpeg to finish writing cleanly; terminate if it ignores us.
@@ -151,6 +161,7 @@ public actor RecordingService {
             try? await Task.sleep(for: .seconds(5))
             if process.isRunning { process.terminate() }
         }
+        #endif
     }
 
     func finished(id: String, status: Int32, stderr: Data) async {
@@ -200,10 +211,12 @@ public actor RecordingService {
 
 public enum RecordingError: LocalizedError {
     case ffmpegMissing
+    case unavailableOnThisDevice
 
     public var errorDescription: String? {
         switch self {
         case .ffmpegMissing: "Recording needs ffmpeg. Install it with: brew install ffmpeg"
+        case .unavailableOnThisDevice: "Recording isn't available on this device yet."
         }
     }
 }

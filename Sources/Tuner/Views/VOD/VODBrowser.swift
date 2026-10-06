@@ -31,6 +31,7 @@ struct VODBrowser: View {
     @ViewState private var generation = 0
     @ViewState private var retryToken = 0
     @ViewState private var scrollPosition = ScrollPosition(edge: .top)
+    @ViewState private var showCategoryManager = false
 
     private static let pageSize = 200
 
@@ -57,7 +58,6 @@ struct VODBrowser: View {
         return categories.contains { stalker.contains($0.sourceId) }
     }
 
-    private var showsSourceNames: Bool { Set(visibleCategories.map(\.sourceId)).count > 1 }
 
     private var filter: VODBrowseFilter {
         VODBrowseFilter(
@@ -101,8 +101,8 @@ struct VODBrowser: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .firstTextBaseline, spacing: 12) {
-                VODPageTitle(title: selectedCategory?.displayName ?? kind.title, subtitle: countLabel)
-                categoryMenu
+                VODPageTitle(title: selectedCategory?.presentedName(nameStyle) ?? kind.title, subtitle: countLabel)
+                manageButton
             }
             .padding(.horizontal, VODMetrics.inset)
 
@@ -115,15 +115,28 @@ struct VODBrowser: View {
                 ScrollView(.horizontal) {
                     LazyHStack(spacing: 8) {
                         VODChip(title: "All", isSelected: selectedCategoryId == nil) { select(nil) }
-                        ForEach(visibleCategories) { category in
+                        ForEach(pinnedCategories) { category in
                             VODChip(
-                                title: category.displayName,
+                                title: category.presentedName(nameStyle),
                                 count: category.itemCount > 0 ? category.itemCount : nil,
                                 isSelected: category.id == selectedCategoryId
                             ) {
                                 select(category.id)
                             }
-                            .help(sourceName(category.sourceId) ?? category.displayName)
+                            .help(sourceName(category.sourceId) ?? category.name)
+                        }
+                        if !pinnedCategories.isEmpty {
+                            Capsule().fill(Color.primary.opacity(0.15)).frame(width: 1, height: 18).padding(.horizontal, 2)
+                        }
+                        ForEach(categoryGroups.groups, id: \.group) { entry in
+                            VODCategoryGroupChip(
+                                group: entry.group,
+                                // A pinned category stays in its group's menu too, so the menu shows the whole group.
+                                categories: entry.categories,
+                                selectedId: pinnedIds.contains(selectedCategoryId ?? "") ? nil : selectedCategoryId,
+                                style: nameStyle,
+                                select: { select($0) }
+                            )
                         }
                     }
                     .padding(.vertical, 2)
@@ -142,45 +155,31 @@ struct VODBrowser: View {
         return canLoadMore ? "\(n.formatted())+" : n.formatted()
     }
 
-    /// Full category list for libraries with many categories.
+    private var nameStyle: CategoryNameStyle { model.prefs.categoryNameStyle }
+
+    private var categoryGroups: VODCategoryGroups { VODCategoryGroups(visibleCategories) }
+
+    private var pinnedIds: Set<String> { Set(model.prefs.pinnedCategoryIds) }
+
+    /// Pinned categories that are visible here, in pin order.
+    private var pinnedCategories: [ChannelCategory] {
+        model.prefs.pinnedCategoryIds.compactMap { id in visibleCategories.first { $0.id == id } }
+    }
+
+    /// Opens the category organiser (names, pins, hidden categories).
     @ViewBuilder
-    private var categoryMenu: some View {
-        if visibleCategories.count > 8 {
-            Menu {
-                Button("All \(kind.title)") { select(nil) }
-                Divider()
-                if showsSourceNames {
-                    ForEach(groupedCategories, id: \.0) { group in
-                        Section(group.0) {
-                            ForEach(group.1) { category in categoryMenuItem(category) }
-                        }
-                    }
-                } else {
-                    ForEach(visibleCategories) { category in categoryMenuItem(category) }
-                }
-            } label: {
+    private var manageButton: some View {
+        if !visibleCategories.isEmpty {
+            Button { showCategoryManager = true } label: {
                 Label("Categories", systemImage: "line.3.horizontal.decrease.circle")
             }
-            .menuStyle(.borderlessButton)
+            .buttonStyle(.borderless)
             .fixedSize()
-            .help("Choose a category")
+            .help("Organise categories: pin, hide and choose how names read")
+            .sheet(isPresented: $showCategoryManager) {
+                VODCategoryManager(kind: kind).environment(model)
+            }
         }
-    }
-
-    private func categoryMenuItem(_ category: ChannelCategory) -> some View {
-        Toggle(isOn: Binding(get: { category.id == selectedCategoryId }, set: { _ in select(category.id) })) {
-            Text(category.itemCount > 0 ? "\(category.displayName) (\(category.itemCount))" : category.displayName)
-        }
-    }
-
-    private var groupedCategories: [(String, [ChannelCategory])] {
-        var order: [String] = []
-        var groups: [String: [ChannelCategory]] = [:]
-        for category in visibleCategories {
-            if groups[category.sourceId] == nil { order.append(category.sourceId) }
-            groups[category.sourceId, default: []].append(category)
-        }
-        return order.map { (sourceName($0) ?? "Playlist", groups[$0] ?? []) }
     }
 
     private var sortMenu: some View {

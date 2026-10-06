@@ -1,5 +1,13 @@
+#if os(macOS)
 import AppKit
+#else
+import UIKit
+#endif
+#if os(macOS)
 import CMPV
+#else
+import Libmpv
+#endif
 import TunerCore
 
 /// libmpv playback engine (fallback for streams AVFoundation can't open: raw MPEG-TS over HTTP,
@@ -75,7 +83,16 @@ final class MPVEngine: PlaybackEngine {
             }
         }
         option("vo", "libmpv")
+        #if os(macOS)
         option("hwdec", prefs.hardwareDecoding ? "auto-safe" : "no")
+        #elseif targetEnvironment(simulator)
+        // The simulator's VideoToolbox corrupts HEVC (blocks, smears) and isn't the real hardware anyway.
+        option("hwdec", "no")
+        #else
+        // iOS: VideoToolbox frames mapped straight into the OpenGL ES render context came out as a solid colour
+        // (in the simulator), so decode in hardware and copy the frames back for upload, as AerioTV does on iPhone.
+        option("hwdec", prefs.hardwareDecoding ? "videotoolbox-copy" : "no")
+        #endif
         option("keep-open", "yes")
         option("idle", "yes")
         option("input-default-bindings", "no")
