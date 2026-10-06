@@ -62,6 +62,10 @@ struct MobileRootView: View {
                     SourceEditorView(request: request).environment(model)
                 }
         }
+        // Leaving the player undoes a landscape switch it made (never stuck in landscape with rotation lock on).
+        .onChange(of: model.player.isFullWindow) { _, full in
+            if !full { PlayerOrientation.restorePortraitIfForced() }
+        }
         .task { await model.start() }
         #if DEBUG
         .task { await DebugLaunch.run(model) }

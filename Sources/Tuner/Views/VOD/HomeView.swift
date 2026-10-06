@@ -173,11 +173,6 @@ private struct HomeContent: View {
             } label: {
                 Label("Watch", systemImage: "play.fill")
             }
-            Button {
-                model.playInMultiview(entry.channel)
-            } label: {
-                Label("Play in Multiview", systemImage: "rectangle.split.2x2")
-            }
             Divider()
             Button {
                 model.toggleFavorite(entry.channel)

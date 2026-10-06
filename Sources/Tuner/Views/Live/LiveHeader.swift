@@ -207,12 +207,6 @@ struct LiveGuideHeader: View {
             .disabled(recording)
             .help(recording ? "Recording" : "Record Now")
 
-            Button { model.playInMultiview(channel) } label: {
-                Image(systemName: "square.grid.2x2")
-            }
-            .buttonStyle(GlassButtonStyle(circle: true))
-            .help("Add to Multiview")
-
             Menu {
                 LiveGuideChannelMenu(channel: channel, store: store, includePlayback: false)
             } label: {

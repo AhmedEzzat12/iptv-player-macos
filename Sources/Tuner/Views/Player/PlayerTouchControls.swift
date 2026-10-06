@@ -67,9 +67,13 @@ struct PlayerCenterTransport: View {
     }
 }
 
-/// The bottom card's button row: Audio & Subtitles, Episodes · Next Episode, Rotate.
+/// The bottom card's button row: Audio & Subtitles, Episodes · Next Episode, Full Screen.
 struct PlayerTouchControlRow: View {
     @Environment(AppModel.self) private var model
+    #if os(iOS)
+    /// Compact height = an iPhone in landscape.
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
+    #endif
     let slot: PlayerSlot
     let chrome: PlayerChromeController
 
@@ -108,20 +112,22 @@ struct PlayerTouchControlRow: View {
                 .opacity(next == nil ? 0.45 : 1)
             }
             #if os(iOS)
+            // Full screen = landscape, as in YouTube; the same button (or swiping down) goes back.
             Button {
                 PlayerOrientation.toggle()
                 chrome.touch()
             } label: {
-                PlayerGlassSymbol(symbol: "rotate.right", size: size)
+                PlayerGlassSymbol(symbol: verticalSizeClass == .compact ? "arrow.down.right.and.arrow.up.left"
+                                                                        : "arrow.up.left.and.arrow.down.right", size: size)
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("Rotate")
+            .accessibilityLabel(verticalSizeClass == .compact ? "Exit Full Screen" : "Full Screen")
             #endif
         }
     }
 }
 
-/// "…" in the top bar: playback speed, aspect ratio, multiview layout and statistics.
+/// "…" in the top bar: playback speed, aspect ratio and statistics.
 struct PlayerMoreMenu: View {
     @Environment(AppModel.self) private var model
     let slot: PlayerSlot
@@ -143,14 +149,6 @@ struct PlayerMoreMenu: View {
                 ForEach(VideoAspect.allCases) { aspect in Text(aspect.title).tag(aspect) }
             } label: {
                 Label("Aspect Ratio", systemImage: "aspectratio")
-            }
-            .pickerStyle(.menu)
-            Picker(selection: $player.layout) {
-                ForEach(MultiviewLayout.allCases) { layout in
-                    Label(layout.title, systemImage: layout.symbol).tag(layout)
-                }
-            } label: {
-                Label("Multiview", systemImage: "rectangle.split.2x2")
             }
             .pickerStyle(.menu)
             Divider()

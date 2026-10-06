@@ -82,35 +82,3 @@ enum PlaybackItem: Hashable, Identifiable {
         }
     }
 }
-
-enum MultiviewLayout: String, CaseIterable, Identifiable {
-    case single
-    case pictureInPicture
-    case bigAndBottom
-    case grid2x2
-
-    var id: String { rawValue }
-    var slotCount: Int {
-        switch self {
-        case .single: 1
-        case .pictureInPicture: 2
-        case .bigAndBottom, .grid2x2: 4
-        }
-    }
-    var title: String {
-        switch self {
-        case .single: "Single"
-        case .pictureInPicture: "Picture in Picture"
-        case .bigAndBottom: "Main + 3"
-        case .grid2x2: "2 × 2 Grid"
-        }
-    }
-    var symbol: String {
-        switch self {
-        case .single: "rectangle"
-        case .pictureInPicture: "pip"
-        case .bigAndBottom: "rectangle.split.1x2"
-        case .grid2x2: "square.grid.2x2"
-        }
-    }
-}

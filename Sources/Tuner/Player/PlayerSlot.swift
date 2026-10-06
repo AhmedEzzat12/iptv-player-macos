@@ -16,7 +16,7 @@ struct PlayerServices {
     let prefs: Preferences
 }
 
-/// One video player (the main player or a multiview cell).
+/// The video player.
 ///
 /// Owns engine routing (AVFoundation first, libmpv fallback for formats AVFoundation can't open),
 /// the live-stream watchdog (stall detection → failover to duplicate channels → reconnect with
@@ -70,8 +70,6 @@ final class PlayerSlot: Identifiable {
     /// Full volume, no amplification: Apple's player can't boost, so neither engine does (same slider, same sound).
     static let maxVolume: Double = 100
     var isMuted = false { didSet { applyMute() } }
-    /// Only the main slot plays audio in multiview.
-    var hasAudioFocus = true { didSet { applyMute() } }
     var aspect: VideoAspect = .fit { didSet { engine?.setAspect(aspect) } }
     var rate: Double = 1 { didSet { engine?.setRate(rate) } }
 
@@ -790,7 +788,7 @@ final class PlayerSlot: Identifiable {
     // MARK: - Helpers
 
     private func applyMute() {
-        engine?.setMuted(isMuted || !hasAudioFocus)
+        engine?.setMuted(isMuted)
     }
 
     private func refreshTracks() {

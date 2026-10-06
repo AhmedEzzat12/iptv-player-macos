@@ -20,7 +20,6 @@ enum ShortcutAction: String, CaseIterable, Identifiable, Codable {
     // Navigation
     case home, liveTV, movies, series, search, recordings, help
     // Layout
-    case layoutSingle, layoutPictureInPicture, layoutMainPlusThree, layoutGrid
 
     var id: String { rawValue }
 
@@ -29,7 +28,6 @@ enum ShortcutAction: String, CaseIterable, Identifiable, Codable {
         case player = "Player"
         case liveTV = "Live TV"
         case navigation = "Navigation"
-        case layout = "Multiview Layout"
         var id: String { rawValue }
     }
 
@@ -40,7 +38,6 @@ enum ShortcutAction: String, CaseIterable, Identifiable, Codable {
         case .openPlayer, .exitPlayer: .player
         case .channelUp, .channelDown, .previousChannel, .toggleFavorite, .recordNow: .liveTV
         case .home, .liveTV, .movies, .series, .search, .recordings, .help: .navigation
-        case .layoutSingle, .layoutPictureInPicture, .layoutMainPlusThree, .layoutGrid: .layout
         }
     }
 
@@ -71,10 +68,6 @@ enum ShortcutAction: String, CaseIterable, Identifiable, Codable {
         case .search: "Search"
         case .recordings: "Recordings"
         case .help: "Show keyboard shortcuts"
-        case .layoutSingle: "Single view"
-        case .layoutPictureInPicture: "Picture in picture layout"
-        case .layoutMainPlusThree: "Main + 3 layout"
-        case .layoutGrid: "2 × 2 grid"
         }
     }
 
@@ -118,10 +111,6 @@ enum ShortcutAction: String, CaseIterable, Identifiable, Codable {
         case .search: "s"
         case .recordings: "r"
         case .help: "/"
-        case .layoutSingle: "1"
-        case .layoutPictureInPicture: "2"
-        case .layoutMainPlusThree: "3"
-        case .layoutGrid: "4"
         }
     }
 }
@@ -332,10 +321,6 @@ final class KeyboardShortcuts {
         case .search: model.sidebarSelection = .search
         case .recordings: model.sidebarSelection = .recordings
         case .help: model.showShortcutHelp.toggle()
-        case .layoutSingle: player.layout = .single
-        case .layoutPictureInPicture: player.layout = .pictureInPicture
-        case .layoutMainPlusThree: player.layout = .bigAndBottom
-        case .layoutGrid: player.layout = .grid2x2
         }
         return true
     }
@@ -402,12 +387,6 @@ struct TunerCommands: Commands {
             .disabled(!model.player.isFullWindow)
             Button("Stop") { model.stopPlayback() }.keyboardShortcut(".", modifiers: .command)
             Button("Show Playback Statistics") { model.player.showStats.toggle() }.keyboardShortcut("i", modifiers: [.command, .option])
-        }
-        CommandMenu("Layout") {
-            ForEach(Array(MultiviewLayout.allCases.enumerated()), id: \.element) { index, layout in
-                Button(layout.title) { model.player.layout = layout }
-                    .keyboardShortcut(KeyEquivalent(Character("\(index + 1)")), modifiers: [.command, .option])
-            }
         }
         CommandGroup(replacing: .help) {
             Button("Keyboard Shortcuts") { model.showShortcutHelp = true }.keyboardShortcut("/", modifiers: .command)

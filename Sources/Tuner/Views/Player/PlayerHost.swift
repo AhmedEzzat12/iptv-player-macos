@@ -8,7 +8,7 @@ import TunerCore
 
 /// How the persistent player is presented over the detail column.
 enum PlayerPresentationMode: Equatable {
-    /// Fills the window (sidebar collapsed, toolbar hidden): multiview stage + Apple TV–style chrome.
+    /// Fills the window (sidebar collapsed, toolbar hidden) with Apple TV–style chrome.
     case full
     /// Main slot only, inside the Live TV guide's preview slot.
     case preview
@@ -30,9 +30,9 @@ struct PlayerSlotPlacement: Equatable {
 
 /// The single, persistent player overlay drawn over the whole detail column by `DetailRoot`.
 ///
-/// All four slots' video surfaces live in one `ForEach` keyed by slot id and are never inserted or removed:
-/// switching between full window, guide preview, mini player and multiview layouts only changes their
-/// frame, corner radius and opacity, so the engine views are never recreated and playback never restarts.
+/// The video surface lives in a `ForEach` keyed by slot id and is never inserted or removed: switching between
+/// full window, guide preview and mini player only changes its frame, corner radius and opacity, so the engine
+/// view is never recreated and playback never restarts.
 ///
 /// Coordinates: the stage extends under the title bar (`ignoresSafeArea`); `safe` is the detail column
 /// (the coordinate space of `previewRect` and `containerSize`) expressed in stage coordinates.
@@ -129,9 +129,6 @@ struct PlayerHost: View {
         let isFull = mode == .full
         let bounds = CGRect(origin: .zero, size: size)
         let chromeShown = isFull && (chrome.isVisible || chromePinned)
-        // Keep the picture-in-picture inset above the control panel while the chrome is up.
-        let pipInset: CGFloat = chromeShown && panelHeight > 0 ? (size.height - safe.maxY) + 20 + panelHeight + 16 : 24
-        let cells = MultiviewGeometry.rects(for: player.layout, in: bounds, pipBottomInset: pipInset)
         let compact = compactRect(for: mode, safe: safe)
 
         ZStack(alignment: .topLeading) {
@@ -150,18 +147,16 @@ struct PlayerHost: View {
                     }
                 }
                 .allowsHitTesting(isFull)
-                // Narrow touch screens: swipe down on the video to close the player, like the close button.
-                .simultaneousGesture(dismissDrag(height: size.height), including: self.compact && isFull ? .all : .subviews)
 
             // Structurally stable video surfaces — never move these into mode-specific branches.
             ForEach(player.slots) { slot in
-                let placement = placement(for: slot, mode: mode, cells: cells, compact: compact, bounds: bounds)
+                let placement = placement(for: slot, mode: mode, compact: compact, bounds: bounds)
                 PlayerVideoSurface(slot: slot, placement: placement)
                     .zIndex(placement.zIndex)
             }
 
             if isFull {
-                fullOverlay(size: size, safe: safe, cells: cells, chromeShown: chromeShown)
+                fullOverlay(size: size, safe: safe, chromeShown: chromeShown)
                     .zIndex(10)
             } else if mode != .hidden {
                 PlayerCompactControls(slot: player.main, style: mode == .mini ? .mini : .preview, size: compact.size)
@@ -172,9 +167,12 @@ struct PlayerHost: View {
             }
         }
         .frame(width: size.width, height: size.height, alignment: .topLeading)
+        // Narrow touch screens: swipes anywhere on the full-screen player (the video's cell overlay sits above the
+        // stage, so this is on the whole stage, alongside the controls' own gestures).
+        .simultaneousGesture(swipeGesture(height: size.height), including: self.compact && isFull ? .all : .subviews)
         .offset(y: isFull ? dismissOffset : 0)
         .animation(.spring(response: 0.5, dampingFraction: 0.86),
-                   value: PlayerStageAnimationKey(mode: mode, layout: player.layout, order: player.order))
+                   value: mode)
         .onChange(of: isFull && !chromeShown) { _, hidden in
             PlayerTitlebar.setButtonsHidden(hidden, in: model.mainWindow)
         }
@@ -183,31 +181,23 @@ struct PlayerHost: View {
     }
 
     @ViewBuilder
-    private func fullOverlay(size: CGSize, safe: CGRect, cells: [CGRect], chromeShown: Bool) -> some View {
+    private func fullOverlay(size: CGSize, safe: CGRect, chromeShown: Bool) -> some View {
         let player = model.player
-        let layout = player.layout
-        let mainRect = cells.first ?? CGRect(origin: .zero, size: size)
+        let mainRect = CGRect(origin: .zero, size: size)
         let clipped = mainRect.intersection(safe)
-        // The control panel belongs to the main (audible) cell, so the other cells stay clickable.
         let controlsRect = clipped.isNull || clipped.width < 240 || clipped.height < 160 ? safe : clipped
-        // Cell decorations stay clear of the top bar.
         let topReserve = safe.minY + PlayerChromeMetrics.topBarBottom + 10
+        // Keep status cards clear of the control panel and the top bar.
+        let coveredBottom = chromeShown && panelHeight > 0
+            ? min(mainRect.height * 0.5, max(0, mainRect.maxY - controlsRect.maxY) + panelHeight + 20) : 0
+        let coveredTop = chromeShown ? min(mainRect.height * 0.3, max(0, topReserve - mainRect.minY)) : 0
 
         ZStack(alignment: .topLeading) {
-            ForEach(Array(player.visibleSlots.enumerated()), id: \.element.id) { position, slot in
-                let rect = cells[position]
-                // The control panel lives in the main cell; keep status cards clear of it and the top bar.
-                let coveredBottom = position == 0 && chromeShown && panelHeight > 0
-                    ? min(rect.height * 0.5, max(0, rect.maxY - controlsRect.maxY) + panelHeight + 20) : 0
-                let coveredTop = chromeShown ? min(rect.height * 0.3, max(0, topReserve - rect.minY)) : 0
-                MultiviewCellOverlay(slot: slot, position: position, layout: layout, size: rect.size,
-                                     topInset: max(10, topReserve - rect.minY),
-                                     statusInsets: EdgeInsets(top: coveredTop, leading: 0, bottom: coveredBottom, trailing: 0),
-                                     chrome: chrome, onClose: { close(slot) })
-                    .frame(width: rect.width, height: rect.height)
-                    .position(x: rect.midX, y: rect.midY)
-                    .zIndex(position == 0 ? 0 : 1)
-            }
+            PlayerVideoOverlay(slot: player.main, size: mainRect.size,
+                               statusInsets: EdgeInsets(top: coveredTop, leading: 0, bottom: coveredBottom, trailing: 0),
+                               chrome: chrome, onClose: { model.stopPlayback() })
+                .frame(width: mainRect.width, height: mainRect.height)
+                .position(x: mainRect.midX, y: mainRect.midY)
 
             if player.main.isAirPlayActive {
                 PlayerAirPlayActiveView(title: player.main.item?.title)
@@ -270,7 +260,7 @@ struct PlayerHost: View {
 
     /// The Up Next card's content while an episode is in its last seconds (see `UpNextCountdown`).
     private var upNext: (next: Episode, series: Series, seconds: Int)? {
-        guard model.prefs.autoplayNextEpisode, model.player.layout == .single, !model.player.isEpisodeListOpen,
+        guard model.prefs.autoplayNextEpisode, !model.player.isEpisodeListOpen,
               let current = model.currentEpisode, model.upNextCancelledFor != current.episode.id,
               let next = model.adjacentEpisode(1),
               // Offline, only a downloaded next episode can play.
@@ -282,24 +272,46 @@ struct PlayerHost: View {
         return (next, current.series, seconds)
     }
 
-    // MARK: - Swipe to close
+    // MARK: - Swipes (touch screens)
 
-    /// Drag down to close (touch screens). Past a quarter of the height, or a quick flick, closes; otherwise it
-    /// springs back. Mostly-horizontal drags are ignored (the scrubber and episode list scroll sideways/vertically
-    /// in their own views).
-    private func dismissDrag(height: CGFloat) -> some Gesture {
-        DragGesture(minimumDistance: 12)
+    /// YouTube-style swipes on the full-screen player. Down: in landscape, back to portrait; in portrait, close the
+    /// player (the video follows the finger; past a quarter of the height or a quick flick closes, otherwise it
+    /// springs back). Up in portrait: full screen (landscape). Mostly-horizontal drags (the scrubber) are ignored,
+    /// and so are drags while the episode list (which scrolls) is open.
+    private func swipeGesture(height: CGFloat) -> some Gesture {
+        DragGesture(minimumDistance: 14)
             .onChanged { value in
-                guard value.translation.height > 0, value.translation.height > abs(value.translation.width) else { return }
+                guard !model.player.isEpisodeListOpen, value.translation.height > 0,
+                      value.translation.height > abs(value.translation.width) * 1.2, !isLandscape else { return }
                 dismissOffset = value.translation.height
             }
             .onEnded { value in
-                let flicked = value.predictedEndTranslation.height > height * 0.45
-                if dismissOffset > height * 0.25 || (dismissOffset > 40 && flicked) {
+                defer { withAnimation(.spring(response: 0.3, dampingFraction: 0.86)) { dismissOffset = 0 } }
+                let dy = value.translation.height
+                guard !model.player.isEpisodeListOpen, abs(dy) > abs(value.translation.width) * 1.2 else { return }
+                let flick = value.predictedEndTranslation.height
+                #if os(iOS)
+                if isLandscape {
+                    if dy > 50 || flick > 160 { PlayerOrientation.setLandscape(false) }
+                    return
+                }
+                if dy < -50 || flick < -160 {
+                    PlayerOrientation.setLandscape(true)
+                    return
+                }
+                #endif
+                if dy > height * 0.25 || (dy > 40 && flick > height * 0.45) {
                     model.exitFullWindow()
                 }
-                withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) { dismissOffset = 0 }
             }
+    }
+
+    private var isLandscape: Bool {
+        #if os(iOS)
+        PlayerOrientation.isLandscape
+        #else
+        false
+        #endif
     }
 
     // MARK: - Geometry
@@ -315,67 +327,27 @@ struct PlayerHost: View {
         return CGRect(x: safe.maxX - 20 - width, y: safe.maxY - bottomGap - height, width: width, height: height)
     }
 
-    private func placement(for slot: PlayerSlot, mode: PlayerPresentationMode, cells: [CGRect],
+    private func placement(for slot: PlayerSlot, mode: PlayerPresentationMode,
                            compact: CGRect, bounds: CGRect) -> PlayerSlotPlacement {
-        let player = model.player
-        let position = player.order.firstIndex(of: slot.id) ?? 0
         switch mode {
         case .full:
-            guard position < cells.count else {
-                return PlayerSlotPlacement(rect: MultiviewGeometry.parkedRect(in: bounds), cornerRadius: 12, isVisible: false)
-            }
-            return PlayerSlotPlacement(
-                rect: cells[position],
-                cornerRadius: MultiviewGeometry.cornerRadius(for: player.layout, position: position),
-                isVisible: true,
-                isElevated: player.layout == .pictureInPicture && position == 1,
-                zIndex: position == 0 ? 0 : 1
-            )
-        case .preview, .mini, .hidden:
-            let isMain = position == 0
-            // Park idle slots (and everything when hidden) off-screen. SwiftUI `opacity`/`zIndex` don't reach
-            // embedded AppKit views, so an "invisible" video view would still cover or swallow clicks.
-            guard isMain, mode != .hidden else {
-                return PlayerSlotPlacement(rect: MultiviewGeometry.parkedRect(in: bounds), cornerRadius: 12, isVisible: false)
-            }
-            return PlayerSlotPlacement(
-                rect: compact,
-                cornerRadius: mode == .mini ? 14 : 12,
-                isVisible: isMain && mode != .hidden,
-                isElevated: isMain && mode == .mini,
-                zIndex: isMain ? 1 : 0
-            )
+            return PlayerSlotPlacement(rect: bounds, cornerRadius: 0, isVisible: true)
+        case .preview, .mini:
+            return PlayerSlotPlacement(rect: compact, cornerRadius: mode == .mini ? 14 : 12,
+                                       isVisible: true, isElevated: mode == .mini, zIndex: 1)
+        case .hidden:
+            // Parked off-screen: SwiftUI `opacity`/`zIndex` don't reach embedded AppKit views, so an "invisible"
+            // video view would still cover or swallow clicks.
+            return PlayerSlotPlacement(rect: PlayerStageGeometry.parkedRect(in: bounds), cornerRadius: 12, isVisible: false)
         }
     }
 
     // MARK: - Actions
 
-    /// Closes a multiview cell. Closing the main cell promotes the next playing cell (or stops playback).
-    private func close(_ slot: PlayerSlot) {
-        let player = model.player
-        guard let position = player.order.firstIndex(of: slot.id) else { return }
-        if position == 0 {
-            guard let next = (1..<player.layout.slotCount).first(where: { player.slot(at: $0).item != nil }) else {
-                model.stopPlayback()
-                return
-            }
-            player.promote(position: next)
-        }
-        slot.stop()
-        if player.layout == .pictureInPicture, player.slot(at: 1).item == nil {
-            player.layout = .single
-        }
-    }
-
-    /// The main slot was stopped while the player covers the window.
+    /// The video was stopped while the player covers the window.
     private func recoverFromEmptyMain() {
-        let player = model.player
-        guard player.isFullWindow, !player.hasMedia else { return }
-        if let next = (1..<player.layout.slotCount).first(where: { player.slot(at: $0).item != nil }) {
-            player.promote(position: next)
-        } else {
-            model.exitFullWindow()
-        }
+        guard model.player.isFullWindow, !model.player.hasMedia else { return }
+        model.exitFullWindow()
     }
 
     private func flashZapBanner() {
@@ -407,12 +379,6 @@ struct PlayerHost: View {
 }
 
 // MARK: - Video surface
-
-private struct PlayerStageAnimationKey: Equatable {
-    var mode: PlayerPresentationMode
-    var layout: MultiviewLayout
-    var order: [Int]
-}
 
 /// One slot's engine view, placed on the stage. Not hit-testable; interaction lives in the overlays above.
 private struct PlayerVideoSurface: View {

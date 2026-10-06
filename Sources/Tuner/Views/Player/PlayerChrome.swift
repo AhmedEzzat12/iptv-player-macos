@@ -32,10 +32,19 @@ final class PlayerChromeController {
         touch()
     }
 
+    // Touch screens answer a tap faster than the Mac's pointer-driven fades (as in the TV app on iPhone).
+    #if os(macOS)
+    private static let showDuration = 0.25
+    private static let hideDuration = 0.45
+    #else
+    private static let showDuration = 0.18
+    private static let hideDuration = 0.25
+    #endif
+
     /// Activity: shows the chrome and restarts the hide timer.
     func touch() {
         lastActivity = Date()
-        if !isVisible { withAnimation(.easeOut(duration: 0.25)) { isVisible = true } }
+        if !isVisible { withAnimation(.easeOut(duration: Self.showDuration)) { isVisible = true } }
     }
 
     /// Click on the video.
@@ -51,7 +60,7 @@ final class PlayerChromeController {
 
     func hide() {
         guard isVisible else { return }
-        withAnimation(.easeInOut(duration: 0.45)) { isVisible = false }
+        withAnimation(.easeInOut(duration: Self.hideDuration)) { isVisible = false }
     }
 
     func reset() {
@@ -145,7 +154,7 @@ private struct PlayerTopBar: View {
         @Bindable var player = model.player
         // Engine switches change PiP/AirPlay availability; `viewToken`/`phase` make this view re-evaluate.
         let _ = (slot.viewToken, slot.phase)
-        let stopsOnExit = slot.item?.isLive == false && player.layout == .single
+        let stopsOnExit = slot.item?.isLive == false
 
         HStack(spacing: 10) {
             Button(action: leavePlayer) {
@@ -157,21 +166,6 @@ private struct PlayerTopBar: View {
 
             Spacer(minLength: 12)
 
-            if !phone {
-            Menu {
-                Picker("Layout", selection: $player.layout) {
-                    ForEach(MultiviewLayout.allCases) { layout in
-                        Label(layout.title, systemImage: layout.symbol).tag(layout)
-                    }
-                }
-                .pickerStyle(.inline)
-                .labelsHidden()
-            } label: {
-                PlayerGlassSymbol(symbol: "rectangle.split.2x2", size: 40)
-            }
-            .playerMenuStyle()
-            .help("Multiview Layout")
-            }
 
             if slot.isPictureInPicturePossible {
                 let active = slot.isPictureInPictureActive

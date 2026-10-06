@@ -413,33 +413,6 @@ final class AppModel {
         enterFullWindow()
     }
 
-    /// Sends a channel to the next multiview cell (switching layout if needed).
-    func playInMultiview(_ channel: Channel) {
-        warnIfOverConnectionLimit(adding: channel)
-        let count = max(player.layout.slotCount, 1)
-        let free = (1..<4).first { $0 >= count ? false : player.slot(at: $0).item == nil }
-        if let free {
-            player.play(.channel(channel), at: free)
-        } else if player.layout == .single {
-            player.layout = .pictureInPicture
-            player.play(.channel(channel), at: 1)
-        } else {
-            if player.layout != .grid2x2 && player.layout != .bigAndBottom { player.layout = .grid2x2 }
-            let target = (1..<4).first { player.slot(at: $0).item == nil } ?? 3
-            player.play(.channel(channel), at: target)
-        }
-    }
-
-    /// Many accounts allow a single stream; a second simultaneous stream from the same playlist usually fails.
-    private func warnIfOverConnectionLimit(adding channel: Channel) {
-        guard let source = sources.first(where: { $0.id == channel.sourceId }), let max = source.maxConnections, max > 0 else { return }
-        let inUse = player.slots.filter { $0.item?.channel?.sourceId == source.id && $0.phase.isActive }.count
-        if inUse + 1 > max {
-            notify(Banner(symbol: "exclamationmark.triangle.fill", title: "\(source.name) allows \(max) stream\(max == 1 ? "" : "s") at a time",
-                          message: "Watching more channels from this playlist at once may fail or stop the other stream.", isError: true))
-        }
-    }
-
     func playNextEpisode(after episode: Episode, in series: Series) async {
         await playEpisode(EpisodeNavigation.neighbor(of: episode.id, in: await episodes(of: series), offset: 1), in: series)
     }
@@ -564,7 +537,7 @@ final class AppModel {
         player.isFullWindow = false
         player.isEpisodeListOpen = false
         // Leaving finite media stops it (progress is saved), like the TV app; live keeps playing in the mini player.
-        if let item = player.main.item, !item.isLive, player.layout == .single {
+        if let item = player.main.item, !item.isLive {
             player.main.stop()
         }
     }

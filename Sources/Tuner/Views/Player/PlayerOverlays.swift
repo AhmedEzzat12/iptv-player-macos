@@ -48,7 +48,7 @@ struct PlayerStatusOverlay: View {
 enum PlayerOverlayDensity {
     case regular
     case compact
-    /// Bottom-row multiview cells, tiny previews.
+    /// Tiny previews.
     case tiny
 
     init(_ size: CGSize) {

@@ -528,7 +528,6 @@ private struct LiveGuideProgramCell: View {
                     Label("Play from Start", systemImage: "backward.end")
                 }
             }
-            Button { model.playInMultiview(channel) } label: { Label("Add to Multiview", systemImage: "square.grid.2x2") }
             Divider()
             if model.isRecording(channel) {
                 Button {} label: { Label("Recording", systemImage: "record.circle.fill") }.disabled(true)
@@ -754,9 +753,6 @@ struct LiveGuideChannelMenu: View {
                 model.play(channel, fullWindow: true)
             } label: {
                 Label("Play Full Screen", systemImage: "arrow.up.left.and.arrow.down.right")
-            }
-            Button { model.playInMultiview(channel) } label: {
-                Label("Add to Multiview", systemImage: "square.grid.2x2")
             }
             Divider()
         }

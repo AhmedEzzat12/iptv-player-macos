@@ -390,7 +390,7 @@ struct SettingsAboutPane: View {
                         .shadow(color: .black.opacity(0.3), radius: 8, y: 4)
                     Text("Tuner").font(.system(size: 26, weight: .bold))
                     Text(Self.versionString).font(.callout).foregroundStyle(.secondary).textSelection(.enabled)
-                    Text("Live TV, movies and shows from your IPTV playlists — with a program guide, catch-up, multiview and recording.")
+                    Text("Live TV, movies and shows from your IPTV playlists — with a program guide, catch-up, downloads and recording.")
                         .font(.callout)
                         .multilineTextAlignment(.center)
                         .foregroundStyle(.secondary)
