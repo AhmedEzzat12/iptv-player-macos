@@ -7,13 +7,15 @@ import UIKit
 struct SlotVideoView: View {
     let slot: PlayerSlot
     var cornerRadius: CGFloat = 0
-    /// Floating presentation (mini player, picture-in-picture inset): casts a soft shadow.
+    /// Floating presentation (mini player): casts a soft shadow.
     var isElevated = false
+    /// Nothing to show: hides the UIView itself.
+    var isHidden = false
 
     var body: some View {
         // Reading `viewToken` makes SwiftUI re-run update when the slot switches engines.
         VideoContainerRepresentable(view: slot.activeView, token: slot.viewToken,
-                                    cornerRadius: cornerRadius, isElevated: isElevated)
+                                    cornerRadius: cornerRadius, isElevated: isElevated, isHidden: isHidden)
     }
 }
 
@@ -22,6 +24,7 @@ private struct VideoContainerRepresentable: UIViewRepresentable {
     let token: Int
     let cornerRadius: CGFloat
     let isElevated: Bool
+    let isHidden: Bool
 
     func makeUIView(context: Context) -> VideoContainerView {
         let container = VideoContainerView()
@@ -37,6 +40,7 @@ private struct VideoContainerRepresentable: UIViewRepresentable {
         container.host(view)
         container.setCornerRadius(cornerRadius)
         container.setElevated(isElevated)
+        if container.isHidden != isHidden { container.isHidden = isHidden }
     }
 }
 

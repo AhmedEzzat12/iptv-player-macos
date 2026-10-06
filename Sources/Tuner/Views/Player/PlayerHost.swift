@@ -279,29 +279,39 @@ struct PlayerHost: View {
     /// springs back). Up in portrait: full screen (landscape). Mostly-horizontal drags (the scrubber) are ignored,
     /// and so are drags while the episode list (which scrolls) is open.
     private func swipeGesture(height: CGFloat) -> some Gesture {
-        DragGesture(minimumDistance: 14)
+        // Global coordinates: the stage moves with the finger, so a local translation would chase its own offset
+        // (that feedback loop made the swipe stutter).
+        DragGesture(minimumDistance: 14, coordinateSpace: .global)
             .onChanged { value in
                 guard !model.player.isEpisodeListOpen, value.translation.height > 0,
-                      value.translation.height > abs(value.translation.width) * 1.2, !isLandscape else { return }
-                dismissOffset = value.translation.height
+                      value.translation.height > abs(value.translation.width) * 1.2 else { return }
+                // Landscape: a little give (the swipe returns to portrait); portrait: the video follows the finger.
+                dismissOffset = isLandscape ? min(value.translation.height * 0.35, 60) : value.translation.height
             }
             .onEnded { value in
-                defer { withAnimation(.spring(response: 0.3, dampingFraction: 0.86)) { dismissOffset = 0 } }
                 let dy = value.translation.height
-                guard !model.player.isEpisodeListOpen, abs(dy) > abs(value.translation.width) * 1.2 else { return }
                 let flick = value.predictedEndTranslation.height
-                #if os(iOS)
-                if isLandscape {
-                    if dy > 50 || flick > 160 { PlayerOrientation.setLandscape(false) }
-                    return
+                let vertical = abs(dy) > abs(value.translation.width) * 1.2
+                var closing = false
+                if vertical, !model.player.isEpisodeListOpen {
+                    #if os(iOS)
+                    if isLandscape {
+                        if dy > 40 || flick > 140 { PlayerOrientation.setLandscape(false) }
+                    } else if dy < -40 || flick < -140 {
+                        PlayerOrientation.setLandscape(true)
+                    } else if dy > height * 0.22 || (dy > 30 && flick > height * 0.4) {
+                        closing = true
+                    }
+                    #else
+                    closing = dy > height * 0.22 || (dy > 30 && flick > height * 0.4)
+                    #endif
                 }
-                if dy < -50 || flick < -160 {
-                    PlayerOrientation.setLandscape(true)
-                    return
-                }
-                #endif
-                if dy > height * 0.25 || (dy > 40 && flick > height * 0.45) {
+                if closing {
+                    // No spring back: the player shrinks into the mini player (or stops) from where it is.
                     model.exitFullWindow()
+                    dismissOffset = 0
+                } else {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.86)) { dismissOffset = 0 }
                 }
             }
     }
@@ -336,9 +346,10 @@ struct PlayerHost: View {
             return PlayerSlotPlacement(rect: compact, cornerRadius: mode == .mini ? 14 : 12,
                                        isVisible: true, isElevated: mode == .mini, zIndex: 1)
         case .hidden:
-            // Parked off-screen: SwiftUI `opacity`/`zIndex` don't reach embedded AppKit views, so an "invisible"
-            // video view would still cover or swallow clicks.
-            return PlayerSlotPlacement(rect: PlayerStageGeometry.parkedRect(in: bounds), cornerRadius: 12, isVisible: false)
+            // Waits, hidden, where it will appear (the guide preview or the mini player), so starting playback
+            // doesn't fly it in from elsewhere. Hidden for real (`isHidden` on the platform view): SwiftUI `opacity`
+            // doesn't reach embedded AppKit views, so an "invisible" one would still cover or swallow clicks.
+            return PlayerSlotPlacement(rect: compact, cornerRadius: 12, isVisible: false)
         }
     }
 
@@ -386,7 +397,8 @@ private struct PlayerVideoSurface: View {
     let placement: PlayerSlotPlacement
 
     var body: some View {
-        SlotVideoView(slot: slot, cornerRadius: placement.cornerRadius, isElevated: placement.isElevated && placement.isVisible)
+        SlotVideoView(slot: slot, cornerRadius: placement.cornerRadius, isElevated: placement.isElevated && placement.isVisible,
+                      isHidden: !placement.isVisible)
             .frame(width: max(placement.rect.width, 1), height: max(placement.rect.height, 1))
             .position(x: placement.rect.midX, y: placement.rect.midY)
             .opacity(placement.isVisible ? 1 : 0)

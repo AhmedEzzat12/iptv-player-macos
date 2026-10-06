@@ -15,7 +15,8 @@ struct PlayerVideoOverlay: View {
     #if !os(macOS)
     /// Touch: the previous tap (for YouTube-style double tap to seek) and the seek indicator.
     @ViewState private var lastTap: (date: Date, side: Int)?
-    @ViewState private var isSeekStreak = false
+    /// An edge tap's show/hide, held back briefly in case a second tap makes it a seek.
+    @ViewState private var pendingTap: Task<Void, Never>?
     @ViewState private var seekFeedback: (side: Int, token: Int)?
     #endif
 
@@ -67,26 +68,39 @@ struct PlayerVideoOverlay: View {
     }
 
     #if !os(macOS)
-    /// Single tap: as a click, at once. A second tap within 0.3 s on the same outer third seeks −10/+10 s (and undoes
-    /// the first tap's chrome toggle); further quick taps keep seeking.
+    /// How long an edge tap waits for a second tap (iOS's own double-tap interval is about this).
+    private static let doubleTapWindow: Duration = .milliseconds(250)
+
+    /// YouTube-style: a tap in the middle shows/hides the controls at once. A tap on the left/right third waits a
+    /// moment: a second tap there seeks −10/+10 s instead (the controls stay as they were, so the second tap can't
+    /// land on a just-shown button), and further quick taps keep seeking.
     private func touchTapped(at location: CGPoint) {
         let side = location.x < size.width / 3 ? -1 : (location.x > size.width * 2 / 3 ? 1 : 0)
         let now = Date()
+        let canSeek = side != 0 && slot.canSeek && slot.item?.isLive == false && !model.player.isEpisodeListOpen
         defer { lastTap = (now, side) }
-        if side != 0, slot.canSeek, slot.item?.isLive == false, !model.player.isEpisodeListOpen,
-           let last = lastTap, last.side == side, now.timeIntervalSince(last.date) < 0.3 {
-            if !isSeekStreak {
-                chrome.toggle() // undo the first tap's show/hide
-                isSeekStreak = true
-            }
+
+        if canSeek, let last = lastTap, last.side == side, now.timeIntervalSince(last.date) < 0.35 {
+            pendingTap?.cancel()
+            pendingTap = nil
             slot.seek(by: Double(side) * 10)
             withAnimation(.easeOut(duration: 0.12)) {
                 seekFeedback = (side, (seekFeedback?.token ?? 0) + 1)
             }
             return
         }
-        isSeekStreak = false
-        tapped()
+        pendingTap?.cancel()
+        guard canSeek else {
+            pendingTap = nil
+            tapped()
+            return
+        }
+        pendingTap = Task { @MainActor in
+            try? await Task.sleep(for: Self.doubleTapWindow)
+            guard !Task.isCancelled else { return }
+            pendingTap = nil
+            tapped()
+        }
     }
 
     private func seekIndicator(side: Int) -> some View {
@@ -103,12 +117,4 @@ struct PlayerVideoOverlay: View {
         .frame(maxHeight: .infinity)
     }
     #endif
-}
-
-/// Where the idle video view waits while nothing is shown: a 1×1 rect just outside the stage. Must not overlap
-/// content, because SwiftUI opacity doesn't hide embedded AppKit views.
-enum PlayerStageGeometry {
-    static func parkedRect(in bounds: CGRect) -> CGRect {
-        CGRect(x: bounds.minX - 4, y: bounds.minY - 4, width: 1, height: 1)
-    }
 }

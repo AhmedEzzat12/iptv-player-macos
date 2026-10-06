@@ -12,11 +12,13 @@ struct SlotVideoView: View {
     var cornerRadius: CGFloat = 0
     /// Floating presentation (mini player, PiP inset): casts a soft shadow.
     var isElevated = false
+    /// Nothing to show: hides the AppKit view itself (SwiftUI opacity doesn't reach it).
+    var isHidden = false
 
     var body: some View {
         // Reading `viewToken` makes SwiftUI re-run update when the slot switches engines.
         VideoContainerRepresentable(view: slot.activeView, token: slot.viewToken,
-                                    cornerRadius: cornerRadius, isElevated: isElevated)
+                                    cornerRadius: cornerRadius, isElevated: isElevated, isHidden: isHidden)
     }
 }
 
@@ -25,6 +27,7 @@ private struct VideoContainerRepresentable: NSViewRepresentable {
     let token: Int
     let cornerRadius: CGFloat
     let isElevated: Bool
+    let isHidden: Bool
 
     func makeNSView(context: Context) -> VideoContainerView {
         let container = VideoContainerView()
@@ -40,6 +43,7 @@ private struct VideoContainerRepresentable: NSViewRepresentable {
         container.host(view)
         container.setCornerRadius(cornerRadius)
         container.setElevated(isElevated)
+        if container.isHidden != isHidden { container.isHidden = isHidden }
     }
 }
 

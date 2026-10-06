@@ -74,6 +74,11 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         bar.compactAppearance = appearance
     }
 
+    /// iPhone: portrait while browsing, the player's choice while it's full screen (see `PlayerOrientation`).
+    func application(_ application: UIApplication, supportedInterfaceOrientationsFor window: UIWindow?) -> UIInterfaceOrientationMask {
+        UIDevice.current.userInterfaceIdiom == .phone ? PlayerOrientation.mask : .all
+    }
+
     func applicationWillTerminate(_ application: UIApplication) {
         model?.shutdown()
     }

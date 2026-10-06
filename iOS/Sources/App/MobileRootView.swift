@@ -62,9 +62,9 @@ struct MobileRootView: View {
                     SourceEditorView(request: request).environment(model)
                 }
         }
-        // Leaving the player undoes a landscape switch it made (never stuck in landscape with rotation lock on).
+        // iPhone: the full-screen player follows rotation (and the full-screen button); browsing stays portrait.
         .onChange(of: model.player.isFullWindow) { _, full in
-            if !full { PlayerOrientation.restorePortraitIfForced() }
+            if full { PlayerOrientation.playerOpened() } else { PlayerOrientation.playerClosed() }
         }
         .task { await model.start() }
         #if DEBUG
