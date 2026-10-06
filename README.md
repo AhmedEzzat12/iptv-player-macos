@@ -32,7 +32,9 @@ Blender Foundation open movies (CC BY). No provider content is shown.</sub>
 - **Guide:** XMLTV (gzip, multi-member), provider guides (Xtream `xmltv.php`, M3U `url-tvg`, Stalker), extra and
   global feeds, automatic matching by tvg-id or normalised name, per-source time shift, programme search, reminders
   with auto-switch.
-- **Movies & TV Shows:** browsing with posters, details, seasons/episodes, resume and Continue Watching. Trailers
+- **Movies & TV Shows:** browsing with posters, details, seasons/episodes, resume and Continue Watching. Each page
+  shows the playlist's own title (also under a title logo from online metadata) and where it's listed
+  (Playlist › Category). Trailers
   play inside the app (YouTube's official embedded player, or Apple's player for direct links).
 - **Episodes in the player:** ⏮/⏭ previous/next episode (across seasons; ⌘⇧←/→), an Episodes panel to jump to any
   episode with its picture, progress and **IMDb rating**, and a Netflix-style "Up Next" countdown (Off/5–30 s in
@@ -65,18 +67,46 @@ Blender Foundation open movies (CC BY). No provider content is shown.</sub>
 
 ## Install
 
-Download `Tuner.zip` from the [latest release](../../releases/latest), unzip it and move `Tuner.app` to
-Applications. From then on Tuner updates itself.
-
-The app is free and open source but not notarized by Apple (that needs a paid developer account), so macOS blocks
-the first launch of a copy downloaded in a browser. Either click **Open Anyway** in System Settings → Privacy &
-Security, or remove the download's quarantine flag once:
+**Recommended** — one command in Terminal installs the latest release into Applications and opens it:
 
 ```bash
-xattr -dr com.apple.quarantine /Applications/Tuner.app
+curl -fsSL https://raw.githubusercontent.com/AhmedEzzat12/iptv-player-macos/main/scripts/install-latest.sh | bash
 ```
 
-Updates installed by the app itself aren't blocked.
+Run the same command again any time to reinstall. After that the app updates itself (Tuner → Check for Updates…,
+Settings → About). Optional: `brew install mpv` (MKV and raw MPEG-TS streams) and `brew install ffmpeg` (recordings).
+
+**Or build from source** — for Macs where downloaded apps are blocked by an organization's profile, or to run
+unreleased changes. Needs the Command Line Tools (`xcode-select --install`):
+
+```bash
+git clone https://github.com/AhmedEzzat12/iptv-player-macos.git
+cd iptv-player-macos
+scripts/update-from-source.sh          # latest release
+scripts/update-from-source.sh --main   # or: newest code on main
+```
+
+It builds in a temporary checkout (deleted afterwards, even on failure or Ctrl-C), replaces any installed copy, installs
+the new build into `~/Applications` and opens it. Your library and settings are kept. Source builds don't update
+themselves — run the script again to update.
+
+**Or download manually:** get `Tuner.zip` from the [latest release](../../releases/latest), unzip it and move
+`Tuner.app` to Applications. The first launch will be blocked — see below.
+
+### "Tuner.app" Not Opened / "Apple could not verify…"
+
+The app is free and open source but not notarized by Apple (that needs a paid developer account), so macOS blocks
+copies downloaded in a browser. Any **one** of these fixes it, and you only need it once — updates installed by the
+app itself aren't blocked:
+
+1. **System Settings:** click **Done** on the warning, open **System Settings → Privacy & Security**, scroll to
+   *Security*, click **Open Anyway** next to "Tuner.app was blocked", and confirm with your password.
+2. **Terminal:** remove the download's quarantine flag, then open the app normally:
+   ```bash
+   xattr -dr com.apple.quarantine /Applications/Tuner.app
+   ```
+3. **Reinstall with the one-command installer above** — `curl` downloads aren't quarantined, so the warning never
+   appears.
 
 ## Requirements
 

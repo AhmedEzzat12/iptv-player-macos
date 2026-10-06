@@ -460,6 +460,8 @@ struct VODTitleArtwork: View {
     var fontSize: CGFloat = 38
     var maxLogoWidth: CGFloat = 420
     var maxLogoHeight: CGFloat = 110
+    /// Also show `title` as text under the logo, so the playlist's own name stays visible (detail pages).
+    var showsTitleUnderLogo = false
 
     @ViewState private var logo: NSImage?
 
@@ -467,14 +469,24 @@ struct VODTitleArtwork: View {
         Group {
             if let logo, logo.size.width > 0, logo.size.height > 0 {
                 let size = fittedSize(logo.size)
-                Image(nsImage: logo)
-                    .resizable()
-                    .interpolation(.high)
-                    .frame(width: size.width, height: size.height)
-                    .shadow(color: .black.opacity(0.45), radius: 12)
-                    .accessibilityRemoveTraits(.isImage)
-                    .accessibilityLabel(title)
-                    .transition(.opacity)
+                VStack(alignment: .leading, spacing: 8) {
+                    Image(nsImage: logo)
+                        .resizable()
+                        .interpolation(.high)
+                        .frame(width: size.width, height: size.height)
+                        .shadow(color: .black.opacity(0.45), radius: 12)
+                        .accessibilityRemoveTraits(.isImage)
+                        .accessibilityLabel(title)
+                    if showsTitleUnderLogo {
+                        Text(title)
+                            .font(.title3.weight(.semibold))
+                            .lineLimit(2)
+                            .textSelection(.enabled)
+                            .shadow(color: .black.opacity(0.35), radius: 6)
+                            .accessibilityHidden(true)
+                    }
+                }
+                .transition(.opacity)
             } else {
                 Text(title)
                     .font(.system(size: fontSize, weight: .bold))

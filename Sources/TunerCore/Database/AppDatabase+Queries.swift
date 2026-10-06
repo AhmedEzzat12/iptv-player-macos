@@ -159,6 +159,18 @@ extension AppDatabase {
         }
     }
 
+    /// One category by id, with the user's alias (detail pages show where a title sits in its playlist).
+    public func category(id: String) async throws -> Category? {
+        try await writer.read { db in
+            try Category.fetchOne(db, sql: """
+                SELECT cat.*, cp.isHidden, cp.alias, cp.sortIndex
+                FROM category cat
+                LEFT JOIN categoryPref cp ON cp.categoryId = cat.id
+                WHERE cat.id = ?
+                """, arguments: [id])
+        }
+    }
+
     /// How many of a source's channels have guide data (resolved EPG key).
     public func guideCoverage(sourceId: String) async throws -> (channels: Int, withGuide: Int) {
         try await writer.read { db in

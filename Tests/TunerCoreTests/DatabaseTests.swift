@@ -131,6 +131,22 @@ struct VODDetailTests {
     }
 }
 
+@Suite("Database categories")
+struct CategoryLookupTests {
+    @Test func categoryByIdIncludesTheAlias() async throws {
+        let db = try AppDatabase.inMemory()
+        try await db.save(Source(id: "x", name: "X", kind: .xtream, url: "http://x"))
+        let category = Category(id: "x_movie_7", sourceId: "x", kind: .movie, name: "EN | Action", providerOrder: 0)
+        let movie = Movie(id: "x_vod_1", sourceId: "x", categoryId: category.id, name: "M", providerId: "1", providerOrder: 0)
+        try await db.replaceMovies(sourceId: "x", categories: [category], movies: [movie])
+        #expect(try await db.category(id: category.id)?.name == "EN | Action")
+        #expect(try await db.category(id: category.id)?.alias == nil)
+        try await db.setCategoryAlias(categoryId: category.id, "Action")
+        #expect(try await db.category(id: category.id)?.alias == "Action")
+        #expect(try await db.category(id: "missing") == nil)
+    }
+}
+
 @Suite("Migrations")
 struct MigrationTests {
     @Test func v3MarksCachedSeriesMetadataStale() throws {

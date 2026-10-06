@@ -59,6 +59,20 @@ fi
 echo "Release notes:"; cat "$NOTES"
 scripts/make-appcast.sh "$VERSION" "$BUILD_NUMBER" "$ZIP" "$NOTES"
 
-gh release create "$TAG" "$ZIP" build/appcast.xml \
-  --target "$(git rev-parse HEAD)" --title "Tuner $VERSION" --notes-file "$NOTES"
-echo "Published $TAG"
+# Uploads sometimes stall (HTTP 408). gh removes a release whose upload failed, so trying again is safe.
+for attempt in 1 2 3; do
+  if gh release create "$TAG" "$ZIP" build/appcast.xml \
+       --target "$(git rev-parse HEAD)" --title "Tuner $VERSION" --notes-file "$NOTES"; then
+    echo "Published $TAG"
+    exit 0
+  fi
+  if gh release view "$TAG" >/dev/null 2>&1; then
+    # Created but an asset didn't make it: upload both again.
+    gh release upload "$TAG" "$ZIP" build/appcast.xml --clobber && { echo "Published $TAG"; exit 0; }
+  fi
+  echo "Publishing failed (attempt $attempt of 3); trying again in 15 s…" >&2
+  sleep 15
+done
+echo "Couldn't publish $TAG. build/Tuner.zip and build/appcast.xml are ready; to try again without rebuilding:" >&2
+echo "  gh release create $TAG $ZIP build/appcast.xml --target $(git rev-parse HEAD) --title \"Tuner $VERSION\" --notes-file $NOTES" >&2
+exit 1
