@@ -11,6 +11,7 @@ struct SeriesDetailView: View {
     @Environment(AppModel.self) private var model
     @ViewState private var series: Series
     @ViewState private var info: MediaMetadata?
+    @ViewState private var category: TunerCore.Category?
     @ViewState private var episodes: [Episode] = []
     @ViewState private var phase: SeriesEpisodesPhase = .loading
     /// Season chosen by the user; otherwise the page follows the next-up episode.
@@ -62,6 +63,7 @@ struct SeriesDetailView: View {
                     backdropURLs: [series.backdropURL, info?.backdropURL],
                     posterURL: series.coverURL?.nilIfEmpty ?? info?.posterURL?.nilIfEmpty,
                     logoURL: info?.logoURL,
+                    origin: VODOrigin.text(playlist: VODOrigin.playlist(model, sourceId: series.sourceId), category: category),
                     symbol: "tv",
                     metadata: metadata,
                     rating: VODEnrichment.rating(provider: series.rating, metadata: info),
@@ -104,6 +106,9 @@ struct SeriesDetailView: View {
         .task(id: SeriesEpisodesLoadKey(token: reloadToken, offline: model.isOffline)) { await loadEpisodes() }
         .task(id: VODMetadataTaskKey(id: series.id, settings: model.prefs.metadataSettings)) { await loadMetadata() }
         .task(id: model.userRevision) { await loadUserState() }
+        .task(id: series.categoryId) {
+            category = if let id = series.categoryId { try? await model.db.category(id: id) } else { nil }
+        }
         .confirmationDialog("Mark earlier episodes as watched too?",
                             isPresented: Binding(get: { earlierPrompt != nil }, set: { if !$0 { earlierPrompt = nil } }),
                             titleVisibility: .visible, presenting: earlierPrompt) { prompt in
@@ -214,7 +219,7 @@ struct SeriesDetailView: View {
         if !genres.isEmpty { rows.append((genres.count > 1 ? "Genres" : "Genre", genres.joined(separator: ", "))) }
         if let v = VODEnrichment.date(series.releaseDate?.nilIfEmpty ?? info?.releaseDate) { rows.append(("First Aired", v)) }
         if let v = info?.country?.nilIfEmpty { rows.append(("Country", v)) }
-        if let name = model.sources.first(where: { $0.id == series.sourceId })?.name { rows.append(("Playlist", name)) }
+        rows += VODOrigin.rows(playlist: VODOrigin.playlist(model, sourceId: series.sourceId), category: category)
         return rows
     }
 

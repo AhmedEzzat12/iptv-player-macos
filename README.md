@@ -32,7 +32,9 @@ Blender Foundation open movies (CC BY). No provider content is shown.</sub>
 - **Guide:** XMLTV (gzip, multi-member), provider guides (Xtream `xmltv.php`, M3U `url-tvg`, Stalker), extra and
   global feeds, automatic matching by tvg-id or normalised name, per-source time shift, programme search, reminders
   with auto-switch.
-- **Movies & TV Shows:** browsing with posters, details, seasons/episodes, resume and Continue Watching. Trailers
+- **Movies & TV Shows:** browsing with posters, details, seasons/episodes, resume and Continue Watching. Each page
+  shows the playlist's own title (also under a title logo from online metadata) and where it's listed
+  (Playlist › Category). Trailers
   play inside the app (YouTube's official embedded player, or Apple's player for direct links).
 - **Episodes in the player:** ⏮/⏭ previous/next episode (across seasons; ⌘⇧←/→), an Episodes panel to jump to any
   episode with its picture, progress and **IMDb rating**, and a Netflix-style "Up Next" countdown (Off/5–30 s in

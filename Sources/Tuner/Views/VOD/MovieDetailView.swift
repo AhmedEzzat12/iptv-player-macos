@@ -9,6 +9,7 @@ struct MovieDetailView: View {
     @Environment(AppModel.self) private var model
     @ViewState private var movie: Movie
     @ViewState private var info: MediaMetadata?
+    @ViewState private var category: TunerCore.Category?
     @ViewState private var progress: WatchProgress?
     @ViewState private var isFavorite = false
     @ViewState private var loadingDetails = false
@@ -36,6 +37,7 @@ struct MovieDetailView: View {
                     backdropURLs: [movie.backdropURL, info?.backdropURL],
                     posterURL: movie.posterURL?.nilIfEmpty ?? info?.posterURL?.nilIfEmpty,
                     logoURL: info?.logoURL,
+                    origin: VODOrigin.text(playlist: VODOrigin.playlist(model, sourceId: movie.sourceId), category: category),
                     symbol: "film",
                     metadata: metadata,
                     rating: VODEnrichment.rating(provider: movie.rating, metadata: info),
@@ -87,6 +89,9 @@ struct MovieDetailView: View {
         .task(id: MovieDetailLoadKey(id: movie.id, offline: model.isOffline)) { await loadDetails() }
         .task(id: VODMetadataTaskKey(id: movie.id, settings: model.prefs.metadataSettings)) { await loadMetadata() }
         .task(id: model.userRevision) { await loadUserState() }
+        .task(id: movie.categoryId) {
+            category = if let id = movie.categoryId { try? await model.db.category(id: id) } else { nil }
+        }
     }
 
     // MARK: Content
@@ -115,7 +120,7 @@ struct MovieDetailView: View {
         if let d = VODEnrichment.runtimeSeconds(provider: movie.durationSeconds, metadata: info) { rows.append(("Duration", Fmt.duration(Double(d)))) }
         if let v = info?.country?.nilIfEmpty { rows.append(("Country", v)) }
         if let ext = movie.containerExtension?.nilIfEmpty { rows.append(("Format", ext.uppercased())) }
-        if let name = model.sources.first(where: { $0.id == movie.sourceId })?.name { rows.append(("Playlist", name)) }
+        rows += VODOrigin.rows(playlist: VODOrigin.playlist(model, sourceId: movie.sourceId), category: category)
         return rows
     }
 
@@ -254,6 +259,33 @@ private struct MovieDetailLoadKey: Hashable {
 
 // MARK: - Shared detail pieces
 
+/// Where a movie or show comes from: its playlist and the category in it (under the user's alias, if any).
+@MainActor
+enum VODOrigin {
+    static func playlist(_ model: AppModel, sourceId: String) -> String? {
+        model.sources.first(where: { $0.id == sourceId })?.name.nilIfEmpty
+    }
+
+    static func categoryName(_ category: TunerCore.Category?) -> String? {
+        guard let category else { return nil }
+        return category.alias?.nilIfEmpty ?? category.name.nilIfEmpty
+    }
+
+    /// "Playlist › Category", or whichever part is known.
+    static func text(playlist: String?, category: TunerCore.Category?) -> String? {
+        let parts = [playlist, categoryName(category)].compactMap { $0 }
+        return parts.isEmpty ? nil : parts.joined(separator: " › ")
+    }
+
+    /// The About grid's Playlist and Category rows.
+    static func rows(playlist: String?, category: TunerCore.Category?) -> [(String, String)] {
+        var rows: [(String, String)] = []
+        if let playlist { rows.append(("Playlist", playlist)) }
+        if let name = categoryName(category) { rows.append(("Category", name)) }
+        return rows
+    }
+}
+
 /// How much room the hero's button row has (`ViewThatFits` tries them in order).
 enum VODActionDensity {
     case full
@@ -292,8 +324,10 @@ struct VODDetailHeader<Actions: View>: View {
     /// Backdrops in order of preference (see `VODBackdropArtwork`).
     let backdropURLs: [String?]
     let posterURL: String?
-    /// Transparent title artwork from online metadata, shown instead of the text title.
+    /// Transparent title artwork from online metadata, shown above the playlist's own title.
     var logoURL: String?
+    /// Where the title comes from: "Playlist › Category" (`VODOrigin`).
+    var origin: String?
     let symbol: String
     let metadata: [String]
     var rating: VODRating?
@@ -345,8 +379,16 @@ struct VODDetailHeader<Actions: View>: View {
                         logoURL: logoURL,
                         fontSize: 38,
                         maxLogoWidth: 420,
-                        maxLogoHeight: min(120, max(70, height * 0.2))
+                        maxLogoHeight: min(120, max(70, height * 0.2)),
+                        showsTitleUnderLogo: true
                     )
+                    if let origin {
+                        Label(origin, systemImage: "list.bullet.rectangle")
+                            .font(.callout)
+                            .foregroundStyle(.white.opacity(0.65))
+                            .lineLimit(1)
+                            .help("Playlist and category this title comes from")
+                    }
                     HStack(spacing: 8) {
                         if !metadata.isEmpty {
                             Text(metadata.joined(separator: " · "))
