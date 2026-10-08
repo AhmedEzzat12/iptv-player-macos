@@ -69,7 +69,8 @@ Blender Foundation open movies (CC BY). No provider content is shown.</sub>
   AirPods and Control Center's Now Playing control playback (next/previous = channel zap for live TV, next
   episode for shows).
 - **Search:** channels, what's on TV, movies and shows across all playlists; recent searches are kept (the ones you
-  pressed Return on, opened or played) and shown while the field is empty.
+  pressed Return on, opened or played) and shown while the field is empty. ⌘F on the Mac, or tapping the Search tab
+  again on iPhone/iPad, puts the cursor in the field.
 - **Recordings (Mac):** record now or schedule from the guide (ffmpeg stream copy).
 
 ## iPhone and iPad

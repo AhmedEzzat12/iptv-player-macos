@@ -11,6 +11,8 @@ struct SearchView: View {
             SearchContent()
                 .vodDestinations()
         }
+        // Back to the field from a movie or show page opened from the results.
+        .onChange(of: model.searchFocusRequest) { path.removeAll() }
         .onChange(of: path.count) { old, new in
             // Opening a movie or show from the results.
             if new > old { model.prefs.rememberSearch(model.searchQuery) }
@@ -52,6 +54,7 @@ private struct SearchContent: View {
         .scrollDismissesKeyboard(.immediately)
         .toolbar(.hidden, for: .navigationBar)
         #endif
+        .onChange(of: model.searchFocusRequest) { fieldFocused = true }
         .task(id: SearchKey(query: query, library: model.libraryRevision, guide: model.guideRevision)) {
             await runSearch(query)
         }

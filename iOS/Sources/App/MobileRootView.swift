@@ -107,7 +107,15 @@ struct MobileRootView: View {
         Binding(get: {
             let item = model.sidebarSelection ?? .home
             return item.showsLiveTV ? .liveTV : item
-        }, set: { model.sidebarSelection = $0 })
+        }, set: { item in
+            // Tapping Search while it's already open puts the cursor in its field (the first tap leaves the
+            // keyboard closed so the results and tab bar stay visible).
+            if item == .search, model.sidebarSelection == .search {
+                model.focusSearch()
+            } else {
+                model.sidebarSelection = item
+            }
+        })
     }
 }
 

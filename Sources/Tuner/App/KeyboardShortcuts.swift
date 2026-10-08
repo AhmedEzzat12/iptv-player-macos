@@ -318,7 +318,7 @@ final class KeyboardShortcuts {
         case .liveTV: model.sidebarSelection = .liveTV
         case .movies: model.sidebarSelection = .movies
         case .series: model.sidebarSelection = .series
-        case .search: model.sidebarSelection = .search
+        case .search: model.focusSearch()
         case .recordings: model.sidebarSelection = .recordings
         case .help: model.showShortcutHelp.toggle()
         }
@@ -347,7 +347,7 @@ struct TunerCommands: Commands {
             Button("TV Shows") { model.sidebarSelection = .series }.keyboardShortcut("4", modifiers: .command)
             Button("Recordings") { model.sidebarSelection = .recordings }.keyboardShortcut("5", modifiers: .command)
             Button("Downloads") { model.sidebarSelection = .downloads }.keyboardShortcut("6", modifiers: .command)
-            Button("Search") { model.sidebarSelection = .search }.keyboardShortcut("f", modifiers: .command)
+            Button("Search") { model.focusSearch() }.keyboardShortcut("f", modifiers: .command)
         }
         CommandMenu("Playback") {
             Button("Play/Pause") { model.player.main.togglePause() }

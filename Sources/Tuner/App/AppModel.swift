@@ -44,6 +44,8 @@ final class AppModel {
     /// Channel list shown in the Live TV guide.
     var liveScope: ChannelScope = .all
     var searchQuery = ""
+    /// Bumped to put the cursor in Search's field (⌘F, or tapping the Search tab again on iPhone/iPad).
+    private(set) var searchFocusRequest = 0
     var sourceEditor: SourceEditorRequest?
     var showShortcutHelp = false
     /// Trailer playing in the in-app trailer overlay (`TrailerOverlay`), if any.
@@ -530,6 +532,12 @@ final class AppModel {
     func enterFullWindow() {
         guard player.hasMedia else { return }
         player.isFullWindow = true
+    }
+
+    /// Opens Search with the cursor in its field.
+    func focusSearch() {
+        sidebarSelection = .search
+        searchFocusRequest += 1
     }
 
     func exitFullWindow() {
