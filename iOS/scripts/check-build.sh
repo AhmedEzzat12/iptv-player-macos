@@ -5,6 +5,10 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 export DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}"
+# Xcode writes MPVKit into the repo's Package.resolved (the Mac build doesn't use it): put the file back.
+RESOLVED_BACKUP="$(mktemp)"
+cp ../Package.resolved "$RESOLVED_BACKUP"
+trap 'cp "$RESOLVED_BACKUP" ../Package.resolved; rm -f "$RESOLVED_BACKUP"' EXIT
 xcodegen generate --quiet
 xcodebuild -project TunerIOS.xcodeproj -scheme TunerIOS -configuration Release \
   -destination 'generic/platform=iOS' -derivedDataPath ../.build/xcode-ios-check \

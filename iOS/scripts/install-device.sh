@@ -40,6 +40,12 @@ if [[ -z "$UDID" ]]; then
 fi
 echo "Installing on $UDID"
 
+# Xcode resolves the whole package graph and writes MPVKit into the repo's Package.resolved (the Mac build
+# doesn't use it): put the file back afterwards so the tree stays clean for scripts/release.sh.
+RESOLVED_BACKUP="$(mktemp)"
+cp ../Package.resolved "$RESOLVED_BACKUP"
+trap 'cp "$RESOLVED_BACKUP" ../Package.resolved; rm -f "$RESOLVED_BACKUP" "${LIST:-}"' EXIT
+
 xcodegen generate --quiet
 DERIVED="../.build/xcode-device"
 # Same version numbers as the Mac build (scripts/build-app.sh): VERSION file + commit count.
@@ -51,4 +57,7 @@ xcodebuild -project TunerIOS.xcodeproj -scheme TunerIOS -configuration Release \
   MARKETING_VERSION="$VERSION" CURRENT_PROJECT_VERSION="$BUILD" \
   build -quiet
 xcrun devicectl device install app --device "$UDID" "$DERIVED/Build/Products/Release-iphoneos/Tuner.app"
+# When this install expires is what iOS/scripts/resign-if-due.sh goes by.
+STAMP="$HOME/Library/Application Support/app.tuner.ios.resign/last-install"
+mkdir -p "$(dirname "$STAMP")" && date > "$STAMP"
 echo "Installed. With a free Personal Team, run this again within 7 days."
