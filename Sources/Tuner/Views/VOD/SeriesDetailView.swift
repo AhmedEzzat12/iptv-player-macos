@@ -314,37 +314,53 @@ struct SeriesDetailView: View {
     private var seasonPicker: some View {
         let list = seasons
         if list.count > 6 {
-            Menu {
-                ForEach(list, id: \.self) { s in
-                    Button(VODFormat.seasonTitle(s)) { pickedSeason = s }
-                }
-            } label: {
-                HStack(spacing: 6) {
-                    Text(selectedSeason.map(VODFormat.seasonTitle) ?? "Episodes")
-                        .font(.title2.weight(.bold))
-                    Image(systemName: "chevron.down")
-                        .font(.callout.weight(.bold))
-                        .foregroundStyle(.secondary)
-                }
-                .contentShape(Rectangle())
-            }
-            .menuStyle(.button)
-            .buttonStyle(.plain)
-            .menuIndicator(.hidden)
-            .fixedSize()
+            seasonMenu(list)
         } else if list.count > 1 {
-            Picker("Season", selection: Binding(get: { selectedSeason ?? list[0] }, set: { pickedSeason = $0 })) {
-                ForEach(list, id: \.self) { s in
-                    Text(VODFormat.seasonTitle(s)).tag(s)
+            if compact {
+                // A fixed-size segmented control wider than the phone would widen the whole page; use the menu then.
+                ViewThatFits(in: .horizontal) {
+                    seasonSegments(list)
+                    seasonMenu(list)
                 }
+            } else {
+                seasonSegments(list)
             }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            .fixedSize()
         } else {
             Text(list.first.map(VODFormat.seasonTitle) ?? "Episodes")
                 .font(.title2.weight(.bold))
         }
+    }
+
+    private func seasonMenu(_ list: [Int]) -> some View {
+        Menu {
+            ForEach(list, id: \.self) { s in
+                Button(VODFormat.seasonTitle(s)) { pickedSeason = s }
+            }
+        } label: {
+            HStack(spacing: 6) {
+                Text(selectedSeason.map(VODFormat.seasonTitle) ?? "Episodes")
+                    .font(.title2.weight(.bold))
+                Image(systemName: "chevron.down")
+                    .font(.callout.weight(.bold))
+                    .foregroundStyle(.secondary)
+            }
+            .contentShape(Rectangle())
+        }
+        .menuStyle(.button)
+        .buttonStyle(.plain)
+        .menuIndicator(.hidden)
+        .fixedSize()
+    }
+
+    private func seasonSegments(_ list: [Int]) -> some View {
+        Picker("Season", selection: Binding(get: { selectedSeason ?? list[0] }, set: { pickedSeason = $0 })) {
+            ForEach(list, id: \.self) { s in
+                Text(VODFormat.seasonTitle(s)).tag(s)
+            }
+        }
+        .pickerStyle(.segmented)
+        .labelsHidden()
+        .fixedSize()
     }
 
     // MARK: Downloads
