@@ -27,6 +27,10 @@ struct SettingsAIPane: View {
                     Text("Recommendations")
                     Text("“More Like This” on movie and show pages and “Because You Watched” rows on Home, worked out on this device from genres, cast, categories and plots.")
                 }
+                .onChange(of: prefs.aiRecommendations) { _, on in
+                    // Off: free the similarity index (it's rebuilt on first use when switched back on).
+                    if !on { Task { await model.recommender.clear() } }
+                }
             } header: {
                 Text("Movies & TV Shows")
             }

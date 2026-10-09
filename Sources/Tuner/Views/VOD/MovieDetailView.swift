@@ -73,6 +73,9 @@ struct MovieDetailView: View {
                         VODCastShelf(cast: cast)
                             .transition(.opacity)
                     }
+                    if model.prefs.aiRecommendations {
+                        VODMoreLikeThisShelf(item: .movie(movie), metadata: info)
+                    }
                     VStack(alignment: .leading, spacing: 14) {
                         VODAboutSection(plot: plot, rows: infoRows)
                         if let info {
