@@ -101,6 +101,8 @@ final class AppModel {
     @ObservationIgnored private var started = false
     @ObservationIgnored private var autoSwitched: Set<String> = []
     @ObservationIgnored private var guideHintShown: Set<String> = []
+    /// Smart guide matching as last handed to the guide service (nil before launch).
+    @ObservationIgnored private var guideMatchingApplied: Bool?
     @ObservationIgnored private var lastPlayedChannel: Channel?
     @ObservationIgnored private var downloadSamples: [String: (bytes: Int64, time: Date)] = [:]
     @ObservationIgnored private var downloadSuspensionTask: Task<Void, Never>?
@@ -134,6 +136,9 @@ final class AppModel {
         guard !started else { return }
         started = true
         await applyPreferences()
+        await sync.guide.setSmartMatching(prefs.aiGuideMatching)
+        guideMatchingApplied = prefs.aiGuideMatching
+        trackGuideMatching()
         await reloadUserData()
         sources = (try? await db.sources()) ?? []
         sourcesLoaded = true
@@ -256,6 +261,26 @@ final class AppModel {
             Task { await sync.sync(sourceId: id) }
         }
         Task { _ = await sync.guide.refreshGlobalFeeds() }
+    }
+
+    /// Settings › AI › Smart guide matching. Guides only keep programmes for channels something matched, so turning it
+    /// on fetches them again (newly matched channels then have programmes); turning it off drops the automatic matches.
+    private func trackGuideMatching() {
+        let enabled = withObservationTracking {
+            prefs.aiGuideMatching
+        } onChange: { [weak self] in
+            Task { @MainActor [weak self] in self?.trackGuideMatching() }
+        }
+        guard enabled != guideMatchingApplied else { return }
+        guideMatchingApplied = enabled
+        Task {
+            await sync.guide.setSmartMatching(enabled)
+            guard enabled else { return }
+            for source in sources where source.enabled && source.includeLive {
+                await sync.sync(sourceId: source.id, options: .guide)
+            }
+            _ = await sync.guide.refreshGlobalFeeds()
+        }
     }
 
     func sync(_ sourceId: String, options: SyncOptions = .all) {
