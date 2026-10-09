@@ -22,6 +22,15 @@ extension DownloadItem {
 // MARK: - Formatting
 
 enum DownloadFormat {
+    /// "Mac", "iPhone" or "iPad", for "1.2 GB on this iPhone".
+    static var deviceName: String {
+        #if os(macOS)
+        "Mac"
+        #else
+        UIDevice.current.userInterfaceIdiom == .pad ? "iPad" : "iPhone"
+        #endif
+    }
+
     static func bytes(_ count: Int64) -> String {
         ByteCountFormatter.string(fromByteCount: max(0, count), countStyle: .file)
     }

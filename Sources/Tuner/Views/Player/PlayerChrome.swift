@@ -39,8 +39,8 @@ final class PlayerChromeController {
     private static let showAnimation = Animation.easeOut(duration: 0.25)
     private static let hideAnimation = Animation.easeInOut(duration: 0.45)
     #else
-    private static let showAnimation = Animation.smooth(duration: 0.28)
-    private static let hideAnimation = Animation.smooth(duration: 0.34)
+    private static let showAnimation = Animation.smooth(duration: 0.2)
+    private static let hideAnimation = Animation.smooth(duration: 0.26)
     #endif
 
     /// Activity: shows the chrome and restarts the hide timer.

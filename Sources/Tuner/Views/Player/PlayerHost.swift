@@ -155,7 +155,8 @@ struct PlayerHost: View {
         // Narrow touch screens: swipes anywhere on the full-screen player (the video's cell overlay sits above the
         // stage, so this is on the whole stage, alongside the controls' own gestures).
         .simultaneousGesture(swipeGesture(height: size.height), including: self.compact && isFull ? .all : .subviews)
-        .animation(.spring(response: 0.5, dampingFraction: 0.86),
+        // iPhone: snappier, as in the TV app (the Mac keeps its slower window-sized move).
+        .animation(self.compact ? .spring(response: 0.34, dampingFraction: 0.9) : .spring(response: 0.5, dampingFraction: 0.86),
                    value: mode)
         .onChange(of: isFull && !chromeShown) { _, hidden in
             PlayerTitlebar.setButtonsHidden(hidden, in: model.mainWindow)
@@ -347,7 +348,7 @@ struct PlayerHost: View {
                 if closing {
                     dismissFullScreen(height: height)
                 } else {
-                    withAnimation(.spring(response: 0.36, dampingFraction: 0.8)) { dismissOffset = 0 }
+                    withAnimation(.spring(response: 0.26, dampingFraction: 0.82)) { dismissOffset = 0 }
                 }
             }
     }
@@ -357,12 +358,12 @@ struct PlayerHost: View {
     private func dismissFullScreen(height: CGFloat) {
         guard model.player.isFullWindow else { return }
         if model.player.main.item?.isLive == true {
-            withAnimation(.spring(response: 0.46, dampingFraction: 0.88)) {
+            withAnimation(.spring(response: 0.34, dampingFraction: 0.9)) {
                 model.exitFullWindow()
                 dismissOffset = 0
             }
         } else {
-            withAnimation(.easeIn(duration: 0.24)) {
+            withAnimation(.easeIn(duration: 0.17)) {
                 dismissOffset = max(dismissOffset, 0) + height * 0.35
                 isClosing = true
             } completion: {

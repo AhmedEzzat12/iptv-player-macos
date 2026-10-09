@@ -38,9 +38,9 @@ struct PlayerVideoOverlay: View {
                     .transition(.opacity)
                     .allowsHitTesting(false)
                     .task(id: seekFeedback.token) {
-                        try? await Task.sleep(for: .milliseconds(800))
+                        try? await Task.sleep(for: .milliseconds(650))
                         guard !Task.isCancelled else { return }
-                        withAnimation(.smooth(duration: 0.3)) { self.seekFeedback = nil }
+                        withAnimation(.smooth(duration: 0.2)) { self.seekFeedback = nil }
                     }
             }
             #endif
@@ -85,7 +85,7 @@ struct PlayerVideoOverlay: View {
             slot.seek(by: Double(side) * 10)
             // Repeated double taps on the same side add up ("20 seconds", "30 seconds"…), as on YouTube.
             let streak = seekFeedback.map { $0.side == side ? $0.seconds + 10 : 10 } ?? 10
-            withAnimation(.smooth(duration: 0.2)) {
+            withAnimation(.smooth(duration: 0.14)) {
                 seekFeedback = SeekFeedback(side: side, seconds: streak, location: location,
                                             token: (seekFeedback?.token ?? 0) + 1)
             }
@@ -147,7 +147,7 @@ private struct PlayerSeekFeedbackView: View {
                                 .opacity(lit ? 1 : 0.35)
                         }
                     }
-                } animation: { _ in .easeInOut(duration: 0.16) }
+                } animation: { _ in .easeInOut(duration: 0.12) }
                 Text("\(feedback.seconds) seconds")
                     .font(.footnote.weight(.semibold))
                     .monospacedDigit()
@@ -172,7 +172,7 @@ private struct PlayerSeekRipple: View {
             .frame(width: 180, height: 180)
             .scaleEffect(expanded ? 1.6 : 0.2)
             .onAppear {
-                withAnimation(.easeOut(duration: 0.55)) { expanded = true }
+                withAnimation(.easeOut(duration: 0.4)) { expanded = true }
             }
     }
 }

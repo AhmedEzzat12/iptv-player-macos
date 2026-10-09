@@ -430,8 +430,12 @@ struct VODDetailHeader<Actions: View>: View {
             .foregroundStyle(.white)
             .padding(.horizontal, VODMetrics.inset)
             .padding(.bottom, 32)
+            // iPhone: long titles and plots grow the hero downwards instead of sliding under the back button
+            // (status bar + back button + a gap).
+            .padding(.top, compact ? 116 : 0)
         }
-        .frame(height: height)
+        .frame(minHeight: compact ? height : nil)
+        .frame(height: compact ? nil : height)
         .frame(maxWidth: .infinity)
         .clipped()
         .environment(\.colorScheme, .dark)

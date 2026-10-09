@@ -22,6 +22,7 @@ struct DownloadsView: View {
 
 private struct DownloadsContent: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.tunerCompact) private var compact
     let open: (VODRoute) -> Void
 
     /// Library records of the downloaded shows (artwork, and the show page), by series id.
@@ -96,19 +97,41 @@ private struct DownloadsContent: View {
 
     // MARK: Header
 
+    @ViewBuilder
     private var header: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 16) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Downloads")
-                    .font(.system(size: 34, weight: .bold))
-                if !items.isEmpty || freeSpace != nil {
-                    Label(storageLine, systemImage: "internaldrive")
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                        .monospacedDigit()
+        if compact {
+            // iPhone: the title and storage line get the full width; Pause All / Resume All go underneath.
+            VStack(alignment: .leading, spacing: 12) {
+                headerTitle
+                if canPauseAll || canResumeAll {
+                    HStack(spacing: 10) { headerButtons }
                 }
             }
-            Spacer(minLength: 12)
+        } else {
+            HStack(alignment: .firstTextBaseline, spacing: 16) {
+                headerTitle
+                Spacer(minLength: 12)
+                headerButtons
+            }
+        }
+    }
+
+    private var headerTitle: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Downloads")
+                .font(.system(size: 34, weight: .bold))
+            if !items.isEmpty || freeSpace != nil {
+                Label(storageLine, systemImage: "internaldrive")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var headerButtons: some View {
+        Group {
             if canPauseAll {
                 Button { model.pauseAllDownloads() } label: { Label("Pause All", systemImage: "pause.fill") }
                     .buttonStyle(.bordered)
@@ -123,11 +146,12 @@ private struct DownloadsContent: View {
                     .disabled(model.isOffline)
             }
         }
+        .controlSize(compact ? .regular : .large)
     }
 
     private var storageLine: String {
         var parts: [String] = []
-        if !items.isEmpty { parts.append("\(DownloadFormat.bytes(totalOnDisk)) on this Mac") }
+        if !items.isEmpty { parts.append("\(DownloadFormat.bytes(totalOnDisk)) on this \(DownloadFormat.deviceName)") }
         if let freeSpace { parts.append("\(DownloadFormat.bytes(freeSpace)) available") }
         return parts.joined(separator: " · ")
     }
@@ -151,7 +175,7 @@ private struct DownloadsContent: View {
             ShelfHeader(title: "Movies", subtitle: countText(movies.count, "movie"))
             VStack(spacing: 0) {
                 ForEach(Array(movies.enumerated()), id: \.element.id) { index, item in
-                    if index > 0 { Divider().padding(.leading, 196) }
+                    if index > 0 { Divider().padding(.leading, rowDividerInset) }
                     row(item)
                 }
             }
@@ -167,7 +191,7 @@ private struct DownloadsContent: View {
                     VStack(spacing: 0) {
                         showHeader(group)
                         ForEach(group.episodes) { item in
-                            Divider().padding(.leading, 196)
+                            Divider().padding(.leading, rowDividerInset)
                             row(item)
                         }
                     }
@@ -176,6 +200,9 @@ private struct DownloadsContent: View {
             }
         }
     }
+
+    /// Where row dividers start: under the text, past the thumbnail.
+    private var rowDividerInset: CGFloat { compact ? 16 + DownloadRow.compactThumbnailWidth + 12 : 196 }
 
     private func showHeader(_ group: DownloadShowGroup) -> some View {
         let series = group.seriesId.flatMap { shows[$0] }
@@ -192,15 +219,17 @@ private struct DownloadsContent: View {
                 .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
             VStack(alignment: .leading, spacing: 3) {
                 Text(group.title)
-                    .font(.title3.weight(.semibold))
+                    .font(compact ? .headline : .title3.weight(.semibold))
                     .lineLimit(1)
                 Text(showSummary(total: group.episodes.count, saved: saved.count, size: size))
-                    .font(.callout)
+                    .font(compact ? .subheadline : .callout)
                     .foregroundStyle(.secondary)
                     .monospacedDigit()
+                    .lineLimit(2)
             }
             Spacer(minLength: 12)
-            if let series {
+            // iPhone: "Go to Show" lives in the "…" menu (and on the show's artwork) to leave room for the title.
+            if let series, !compact {
                 Button { open(.series(series)) } label: {
                     HStack(spacing: 4) {
                         Text("Go to Show")
@@ -432,6 +461,9 @@ private struct DownloadRow: View {
     let onOpen: () -> Void
 
     @ViewState private var hovering = false
+    @Environment(\.tunerCompact) private var compact
+
+    static let compactThumbnailWidth: CGFloat = 112
 
     private var isDone: Bool { item.state == .completed }
 
@@ -452,7 +484,7 @@ private struct DownloadRow: View {
     }
 
     var body: some View {
-        HStack(spacing: 16) {
+        HStack(spacing: compact ? 12 : 16) {
             Button(action: isDone ? onPlay : onOpen) { thumbnail }
                 .buttonStyle(.plain)
                 .onHover { hovering = $0 }
@@ -460,11 +492,11 @@ private struct DownloadRow: View {
 
             VStack(alignment: .leading, spacing: 5) {
                 Text(heading)
-                    .font(.headline)
-                    .lineLimit(1)
+                    .font(compact ? .subheadline.weight(.semibold) : .headline)
+                    .lineLimit(compact ? 2 : 1)
                 if let detail {
                     Text(detail)
-                        .font(.callout)
+                        .font(compact ? .footnote : .callout)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }
@@ -472,10 +504,10 @@ private struct DownloadRow: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
-            actions
+            if compact { compactActions } else { actions }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
+        .padding(.horizontal, compact ? 12 : 16)
+        .padding(.vertical, compact ? 10 : 12)
         .contentShape(Rectangle())
         .contextMenu { menu }
     }
@@ -484,7 +516,7 @@ private struct DownloadRow: View {
 
     private var thumbnail: some View {
         Color.clear
-            .frame(width: 164, height: 92)
+            .frame(width: compact ? Self.compactThumbnailWidth : 164, height: compact ? 63 : 92)
             .overlay { picture }
             .overlay {
                 if isDone, hovering {
@@ -501,7 +533,7 @@ private struct DownloadRow: View {
             }
             .overlay(alignment: .topLeading) {
                 if !isDone {
-                    DownloadStatusBadge(item: item, size: 22).padding(6)
+                    DownloadStatusBadge(item: item, size: compact ? 18 : 22).padding(compact ? 4 : 6)
                 }
             }
             .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
@@ -548,12 +580,12 @@ private struct DownloadRow: View {
     private var status: some View {
         switch item.state {
         case .downloading:
-            HStack(spacing: 10) {
+            progressStack {
                 progressBar(dimmed: false)
                 Text(DownloadFormat.progressLine(item, speed: speed))
                     .lineLimit(1)
             }
-            .font(.callout)
+            .font(compact ? .footnote : .callout)
             .foregroundStyle(.secondary)
             .monospacedDigit()
         case .queued:
@@ -562,12 +594,12 @@ private struct DownloadRow: View {
                 .foregroundStyle(.secondary)
                 .lineLimit(2)
         case .paused:
-            HStack(spacing: 10) {
+            progressStack {
                 if item.fraction != nil { progressBar(dimmed: true) }
                 Text(pausedText)
                     .lineLimit(1)
             }
-            .font(.callout)
+            .font(compact ? .footnote : .callout)
             .foregroundStyle(.secondary)
             .monospacedDigit()
         case .completed:
@@ -576,7 +608,7 @@ private struct DownloadRow: View {
             } icon: {
                 Image(systemName: "arrow.down.circle.fill").foregroundStyle(Color.accentColor)
             }
-            .font(.callout)
+            .font(compact ? .footnote : .callout)
             .foregroundStyle(.secondary)
             .monospacedDigit()
         case .failed:
@@ -603,9 +635,53 @@ private struct DownloadRow: View {
         return parts.joined(separator: " · ")
     }
 
+    /// Progress bar and text side by side; on iPhone stacked, with the bar as wide as the column.
+    @ViewBuilder
+    private func progressStack<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
+        if compact {
+            VStack(alignment: .leading, spacing: 5) { content() }
+        } else {
+            HStack(spacing: 10) { content() }
+        }
+    }
+
     private func progressBar(dimmed: Bool) -> some View {
         ProgressCapsule(fraction: item.fraction ?? 0, height: 5, tint: dimmed ? Color.secondary : Color.accentColor)
-            .frame(width: 180)
+            .frame(width: compact ? nil : 180)
+            .frame(maxWidth: compact ? .infinity : nil)
+    }
+
+    /// iPhone: one round button (pause or resume while downloading, try again when it failed) and the "…" menu
+    /// with everything else; a finished download plays from its thumbnail.
+    private var compactActions: some View {
+        HStack(spacing: 6) {
+            switch item.state {
+            case .queued, .downloading, .paused:
+                if item.isPausedByUser {
+                    Button(action: onResume) { Image(systemName: "arrow.down") }
+                        .buttonStyle(DownloadsIconButtonStyle())
+                        .accessibilityLabel("Resume")
+                        .disabled(offline)
+                } else {
+                    Button(action: onPause) { Image(systemName: "pause.fill") }
+                        .buttonStyle(DownloadsIconButtonStyle())
+                        .accessibilityLabel("Pause")
+                }
+            case .failed:
+                Button(action: onResume) { Image(systemName: "arrow.clockwise") }
+                    .buttonStyle(DownloadsIconButtonStyle())
+                    .accessibilityLabel("Try Again")
+                    .disabled(offline)
+            case .completed:
+                EmptyView()
+            }
+            Menu { menu } label: { Image(systemName: "ellipsis") }
+                .menuStyle(.button)
+                .menuIndicator(.hidden)
+                .buttonStyle(DownloadsIconButtonStyle())
+                .accessibilityLabel("More")
+        }
+        .fixedSize()
     }
 
     // MARK: Actions
@@ -672,7 +748,11 @@ private struct DownloadRow: View {
         Button(action: onOpen) {
             Label(item.kind == .movie ? "Go to Movie" : "Go to Show", systemImage: "info.circle")
         }
+        #if os(macOS)
         Button(action: onReveal) { Label("Show in Finder", systemImage: "folder") }
+        #else
+        Button(action: onReveal) { Label("Show in Files", systemImage: "folder") }
+        #endif
         Divider()
         Button(role: .destructive, action: onRemove) {
             Label(isDone ? "Delete Download…" : "Cancel Download", systemImage: isDone ? "trash" : "xmark")
