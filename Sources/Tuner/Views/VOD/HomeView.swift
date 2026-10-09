@@ -35,6 +35,8 @@ private struct HomeContent: View {
     /// Online metadata for the hero items, keyed by `VODItem.id`.
     @ViewState private var heroMetadata: [String: MediaMetadata] = [:]
     @ViewState private var viewHeight: CGFloat = 800
+    /// "Because You Watched" rows (Settings › AI › Recommendations; always empty when that's off).
+    @ViewState private var recommendations: [VODRecommendationRow] = []
 
     private var hasHero: Bool { !library.hero.isEmpty }
 
@@ -78,6 +80,10 @@ private struct HomeContent: View {
                     }
                 }
 
+                ForEach(recommendations) { row in
+                    posterShelf(row.title, row.items)
+                }
+
                 posterShelf("Recently Added Movies", library.recentMovies)
                 posterShelf("Recently Added Shows", library.recentSeries)
                 posterShelf("Top Rated", library.topRated)
@@ -94,6 +100,7 @@ private struct HomeContent: View {
         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { viewHeight = $0 }
         .navigationTitle("Home")
         .task(id: model.libraryRevision) { await loadLibrary() }
+        .vodRecommendationRows($recommendations)
         .task(id: HomePersonalKey(user: model.userRevision, smart: smartRow, library: smartRow ? model.libraryRevision : 0)) {
             await loadPersonal()
         }

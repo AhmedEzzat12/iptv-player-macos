@@ -20,6 +20,8 @@ final class AppModel {
     let recorder: RecordingService
     /// Online movie/series metadata (artwork, logos, cast, ratings, episode stills).
     let metadata: MetadataService
+    /// On-device "More Like This" / "Because You Watched" (Settings › AI › Recommendations); idle until used.
+    let recommender: Recommender
     /// IMDb ratings for TV episodes (IMDb's datasets; see `IMDbRatingsService`).
     let imdbRatings: IMDbRatingsService
     /// Movies and episodes saved for offline viewing (one at a time; see `downloadItems`).
@@ -119,6 +121,7 @@ final class AppModel {
         recorder = RecordingService(db: db, resolver: resolver, directory: URL(fileURLWithPath: prefs.recordingsPath))
         downloads = DownloadService(db: db, resolver: resolver, directory: URL(fileURLWithPath: prefs.downloadsPath, isDirectory: true))
         metadata = MetadataService(db: db)
+        recommender = Recommender(db: db)
         player = PlayerManager(services: PlayerServices(db: db, resolver: resolver, prefs: prefs))
         for slot in player.slots { wire(slot) }
     }
