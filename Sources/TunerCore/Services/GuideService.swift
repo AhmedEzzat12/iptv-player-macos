@@ -7,9 +7,21 @@ public actor GuideService {
     /// Programmes older than this are dropped (bounded by the longest catchup window people use).
     public var pastRetention: TimeInterval = 7 * 86400
     public var futureRetention: TimeInterval = 10 * 86400
+    /// Smart guide matching (Settings › AI): channels with no exact guide match get the closest guide channel by
+    /// name (`GuideMatcher`). Off, matching is by override, tvg-id and exact name only, with no extra work.
+    public private(set) var smartMatching = false
 
     public init(db: AppDatabase) {
         self.db = db
+    }
+
+    /// Turns smart matching on or off. Off also drops automatic matches straight away (including any left from an
+    /// earlier run); on takes effect at the next guide refresh, which keeps programmes for the newly matched channels.
+    public func setSmartMatching(_ enabled: Bool) async {
+        smartMatching = enabled
+        if !enabled, (try? await db.hasGuideAutoMatches()) == true {
+            try? await resolveEPGKeys()
+        }
     }
 
     // MARK: - Feeds
@@ -146,10 +158,19 @@ public actor GuideService {
     struct Wanted: Sendable {
         let tvgIds: Set<String>   // lowercased
         let names: Set<String>    // normalised channel names
+        /// Smart matching only: channels without an exact match elsewhere, whose closest guide channel is kept too.
+        var fuzzy: [FuzzyChannel] = []
+    }
+
+    struct FuzzyChannel: Sendable, Hashable {
+        let name: String
+        let tvgId: String?        // lowercased
+        let normalizedName: String
     }
 
     func wantedSet() async throws -> Wanted {
-        try await db.writer.read { db in
+        let smart = smartMatching
+        return try await db.writer.read { db in
             var ids = Set<String>()
             var names = Set<String>()
             let rows = try Row.fetchCursor(db, sql: """
@@ -160,7 +181,21 @@ public actor GuideService {
                 if let o = row["epgIdOverride"] as String? { ids.insert(o.lowercased()) }
                 names.insert(row["normalizedName"])
             }
-            return Wanted(tvgIds: ids, names: names)
+            var wanted = Wanted(tvgIds: ids, names: names)
+            guard smart else { return wanted }
+            // Channels with no guide yet, or only an automatic one (so it keeps its programmes); never overridden ones.
+            var fuzzy = Set<FuzzyChannel>()
+            let unmatched = try Row.fetchCursor(db, sql: """
+                SELECT c.name, c.tvgId, c.normalizedName FROM channel c
+                LEFT JOIN channelPref p ON p.channelId = c.id
+                LEFT JOIN epgAutoMatch a ON a.channelId = c.id
+                WHERE p.epgIdOverride IS NULL AND (c.epgKey IS NULL OR a.channelId IS NOT NULL)
+                """)
+            while let row = try unmatched.next() {
+                fuzzy.insert(FuzzyChannel(name: row["name"], tvgId: (row["tvgId"] as String?)?.lowercased(), normalizedName: row["normalizedName"]))
+            }
+            wanted.fuzzy = fuzzy.sorted { ($0.name, $0.tvgId ?? "") < ($1.name, $1.tvgId ?? "") }
+            return wanted
         }
     }
 
@@ -233,6 +268,9 @@ public actor GuideService {
                             for (id, names) in allNames where !set.contains(id) {
                                 if names.contains(where: { wanted.names.contains(ChannelNameNormalizer.normalize($0)) }) { set.insert(id) }
                             }
+                            if !wanted.fuzzy.isEmpty {
+                                set.formUnion(fuzzyMatches(wanted.fuzzy, guide: channelsById, allNames: allNames))
+                            }
                         }
                         wantedIds = set
                     }
@@ -254,6 +292,30 @@ public actor GuideService {
         }
         result.channels = Array(channelsById.values)
         return result
+    }
+
+    /// XMLTV ids in this feed that smart matching would give to `channels` (those with no exact match in it). The
+    /// candidates are named exactly as in `resolveEPGKeys` (first display name and id), so the guide channel picked
+    /// there has its programmes.
+    static func fuzzyMatches(_ channels: [FuzzyChannel], guide: [String: EPGChannel], allNames: [String: [String]]) -> Set<String> {
+        var ids = Set<String>()
+        var names = Set<String>()
+        for (id, channel) in guide {
+            ids.insert(id.lowercased())
+            names.insert(channel.normalizedName)
+        }
+        for list in allNames.values { for name in list { names.insert(ChannelNameNormalizer.normalize(name)) } }
+        let pending = channels.filter { c in !(c.tvgId.map(ids.contains) ?? false) && !names.contains(c.normalizedName) }
+        guard !pending.isEmpty else { return [] }
+
+        let matcher = GuideMatcher(candidates: guide.values.map {
+            GuideMatcher.Candidate(key: $0.xmltvId, names: GuideMatcher.names(displayName: $0.displayName, xmltvId: $0.xmltvId))
+        })
+        var out = Set<String>()
+        for c in pending {
+            if let m = matcher.match(c.name, sourceId: nil) { out.insert(m.key) }
+        }
+        return out
     }
 
     // MARK: - Stalker
@@ -280,7 +342,10 @@ public actor GuideService {
     /// Recomputes `channel.epgKey` for every channel:
     /// override → Stalker native → tvg-id → normalised name; preferring keys with programmes,
     /// then the channel's own source feeds, then global feeds, then other sources' feeds.
+    /// With smart matching on, channels still without a key (and without an override) then get `GuideMatcher`'s pick,
+    /// recorded in `epgAutoMatch`; with it off that table is emptied.
     public func resolveEPGKeys() async throws {
+        let smart = smartMatching
         try await db.writer.write { db in
             struct Candidate {
                 let key: String
@@ -297,14 +362,22 @@ public actor GuideService {
             var byId: [String: [Candidate]] = [:]
             var byName: [String: [Candidate]] = [:]
             var stalkerKeys = Set<String>()
-            let epgRows = try Row.fetchCursor(db, sql: "SELECT key, feedId, xmltvId, normalizedName, programCount FROM epgChannel")
+            var fuzzyCandidates: [GuideMatcher.Candidate] = []
+            let epgRows = try Row.fetchCursor(db, sql: "SELECT key, feedId, xmltvId, displayName, normalizedName, programCount FROM epgChannel")
             while let row = try epgRows.next() {
                 let feedId: String = row["feedId"]
                 let c = Candidate(key: row["key"], feedId: feedId, hasPrograms: (row["programCount"] as Int) > 0)
-                byId[(row["xmltvId"] as String).lowercased(), default: []].append(c)
+                let xmltvId: String = row["xmltvId"]
+                byId[xmltvId.lowercased(), default: []].append(c)
                 let name: String = row["normalizedName"]
                 if !name.isEmpty { byName[name, default: []].append(c) }
-                if feedId.hasSuffix("#stalker") { stalkerKeys.insert(c.key) }
+                if feedId.hasSuffix("#stalker") {
+                    stalkerKeys.insert(c.key)
+                } else if smart {
+                    fuzzyCandidates.append(GuideMatcher.Candidate(
+                        key: c.key, names: GuideMatcher.names(displayName: row["displayName"], xmltvId: xmltvId),
+                        sourceId: feedSource[feedId] ?? nil, priority: feedPriority[feedId] ?? 99, hasPrograms: c.hasPrograms))
+                }
             }
 
             func rank(_ c: Candidate, sourceId: String) -> (Int, Int, Int) {
@@ -318,8 +391,9 @@ public actor GuideService {
             }
 
             var updates: [(String, String?)] = []
+            var unmatched: [(id: String, sourceId: String, name: String, epgKey: String?)] = []
             let rows = try Row.fetchCursor(db, sql: """
-                SELECT c.id, c.sourceId, c.tvgId, c.normalizedName, c.providerStreamId, c.epgKey, p.epgIdOverride
+                SELECT c.id, c.sourceId, c.name, c.tvgId, c.normalizedName, c.providerStreamId, c.epgKey, p.epgIdOverride
                 FROM channel c LEFT JOIN channelPref p ON p.channelId = c.id
                 """)
             while let row = try rows.next() {
@@ -338,8 +412,41 @@ public actor GuideService {
                 if key == nil {
                     key = best(byName[row["normalizedName"] as String], sourceId: sourceId)
                 }
+                if key == nil, smart, row["epgIdOverride"] as String? == nil {
+                    unmatched.append((row["id"], sourceId, row["name"], row["epgKey"]))
+                    continue
+                }
                 if key != row["epgKey"] as String? { updates.append((row["id"], key)) }
             }
+
+            if smart {
+                var autoMatches: [(String, GuideMatcher.Match)] = []
+                if !unmatched.isEmpty, !fuzzyCandidates.isEmpty {
+                    let matcher = GuideMatcher(candidates: fuzzyCandidates)
+                    var cache: [String: GuideMatcher.Match?] = [:]   // "sourceId|name" → result
+                    for channel in unmatched {
+                        let cacheKey = "\(channel.sourceId)|\(channel.name)"
+                        let match: GuideMatcher.Match?
+                        if let cached = cache[cacheKey] {
+                            match = cached
+                        } else {
+                            match = matcher.match(channel.name, sourceId: channel.sourceId)
+                            cache[cacheKey] = .some(match)
+                        }
+                        if let match { autoMatches.append((channel.id, match)) }
+                    }
+                }
+                let matched = Dictionary(autoMatches.map { ($0.0, $0.1.key) }, uniquingKeysWith: { a, _ in a })
+                for channel in unmatched where matched[channel.id] != channel.epgKey {
+                    updates.append((channel.id, matched[channel.id]))
+                }
+                try db.execute(sql: "DELETE FROM epgAutoMatch")
+                let auto = try db.makeStatement(sql: "INSERT INTO epgAutoMatch (channelId, epgKey, score) VALUES (?, ?, ?)")
+                for (id, match) in autoMatches { try auto.execute(arguments: [id, match.key, match.score]) }
+            } else if try Bool.fetchOne(db, sql: "SELECT EXISTS (SELECT 1 FROM epgAutoMatch)") == true {
+                try db.execute(sql: "DELETE FROM epgAutoMatch")
+            }
+
             let stmt = try db.makeStatement(sql: "UPDATE channel SET epgKey = ? WHERE id = ?")
             for (id, key) in updates { try stmt.execute(arguments: [key, id]) }
         }
