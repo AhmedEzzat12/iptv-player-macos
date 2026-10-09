@@ -61,8 +61,11 @@ private struct HomeContent: View {
 
                 if !personal.continueWatching.isEmpty {
                     VODShelf("Continue Watching") {
-                        ForEach(personal.continueWatching) { progress in
-                            continueCard(progress)
+                        ForEach(personal.continueWatching) { item in
+                            switch item {
+                            case .resume(let progress): continueCard(progress)
+                            case .nextEpisode(let episode, let progress): nextEpisodeCard(episode, progress)
+                            }
                         }
                     }
                 }
@@ -91,7 +94,9 @@ private struct HomeContent: View {
         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { viewHeight = $0 }
         .navigationTitle("Home")
         .task(id: model.libraryRevision) { await loadLibrary() }
-        .task(id: model.userRevision) { await loadPersonal() }
+        .task(id: HomePersonalKey(user: model.userRevision, smart: smartRow, library: smartRow ? model.libraryRevision : 0)) {
+            await loadPersonal()
+        }
         .task(id: HomeHeroMetadataKey(ids: library.hero.map(\.id), settings: model.prefs.metadataSettings)) {
             await loadHeroMetadata()
         }
@@ -152,7 +157,54 @@ private struct HomeContent: View {
             }
             Button {
                 let id = progress.mediaId
-                Task { try? await model.db.deleteProgress(mediaId: id) }
+                // Smart row: an episode goes back to the start rather than away, so its show doesn't come back
+                // as the next episode after the one before it.
+                if smartRow, progress.kind == .episode {
+                    Task { try? await model.db.markWatched(progress, watched: false) }
+                } else {
+                    Task { try? await model.db.deleteProgress(mediaId: id) }
+                }
+            } label: {
+                Label("Remove from Continue Watching", systemImage: "xmark.circle")
+            }
+        }
+    }
+
+    /// Smart Continue Watching: the episode after one just finished, played from the start.
+    private func nextEpisodeCard(_ episode: Episode, _ progress: WatchProgress) -> some View {
+        let item = ContinueWatchingItem.nextEpisode(episode, progress: progress)
+        return Button {
+            Task { await model.play(item) }
+        } label: {
+            VODLandscapeCard(
+                title: progress.title,
+                subtitle: "\(VODFormat.episodeCode(episode)) · Next Episode",
+                caption: episode.title.nilIfEmpty,
+                imageURL: progress.posterURL,
+                symbol: "tv"
+            )
+        }
+        .buttonStyle(.plain)
+        .contextMenu {
+            Button {
+                Task { await model.play(item) }
+            } label: {
+                Label("Play \(VODFormat.episodeCode(episode))", systemImage: "play.fill")
+            }
+            Button {
+                Task { await openDetail(for: progress) }
+            } label: {
+                Label("Go to Show", systemImage: "info.circle")
+            }
+            Divider()
+            Button {
+                Task { try? await model.db.markWatched(progress, watched: true) }
+            } label: {
+                Label("Mark as Watched", systemImage: "checkmark.circle")
+            }
+            Button {
+                // A not-started record of the episode is newer than the finished one, so the show leaves the row.
+                Task { try? await model.db.markWatched(progress, watched: false) }
             } label: {
                 Label("Remove from Continue Watching", systemImage: "xmark.circle")
             }
@@ -282,9 +334,15 @@ private struct HomeContent: View {
         }
     }
 
+    /// Settings › AI › Smart Continue Watching.
+    private var smartRow: Bool { model.prefs.aiSmartContinueWatching }
+
     private func loadPersonal() async {
         let db = model.db
-        async let continueWatching = db.continueWatching(limit: 20)
+        let smart = smartRow
+        async let continueWatching: [ContinueWatchingItem] = smart
+            ? db.smartContinueWatching(limit: 20)
+            : db.continueWatching(limit: 20).map(ContinueWatchingItem.resume)
         async let favoriteMovies = db.favoriteMovies()
         async let favoriteSeries = db.favoriteSeries()
         let cw = (try? await continueWatching) ?? []
@@ -296,7 +354,11 @@ private struct HomeContent: View {
         p.continueWatching = cw
         p.favorites = Array((fm.map(VODItem.movie) + fs.map(VODItem.series)).prefix(40))
         p.favoriteIds = Set(fm.map(\.id) + fs.map(\.id))
-        p.movieProgress = Dictionary(cw.filter { $0.kind == .movie }.map { ($0.mediaId, $0.fraction) }, uniquingKeysWith: { a, _ in a })
+        let resumed = cw.compactMap { item -> WatchProgress? in
+            if case .resume(let progress) = item, progress.kind == .movie { return progress }
+            return nil
+        }
+        p.movieProgress = Dictionary(resumed.map { ($0.mediaId, $0.fraction) }, uniquingKeysWith: { a, _ in a })
         if p != personal { personal = p }
         loaded = true
     }
@@ -344,7 +406,7 @@ private struct HomeLibrary: Equatable {
 }
 
 private struct HomePersonal: Equatable {
-    var continueWatching: [WatchProgress] = []
+    var continueWatching: [ContinueWatchingItem] = []
     var favorites: [VODItem] = []
     var favoriteIds: Set<String> = []
     var movieProgress: [String: Double] = [:]
@@ -354,6 +416,13 @@ private struct HomeLiveEntry: Identifiable, Equatable {
     let channel: Channel
     let program: Program?
     var id: String { channel.id }
+}
+
+/// Reloads Home's personal shelves; with the smart row on, also when episodes get cached (they feed next episodes).
+private struct HomePersonalKey: Hashable {
+    let user: Int
+    let smart: Bool
+    let library: Int
 }
 
 private struct HomeHeroMetadataKey: Hashable {
