@@ -6,9 +6,6 @@ test kit. The repository is **public**.
 
 ## Ground rules
 
-- **Never push.** No `git push` in any form. Commit only when the maintainer asks; they push themselves.
-- **Never publish or change public state on your own:** no `gh release create`, `gh repo edit`, tags pushed, etc.,
-  unless the maintainer explicitly asks in that conversation.
 - **Never create, read, export or move the Sparkle signing key** (it lives in the maintainer's login keychain;
   `generate_keys`, `sign_update` without `--ed-key-file` use it). For tests, make a throwaway key in a scratch folder
   (see `docs/testing.md`) and delete it afterwards.
