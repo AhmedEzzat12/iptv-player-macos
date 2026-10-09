@@ -99,6 +99,17 @@ struct PlayerChrome: View {
     @Environment(\.tunerCompact) private var phone
 
     var body: some View {
+        if phone {
+            // iPhone: laid out like the TV app's player (PlayerPhoneChrome.swift).
+            PlayerPhoneChrome(chrome: chrome, stageSize: stageSize, safe: safe, isShown: isShown,
+                              onBottomHeight: onPanelHeight)
+        } else {
+            panelChrome
+        }
+    }
+
+    @ViewBuilder
+    private var panelChrome: some View {
         let main = model.player.main
         let compact = controlsRect.width < 640 || controlsRect.height < 460
         let topScrim = safe.minY + 150
@@ -118,12 +129,6 @@ struct PlayerChrome: View {
                 .padding(.horizontal, 20)
                 .frame(width: safe.width, height: PlayerChromeMetrics.topBarHeight)
                 .position(x: safe.midX, y: safe.minY + PlayerChromeMetrics.topBarTop + PlayerChromeMetrics.topBarHeight / 2)
-
-            // Phones: the transport sits large in the middle of the video (PlayerTouchControls.swift).
-            if phone, main.item != nil {
-                PlayerCenterTransport(slot: main, chrome: chrome)
-                    .position(x: controlsRect.midX, y: controlsRect.midY)
-            }
 
             if main.item != nil {
                 PlayerControlPanel(slot: main, chrome: chrome, compact: compact, isWindowFullScreen: isWindowFullScreen)
@@ -148,7 +153,6 @@ private struct PlayerTopBar: View {
     /// The AirPlay picker is an AppKit view; only mount it while the chrome is visible so the
     /// invisible chrome can't swallow clicks.
     let isShown: Bool
-    @Environment(\.tunerCompact) private var phone
 
     var body: some View {
         @Bindable var player = model.player
@@ -177,38 +181,59 @@ private struct PlayerTopBar: View {
             }
 
             if isShown {
-                if let engine = slot.avEngineIfActive {
-                    // Native engine: the system AirPlay device picker.
-                    PlayerAirPlayButton(player: engine.player)
-                        .frame(width: 26, height: 26)
-                        .frame(width: 40, height: 40)
-                        .playerGlass(in: Circle(), interactive: true)
-                        .help("AirPlay")
-                } else if slot.item != nil {
-                    // mpv engine: AirPlay video needs Apple's player — reopen the stream in it when possible.
-                    Button(action: prepareAirPlay) {
-                        Image(systemName: "airplayvideo")
-                    }
-                    .buttonStyle(PlayerGlassButtonStyle(size: 40))
-                    .help(slot.isAirPlayEligible || slot.canBridgeForAirPlay ? "AirPlay" : "AirPlay isn't available for this format")
-                    .opacity(slot.isAirPlayEligible || slot.canBridgeForAirPlay ? 1 : 0.55)
-                }
+                PlayerAirPlayControl(slot: slot, size: 40)
             }
 
-            if phone {
-                PlayerMoreMenu(slot: slot)
-            } else {
-                Button { player.showStats.toggle() } label: {
-                    Image(systemName: player.showStats ? "info.circle.fill" : "info.circle")
-                }
-                .buttonStyle(PlayerGlassButtonStyle(size: 40))
-                .help(player.showStats ? "Hide Statistics" : "Show Statistics")
+            Button { player.showStats.toggle() } label: {
+                Image(systemName: player.showStats ? "info.circle.fill" : "info.circle")
             }
+            .buttonStyle(PlayerGlassButtonStyle(size: 40))
+            .help(player.showStats ? "Hide Statistics" : "Show Statistics")
         }
         .onHover { chrome.isHoveringControls = $0 }
     }
 
     /// Same as Esc: leave macOS full screen and the full-window player.
+    private func leavePlayer() {
+        if let window = model.mainWindow, window.styleMask.contains(.fullScreen) { window.toggleFullScreen(nil) }
+        model.exitFullWindow()
+    }
+}
+
+/// AirPlay: the system device picker with Apple's player; with mpv, a button that reopens the stream in Apple's
+/// player (or re-wraps it) so it can be sent. Mount it only while the chrome is visible: the picker is a platform
+/// view an invisible chrome would let swallow clicks.
+struct PlayerAirPlayControl: View {
+    @Environment(AppModel.self) private var model
+    let slot: PlayerSlot
+    let size: CGFloat
+    /// false: a plain glyph inside a shared glass capsule.
+    var glass = true
+
+    var body: some View {
+        if let engine = slot.avEngineIfActive {
+            PlayerAirPlayButton(player: engine.player)
+                .frame(width: 26, height: 26)
+                .frame(width: size, height: size)
+                .background { if glass { Color.clear.playerGlass(in: Circle(), interactive: true) } }
+                .help("AirPlay")
+        } else if slot.item != nil {
+            let available = slot.isAirPlayEligible || slot.canBridgeForAirPlay
+            Group {
+                if glass {
+                    Button(action: prepareAirPlay) { Image(systemName: "airplayvideo") }
+                        .buttonStyle(PlayerGlassButtonStyle(size: size))
+                } else {
+                    Button(action: prepareAirPlay) { PlayerGlassSymbol(symbol: "airplayvideo", size: size, glass: false) }
+                        .buttonStyle(.plain)
+                }
+            }
+            .help(available ? "AirPlay" : "AirPlay isn't available for this format")
+            .opacity(available ? 1 : 0.55)
+            .accessibilityLabel("AirPlay")
+        }
+    }
+
     private func prepareAirPlay() {
         switch slot.prepareForAirPlay() {
         case .ready:
@@ -222,11 +247,6 @@ private struct PlayerTopBar: View {
         case .unsupported(let message):
             model.notify(Banner(symbol: "airplayvideo", title: "AirPlay isn't available", message: message, isError: true))
         }
-    }
-
-    private func leavePlayer() {
-        if let window = model.mainWindow, window.styleMask.contains(.fullScreen) { window.toggleFullScreen(nil) }
-        model.exitFullWindow()
     }
 }
 
@@ -245,7 +265,6 @@ struct PlayerControlPanel: View {
         return key.isEmpty ? title : "\(title) (\(ShortcutKey.label(key)))"
     }
     let isWindowFullScreen: Bool
-    @Environment(\.tunerCompact) private var phone
 
     var body: some View {
         if let item = slot.item {
@@ -257,11 +276,7 @@ struct PlayerControlPanel: View {
                 } else {
                     PlayerScrubber(slot: slot, chrome: chrome)
                 }
-                if phone {
-                    PlayerTouchControlRow(slot: slot, chrome: chrome)
-                } else {
-                    transport(item)
-                }
+                transport(item)
             }
             .padding(compact ? 14 : 20)
             .frame(maxWidth: compact ? 640 : 920)
@@ -482,7 +497,7 @@ private struct PlayerInfoRow: View {
 }
 
 /// Live: LIVE pill, programme title, time range, progress and time left.
-private struct PlayerLiveTimeline: View {
+struct PlayerLiveTimeline: View {
     let slot: PlayerSlot
     let compact: Bool
 

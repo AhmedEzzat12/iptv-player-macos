@@ -8,6 +8,12 @@ struct MobileRootView: View {
     @Environment(\.horizontalSizeClass) private var sizeClass
     @ViewState private var showSettings = false
 
+    /// iPhone layout: always on a phone (a Pro Max in landscape reports a regular width, which would otherwise
+    /// swap the player for the iPad/Mac panel and turn its gestures off), and on narrow iPad windows.
+    private var phoneLayout: Bool {
+        UIDevice.current.userInterfaceIdiom == .phone || sizeClass == .compact
+    }
+
     var body: some View {
         @Bindable var model = model
         TabView(selection: tabSelection) {
@@ -26,7 +32,7 @@ struct MobileRootView: View {
                 section { SeriesView() }
             }
             // iPad only; on iPhone, Downloads is a button in the top bar (a sixth tab would turn into "More").
-            if sizeClass != .compact {
+            if !phoneLayout {
                 Tab("Downloads", systemImage: "arrow.down.circle", value: SidebarItem.downloads) {
                     section { DownloadsView() }
                 }
@@ -39,7 +45,7 @@ struct MobileRootView: View {
         }
         // iPad: a top tab bar that can open as a sidebar. iPhone: a plain tab bar (the adaptable style left a
         // sidebar handle on the screen's left edge).
-        .modifier(TabStyleForWidth(compact: sizeClass == .compact))
+        .modifier(TabStyleForWidth(compact: phoneLayout))
         // The persistent player sits above the tabs (one engine view per slot, moved between presentations).
         .overlay {
             GeometryReader { proxy in
@@ -50,7 +56,7 @@ struct MobileRootView: View {
         }
         .overlay(alignment: .top) { BannerStack().padding(.top, 8) }
         .overlay { TrailerOverlay() }
-        .environment(\.tunerCompact, sizeClass == .compact)
+        .environment(\.tunerCompact, phoneLayout)
         // While Settings is up, it presents the source editor itself (a second sheet can't stack from here).
         .sheet(item: showSettings ? .constant(nil) : $model.sourceEditor) { request in
             SourceEditorView(request: request).environment(model)
@@ -80,7 +86,7 @@ struct MobileRootView: View {
                 .toolbar {
                     // The screens draw their own headers; an empty title view keeps the bar clear.
                     ToolbarItem(placement: .principal) { Color.clear.frame(width: 1, height: 1) }
-                    if sizeClass == .compact {
+                    if phoneLayout {
                         ToolbarItem(placement: .topBarTrailing) {
                             NavigationLink {
                                 DownloadsView().navigationBarTitleDisplayMode(.inline)

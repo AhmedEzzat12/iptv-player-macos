@@ -14,6 +14,8 @@ import TunerCore
 struct PlayerScrubber: View {
     let slot: PlayerSlot
     let chrome: PlayerChromeController
+    /// Times beside the bar (iPhone, as in the TV app) instead of under it.
+    var inlineTimes = false
     @ViewState private var dragFraction: Double?
     @ViewState private var pendingFraction: Double?
     @ViewState private var pendingToken = 0
@@ -27,16 +29,29 @@ struct PlayerScrubber: View {
         let shownTime = duration.map { fraction * $0 } ?? position
         let buffered = duration.map { min(1, max(0, (snapshot.bufferedEnd ?? 0) / $0)) } ?? 0
 
-        VStack(spacing: 6) {
-            track(fraction: fraction, buffered: buffered, duration: duration)
-            HStack {
-                Text(Fmt.clock(shownTime))
-                Spacer()
-                Text(duration.map { "−" + Fmt.clock(max(0, $0 - shownTime)) } ?? "--:--")
+        let elapsed = Text(Fmt.clock(shownTime))
+        let remaining = Text(duration.map { "−" + Fmt.clock(max(0, $0 - shownTime)) } ?? "--:--")
+        if inlineTimes {
+            HStack(spacing: 12) {
+                elapsed
+                track(fraction: fraction, buffered: buffered, duration: duration)
+                remaining
             }
-            .font(.caption.weight(.medium))
+            .font(.caption.weight(.semibold))
             .monospacedDigit()
-            .foregroundStyle(.white.opacity(0.7))
+            .foregroundStyle(.white.opacity(0.75))
+        } else {
+            VStack(spacing: 6) {
+                track(fraction: fraction, buffered: buffered, duration: duration)
+                HStack {
+                    elapsed
+                    Spacer()
+                    remaining
+                }
+                .font(.caption.weight(.medium))
+                .monospacedDigit()
+                .foregroundStyle(.white.opacity(0.7))
+            }
         }
     }
 
@@ -219,6 +234,8 @@ struct PlayerCapsuleSlider: View {
 struct PlayerTracksMenu: View {
     let slot: PlayerSlot
     let size: CGFloat
+    /// false: a plain glyph, for a group of buttons sharing one glass capsule.
+    var glass = true
 
     var body: some View {
         let audio = slot.audioTracks
@@ -251,7 +268,7 @@ struct PlayerTracksMenu: View {
                 .labelsHidden()
             }
         } label: {
-            PlayerGlassSymbol(symbol: subtitlesOn ? "captions.bubble.fill" : "captions.bubble", size: size)
+            PlayerGlassSymbol(symbol: subtitlesOn ? "captions.bubble.fill" : "captions.bubble", size: size, glass: glass)
         }
         .playerMenuStyle()
         .help("Audio & Subtitles")
@@ -346,14 +363,21 @@ private struct PlayerGlassBackground<S: Shape>: View {
 struct PlayerGlassSymbol: View {
     let symbol: String
     var size: CGFloat = 40
+    /// false: no circle of its own (it sits in a shared glass capsule).
+    var glass = true
 
     var body: some View {
-        Image(systemName: symbol)
+        let image = Image(systemName: symbol)
             .font(.system(size: (size * 0.4).rounded(), weight: .semibold))
             .foregroundStyle(.white)
             .frame(width: size, height: size)
-            .playerGlass(in: Circle(), interactive: true)
-            .contentShape(Circle())
+        if glass {
+            image
+                .playerGlass(in: Circle(), interactive: true)
+                .contentShape(Circle())
+        } else {
+            image.contentShape(Rectangle())
+        }
     }
 }
 
