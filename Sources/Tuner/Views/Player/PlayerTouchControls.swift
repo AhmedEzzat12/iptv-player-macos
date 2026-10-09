@@ -8,6 +8,9 @@ struct PlayerCenterTransport: View {
     @Environment(AppModel.self) private var model
     let slot: PlayerSlot
     let chrome: PlayerChromeController
+    /// Taps on −10 / +10; each spins its arrow (as in the TV app).
+    @ViewState private var backTaps = 0
+    @ViewState private var forwardTaps = 0
 
     var body: some View {
         if let item = slot.item {
@@ -15,7 +18,10 @@ struct PlayerCenterTransport: View {
                 if item.isLive {
                     button("chevron.up", label: "Previous Channel", enabled: !model.zapList.isEmpty) { model.channelUp() }
                 } else {
-                    button("gobackward.10", label: "Back 10 Seconds", enabled: slot.canSeek) { slot.seek(by: -10) }
+                    button("gobackward.10", label: "Back 10 Seconds", enabled: slot.canSeek, spins: -1) {
+                        slot.seek(by: -10)
+                        backTaps += 1
+                    }
                 }
 
                 Button {
@@ -31,19 +37,29 @@ struct PlayerCenterTransport: View {
                 if item.isLive {
                     button("chevron.down", label: "Next Channel", enabled: !model.zapList.isEmpty) { model.channelDown() }
                 } else {
-                    button("goforward.10", label: "Forward 10 Seconds", enabled: slot.canSeek) { slot.seek(by: 10) }
+                    button("goforward.10", label: "Forward 10 Seconds", enabled: slot.canSeek, spins: 1) {
+                        slot.seek(by: 10)
+                        forwardTaps += 1
+                    }
                 }
             }
             .foregroundStyle(.white)
         }
     }
 
-    private func button(_ symbol: String, label: String, enabled: Bool, action: @escaping () -> Void) -> some View {
+    private func button(_ symbol: String, label: String, enabled: Bool, spins: Int = 0,
+                        action: @escaping () -> Void) -> some View {
         Button {
             action()
             chrome.touch()
         } label: {
-            Image(systemName: symbol)
+            if spins < 0 {
+                Image(systemName: symbol).symbolEffect(.rotate.counterClockwise.wholeSymbol, options: .speed(1.6), value: backTaps)
+            } else if spins > 0 {
+                Image(systemName: symbol).symbolEffect(.rotate.clockwise.wholeSymbol, options: .speed(1.6), value: forwardTaps)
+            } else {
+                Image(systemName: symbol)
+            }
         }
         .buttonStyle(PlayerGlassButtonStyle(size: 58))
         .disabled(!enabled)

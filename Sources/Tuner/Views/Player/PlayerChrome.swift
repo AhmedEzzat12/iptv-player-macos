@@ -16,6 +16,8 @@ final class PlayerChromeController {
     var isHoveringControls = false
     var isInteracting = false
     var isMenuOpen = false
+    /// Touch screens: leaves the full-screen player with its exit animation (set by `PlayerHost`).
+    @ObservationIgnored var requestClose: (() -> Void)?
     @ObservationIgnored private(set) var lastActivity = Date()
     @ObservationIgnored private var lastPointer: CGPoint?
     /// Pointer location when the user explicitly hid the chrome; small jitter around it is ignored.
@@ -34,17 +36,17 @@ final class PlayerChromeController {
 
     // Touch screens answer a tap faster than the Mac's pointer-driven fades (as in the TV app on iPhone).
     #if os(macOS)
-    private static let showDuration = 0.25
-    private static let hideDuration = 0.45
+    private static let showAnimation = Animation.easeOut(duration: 0.25)
+    private static let hideAnimation = Animation.easeInOut(duration: 0.45)
     #else
-    private static let showDuration = 0.18
-    private static let hideDuration = 0.25
+    private static let showAnimation = Animation.smooth(duration: 0.28)
+    private static let hideAnimation = Animation.smooth(duration: 0.34)
     #endif
 
     /// Activity: shows the chrome and restarts the hide timer.
     func touch() {
         lastActivity = Date()
-        if !isVisible { withAnimation(.easeOut(duration: Self.showDuration)) { isVisible = true } }
+        if !isVisible { withAnimation(Self.showAnimation) { isVisible = true } }
     }
 
     /// Click on the video.
@@ -60,7 +62,7 @@ final class PlayerChromeController {
 
     func hide() {
         guard isVisible else { return }
-        withAnimation(.easeInOut(duration: Self.hideDuration)) { isVisible = false }
+        withAnimation(Self.hideAnimation) { isVisible = false }
     }
 
     func reset() {

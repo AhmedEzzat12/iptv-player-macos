@@ -32,19 +32,23 @@ struct PlayerPhoneChrome: View {
                 .allowsHitTesting(false)
 
             if let item = slot.item {
-                PlayerPhoneTopBar(slot: slot, item: item, isShown: isShown, size: Self.control)
+                // As in the TV app, the controls drift in from the edges and the transport scales up as they appear.
+                PlayerPhoneTopBar(slot: slot, item: item, chrome: chrome, isShown: isShown, size: Self.control)
                     .padding(.top, 12)
+                    .offset(y: isShown ? 0 : -14)
                     .playerPlaced(in: content, alignment: .top)
 
                 // The episode list takes the screen's side or height; the transport and timeline step aside
                 // (tapping the video closes the list).
                 if !model.player.isEpisodeListOpen {
                     PlayerCenterTransport(slot: slot, chrome: chrome)
+                        .scaleEffect(isShown ? 1 : 0.86)
                         .position(x: stageSize.width / 2, y: stageSize.height / 2)
 
                     PlayerPhoneBottomBlock(slot: slot, item: item, chrome: chrome, size: Self.control)
                         .padding(.bottom, 12)
                         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { onBottomHeight($0 + 12) }
+                        .offset(y: isShown ? 0 : 14)
                         .playerPlaced(in: content, alignment: .bottom)
                         .transition(.opacity)
                 }
@@ -66,6 +70,7 @@ private struct PlayerPhoneTopBar: View {
     @Environment(AppModel.self) private var model
     let slot: PlayerSlot
     let item: PlaybackItem
+    let chrome: PlayerChromeController
     let isShown: Bool
     let size: CGFloat
     @ViewState private var isFavorite = false
@@ -75,7 +80,7 @@ private struct PlayerPhoneTopBar: View {
         let _ = (slot.viewToken, slot.phase)
         HStack(spacing: 10) {
             // Live TV keeps playing in the mini player; anything else stops.
-            Button { model.exitFullWindow() } label: {
+            Button { if let close = chrome.requestClose { close() } else { model.exitFullWindow() } } label: {
                 Image(systemName: item.isLive ? "chevron.down" : "xmark")
             }
             .buttonStyle(PlayerGlassButtonStyle(size: size))

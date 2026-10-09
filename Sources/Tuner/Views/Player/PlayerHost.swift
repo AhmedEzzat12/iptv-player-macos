@@ -50,6 +50,8 @@ struct PlayerHost: View {
     @Environment(\.tunerCompact) private var compact
     /// Touch screens: how far the full-screen player has been dragged down (swipe down to close).
     @ViewState private var dismissOffset: CGFloat = 0
+    /// Touch screens: a movie or episode is sliding away before the player closes.
+    @ViewState private var isClosing = false
 
     var body: some View {
         GeometryReader { outer in
@@ -130,6 +132,45 @@ struct PlayerHost: View {
         let bounds = CGRect(origin: .zero, size: size)
         let chromeShown = isFull && (chrome.isVisible || chromePinned)
         let compact = compactRect(for: mode, safe: safe)
+        // Touch screens: the full-screen player is a card that follows a swipe down, shrinking as it goes (0…1).
+        let drag = isFull && self.compact ? min(max(dismissOffset / max(size.height, 1), 0), 1) : 0
+        let cardRadius: CGFloat = drag > 0 ? 36 * min(1, drag * 5) : 0
+
+        ZStack(alignment: .topLeading) {
+            // Touch screens: what's behind the player shows through as the card is dragged away.
+            if self.compact {
+                Color.black
+                    .opacity(isFull && !isClosing ? 1 - min(1, drag * 1.6) : 0)
+                    .allowsHitTesting(false)
+            }
+
+            stageContent(size: size, safe: safe, mode: mode, compact: compact, chromeShown: chromeShown,
+                         drag: drag, cardRadius: cardRadius)
+                .clipShape(RoundedRectangle(cornerRadius: cardRadius, style: .continuous))
+                .scaleEffect(1 - drag * 0.28)
+                .offset(y: isFull ? dismissOffset : 0)
+                .opacity(isClosing ? 0 : 1)
+        }
+        .frame(width: size.width, height: size.height, alignment: .topLeading)
+        // Narrow touch screens: swipes anywhere on the full-screen player (the video's cell overlay sits above the
+        // stage, so this is on the whole stage, alongside the controls' own gestures).
+        .simultaneousGesture(swipeGesture(height: size.height), including: self.compact && isFull ? .all : .subviews)
+        .animation(.spring(response: 0.5, dampingFraction: 0.86),
+                   value: mode)
+        .onChange(of: isFull && !chromeShown) { _, hidden in
+            PlayerTitlebar.setButtonsHidden(hidden, in: model.mainWindow)
+        }
+        .onAppear { chrome.requestClose = { dismissFullScreen(height: containerSize.height) } }
+        .focusEffectDisabled()
+        .environment(\.colorScheme, .dark)
+    }
+
+    @ViewBuilder
+    private func stageContent(size: CGSize, safe: CGRect, mode: PlayerPresentationMode, compact: CGRect,
+                              chromeShown: Bool, drag: CGFloat, cardRadius: CGFloat) -> some View {
+        let player = model.player
+        let isFull = mode == .full
+        let bounds = CGRect(origin: .zero, size: size)
 
         ZStack(alignment: .topLeading) {
             Color.black
@@ -150,13 +191,16 @@ struct PlayerHost: View {
 
             // Structurally stable video surfaces — never move these into mode-specific branches.
             ForEach(player.slots) { slot in
-                let placement = placement(for: slot, mode: mode, compact: compact, bounds: bounds)
+                var placement = placement(for: slot, mode: mode, compact: compact, bounds: bounds)
+                let _ = (placement.cornerRadius = max(placement.cornerRadius, cardRadius))
                 PlayerVideoSurface(slot: slot, placement: placement)
                     .zIndex(placement.zIndex)
             }
 
             if isFull {
                 fullOverlay(size: size, safe: safe, chromeShown: chromeShown)
+                    // The controls fade out quickly as the card is dragged.
+                    .opacity(1 - min(1, drag * 4))
                     .zIndex(10)
             } else if mode != .hidden {
                 PlayerCompactControls(slot: player.main, style: mode == .mini ? .mini : .preview, size: compact.size)
@@ -167,17 +211,6 @@ struct PlayerHost: View {
             }
         }
         .frame(width: size.width, height: size.height, alignment: .topLeading)
-        // Narrow touch screens: swipes anywhere on the full-screen player (the video's cell overlay sits above the
-        // stage, so this is on the whole stage, alongside the controls' own gestures).
-        .simultaneousGesture(swipeGesture(height: size.height), including: self.compact && isFull ? .all : .subviews)
-        .offset(y: isFull ? dismissOffset : 0)
-        .animation(.spring(response: 0.5, dampingFraction: 0.86),
-                   value: mode)
-        .onChange(of: isFull && !chromeShown) { _, hidden in
-            PlayerTitlebar.setButtonsHidden(hidden, in: model.mainWindow)
-        }
-        .focusEffectDisabled()
-        .environment(\.colorScheme, .dark)
     }
 
     @ViewBuilder
@@ -283,10 +316,15 @@ struct PlayerHost: View {
         // (that feedback loop made the swipe stutter).
         DragGesture(minimumDistance: 14, coordinateSpace: .global)
             .onChanged { value in
-                guard !model.player.isEpisodeListOpen, value.translation.height > 0,
-                      value.translation.height > abs(value.translation.width) * 1.2 else { return }
-                // Landscape: a little give (the swipe returns to portrait); portrait: the video follows the finger.
-                dismissOffset = isLandscape ? min(value.translation.height * 0.35, 60) : value.translation.height
+                let dy = value.translation.height
+                guard !model.player.isEpisodeListOpen, abs(dy) > abs(value.translation.width) * 1.2 else { return }
+                if dy > 0 {
+                    // Landscape: a little give (the swipe returns to portrait); portrait: the card follows the finger.
+                    dismissOffset = isLandscape ? min(dy * 0.3, 54) : dy
+                } else if !isLandscape {
+                    // Up (to landscape): a rubber-band nudge.
+                    dismissOffset = max(dy * 0.18, -28)
+                }
             }
             .onEnded { value in
                 let dy = value.translation.height
@@ -307,13 +345,36 @@ struct PlayerHost: View {
                     #endif
                 }
                 if closing {
-                    // No spring back: the player shrinks into the mini player (or stops) from where it is.
-                    model.exitFullWindow()
-                    dismissOffset = 0
+                    dismissFullScreen(height: height)
                 } else {
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.86)) { dismissOffset = 0 }
+                    withAnimation(.spring(response: 0.36, dampingFraction: 0.8)) { dismissOffset = 0 }
                 }
             }
+    }
+
+    /// Touch screens: leaves the full-screen player from wherever the card is. Live TV shrinks into the mini
+    /// player (it keeps playing); anything else slides down and fades, then stops.
+    private func dismissFullScreen(height: CGFloat) {
+        guard model.player.isFullWindow else { return }
+        if model.player.main.item?.isLive == true {
+            withAnimation(.spring(response: 0.46, dampingFraction: 0.88)) {
+                model.exitFullWindow()
+                dismissOffset = 0
+            }
+        } else {
+            withAnimation(.easeIn(duration: 0.24)) {
+                dismissOffset = max(dismissOffset, 0) + height * 0.35
+                isClosing = true
+            } completion: {
+                var transaction = Transaction()
+                transaction.disablesAnimations = true
+                withTransaction(transaction) {
+                    model.exitFullWindow()
+                    dismissOffset = 0
+                    isClosing = false
+                }
+            }
+        }
     }
 
     private var isLandscape: Bool {
@@ -349,6 +410,11 @@ struct PlayerHost: View {
             // Waits, hidden, where it will appear (the guide preview or the mini player), so starting playback
             // doesn't fly it in from elsewhere. Hidden for real (`isHidden` on the platform view): SwiftUI `opacity`
             // doesn't reach embedded AppKit views, so an "invisible" one would still cover or swallow clicks.
+            // iPhone: playback opens full screen, so it waits in the middle and grows from there as it fades in.
+            if self.compact, previewRect == nil {
+                let rect = bounds.insetBy(dx: bounds.width * 0.06, dy: bounds.height * 0.06)
+                return PlayerSlotPlacement(rect: rect, cornerRadius: 24, isVisible: false)
+            }
             return PlayerSlotPlacement(rect: compact, cornerRadius: 12, isVisible: false)
         }
     }
