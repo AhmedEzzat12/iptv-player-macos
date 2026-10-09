@@ -22,6 +22,8 @@ final class AppModel {
     let metadata: MetadataService
     /// IMDb ratings for TV episodes (IMDb's datasets; see `IMDbRatingsService`).
     let imdbRatings: IMDbRatingsService
+    /// Home's Top 10 rows: public popularity charts matched against the library (only used when turned on).
+    let topTen: TopTenService
     /// Movies and episodes saved for offline viewing (one at a time; see `downloadItems`).
     let downloads: DownloadService
     let prefs: Preferences
@@ -119,6 +121,7 @@ final class AppModel {
         recorder = RecordingService(db: db, resolver: resolver, directory: URL(fileURLWithPath: prefs.recordingsPath))
         downloads = DownloadService(db: db, resolver: resolver, directory: URL(fileURLWithPath: prefs.downloadsPath, isDirectory: true))
         metadata = MetadataService(db: db)
+        topTen = TopTenService(db: db)
         player = PlayerManager(services: PlayerServices(db: db, resolver: resolver, prefs: prefs))
         for slot in player.slots { wire(slot) }
     }

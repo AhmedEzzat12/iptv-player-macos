@@ -35,6 +35,8 @@ private struct HomeContent: View {
     /// Online metadata for the hero items, keyed by `VODItem.id`.
     @ViewState private var heroMetadata: [String: MediaMetadata] = [:]
     @ViewState private var viewHeight: CGFloat = 800
+    /// Settings › AI › Home › Top 10 (see HomeTopTenRows.swift).
+    @ViewState private var topTen = TopTenService.Rows()
 
     private var hasHero: Bool { !library.hero.isEmpty }
 
@@ -70,6 +72,8 @@ private struct HomeContent: View {
                     }
                 }
 
+                HomeTopTenRows(rows: topTen, favoriteIds: personal.favoriteIds)
+
                 if !onNow.isEmpty {
                     VODShelf("On Now", subtitle: onNowSubtitle) {
                         ForEach(onNow) { entry in
@@ -93,6 +97,7 @@ private struct HomeContent: View {
         .background(VODTheme.background)
         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { viewHeight = $0 }
         .navigationTitle("Home")
+        .homeTopTenRows($topTen)
         .task(id: model.libraryRevision) { await loadLibrary() }
         .task(id: HomePersonalKey(user: model.userRevision, smart: smartRow, library: smartRow ? model.libraryRevision : 0)) {
             await loadPersonal()

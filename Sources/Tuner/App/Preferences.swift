@@ -136,6 +136,10 @@ final class Preferences {
     var aiRecommendations: Bool { didSet { set(aiRecommendations, "aiRecommendations") } }
     /// Search understands phrases like "90s comedy series" (Apple's on-device language model where available).
     var aiNaturalLanguageSearch: Bool { didSet { set(aiNaturalLanguageSearch, "aiNaturalLanguageSearch") } }
+    /// "Top 10 Movies" / "Top 10 TV Shows" on Home from public popularity charts (downloads them; off by default).
+    var homeTopTen: Bool { didSet { set(homeTopTen, "homeTopTen") } }
+    /// Which chart the Top 10 rows follow: "" automatic, "global", "popular" or a Netflix country code (`TopTenRegion`).
+    var homeTopTenRegion: String { didSet { set(homeTopTenRegion, "homeTopTenRegion") } }
 
     var lastChannelId: String? { didSet { set(lastChannelId, "lastChannelId") } }
     var resumeLastChannelOnLaunch: Bool { didSet { set(resumeLastChannelOnLaunch, "resumeLastChannelOnLaunch") } }
@@ -198,6 +202,8 @@ final class Preferences {
         aiSmartContinueWatching = v("aiSmartContinueWatching", false)
         aiRecommendations = v("aiRecommendations", false)
         aiNaturalLanguageSearch = v("aiNaturalLanguageSearch", false)
+        homeTopTen = v("homeTopTen", false)
+        homeTopTenRegion = v("homeTopTenRegion", "")
 
         shortcutOverrides = defaults.dictionary(forKey: "shortcutOverrides") as? [String: String] ?? [:]
         lastChannelId = defaults.string(forKey: "lastChannelId")
