@@ -197,10 +197,15 @@ One version for both apps: `VERSION` (e.g. `1.2.0`) is the marketing version of 
 and the build number of both is the commit count on `main`. A release is a tag `v<version>` on `main`.
 
 1. Bump `VERSION` (patch for fixes, minor for features), commit on `main` and push.
+   If the UI changed, add screenshots of it (and/or demo footage) to `docs/media/` and the gallery above in the
+   same push. Capture them from the test kit only, never a real provider.
 2. Publish the Mac release from your Mac with the GitHub CLI (`brew install gh && gh auth login`):
    ```bash
-   scripts/release.sh
+   RELEASE_MEDIA="docs/media/15-new-thing.png" scripts/release.sh
    ```
+   `RELEASE_MEDIA` lists the new screenshots to attach to the GitHub release. If the views changed since the last
+   release and no new pictures came with them, it stops and asks for them; `NO_RELEASE_MEDIA=1` releases anyway
+   (for changes not worth a picture).
    It runs the tests, checks that the iPhone/iPad app still compiles (`SKIP_IOS_CHECK=1` skips that on a Mac
    without Xcode), builds the Mac app, signs the update with your Sparkle key, writes `appcast.xml` and creates
    GitHub release `v<version>` with `Tuner.zip` and the appcast. Installed Macs check

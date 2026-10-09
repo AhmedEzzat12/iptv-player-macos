@@ -71,6 +71,11 @@ Set up the same way as the maintainer's other app, Soonbar. Details: README → 
   `gh release create v<VERSION> build/Tuner.zip build/appcast.xml --target <full commit SHA> --title "Tuner <VERSION>" --notes-file build/release-notes.txt`
   (only when the maintainer asks; pass the full 40-character SHA).
 - The build number (`CFBundleVersion`) must keep increasing; it's the commit count on `main`.
+- **New or changed UI ships with pictures.** Before a release whose changes touch the UI, capture screenshots of
+  the new UI (Mac, and iPhone when it differs) and/or add it to the demo video, commit them in `docs/media/` (and
+  the README gallery), and pass the screenshots in `RELEASE_MEDIA` so they're attached to the GitHub release.
+  `release.sh` refuses a release whose views changed without new media unless `NO_RELEASE_MEDIA=1` (for changes
+  not worth a picture). Retire pictures of features that were removed.
 
 ## Docs and media
 
