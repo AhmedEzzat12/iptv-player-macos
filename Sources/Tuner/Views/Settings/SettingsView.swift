@@ -30,6 +30,9 @@ struct SettingsView: View {
             Tab("Downloads", systemImage: "arrow.down.circle", value: SettingsTab.downloads) {
                 SettingsDownloadsPane().settingsPaneFrame(height: 560)
             }
+            Tab("AI", systemImage: "sparkles", value: SettingsTab.ai) {
+                SettingsAIPane().settingsPaneFrame(height: 620)
+            }
             Tab("Appearance", systemImage: "paintpalette", value: SettingsTab.appearance) {
                 SettingsAppearancePane().settingsPaneFrame(height: 300)
             }
@@ -44,7 +47,7 @@ struct SettingsView: View {
 }
 
 private enum SettingsTab: Hashable {
-    case playlists, playback, guide, metadata, recording, downloads, appearance, shortcuts, about
+    case playlists, playback, guide, metadata, recording, downloads, ai, appearance, shortcuts, about
 }
 
 private extension View {

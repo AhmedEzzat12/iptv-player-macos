@@ -18,6 +18,7 @@ struct MobileSettingsView: View {
                     row("Guide & Library", "calendar", .red) { SettingsGuidePane() }
                     row("Metadata", "text.below.photo", .purple) { SettingsMetadataPane() }
                     row("Downloads", "arrow.down.circle", .green) { SettingsDownloadsPane() }
+                    row("AI", "sparkles", .indigo) { SettingsAIPane() }
                     row("Appearance", "paintpalette", .pink) { SettingsAppearancePane() }
                 }
                 Section {

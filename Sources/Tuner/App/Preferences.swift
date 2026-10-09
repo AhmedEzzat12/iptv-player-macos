@@ -127,6 +127,20 @@ final class Preferences {
     var shortcutOverrides: [String: String] { didSet { set(shortcutOverrides, "shortcutOverrides") } }
 
     // Session state
+    // AI features: all off by default, all on-device (Settings › AI).
+    /// Channels without an exact guide match get the closest guide channel by name.
+    var aiGuideMatching: Bool { didSet { set(aiGuideMatching, "aiGuideMatching") } }
+    /// Continue Watching offers next episodes, puts what's nearly finished first and drops abandoned titles.
+    var aiSmartContinueWatching: Bool { didSet { set(aiSmartContinueWatching, "aiSmartContinueWatching") } }
+    /// "More Like This" on detail pages and "Because You Watched" rows on Home.
+    var aiRecommendations: Bool { didSet { set(aiRecommendations, "aiRecommendations") } }
+    /// Shows subtitles translated (Apple's on-device Translation) into `aiSubtitleLanguage`.
+    var aiSubtitleTranslation: Bool { didSet { set(aiSubtitleTranslation, "aiSubtitleTranslation") } }
+    /// Language code subtitles are translated into ("ar", "en", …); empty = the system language.
+    var aiSubtitleLanguage: String { didSet { set(aiSubtitleLanguage, "aiSubtitleLanguage") } }
+    /// Search understands phrases like "90s comedy series" (Apple's on-device language model where available).
+    var aiNaturalLanguageSearch: Bool { didSet { set(aiNaturalLanguageSearch, "aiNaturalLanguageSearch") } }
+
     var lastChannelId: String? { didSet { set(lastChannelId, "lastChannelId") } }
     var resumeLastChannelOnLaunch: Bool { didSet { set(resumeLastChannelOnLaunch, "resumeLastChannelOnLaunch") } }
 
@@ -183,6 +197,13 @@ final class Preferences {
 
         accent = AccentTheme(rawValue: v("accent", "")) ?? .cyan
         followSystemAppearance = v("followSystemAppearance", false)
+
+        aiGuideMatching = v("aiGuideMatching", false)
+        aiSmartContinueWatching = v("aiSmartContinueWatching", false)
+        aiRecommendations = v("aiRecommendations", false)
+        aiSubtitleTranslation = v("aiSubtitleTranslation", false)
+        aiSubtitleLanguage = v("aiSubtitleLanguage", "")
+        aiNaturalLanguageSearch = v("aiNaturalLanguageSearch", false)
 
         shortcutOverrides = defaults.dictionary(forKey: "shortcutOverrides") as? [String: String] ?? [:]
         lastChannelId = defaults.string(forKey: "lastChannelId")
