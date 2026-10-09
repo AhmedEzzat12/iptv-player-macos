@@ -240,6 +240,17 @@ extension AppDatabase {
         }
     }
 
+    /// The guide key smart guide matching picked for a channel (nil when its guide came from an exact match or none).
+    public func guideAutoMatch(channelId: String) async throws -> String? {
+        try await writer.read { db in
+            try String.fetchOne(db, sql: "SELECT epgKey FROM epgAutoMatch WHERE channelId = ?", arguments: [channelId])
+        }
+    }
+
+    func hasGuideAutoMatches() async throws -> Bool {
+        try await writer.read { db in try Bool.fetchOne(db, sql: "SELECT EXISTS (SELECT 1 FROM epgAutoMatch)") ?? false }
+    }
+
     public func epgChannels(matching query: String, limit: Int = 50) async throws -> [EPGChannel] {
         try await writer.read { db in
             let pattern = "%\(Self.escapeLike(query))%"

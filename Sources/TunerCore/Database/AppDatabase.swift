@@ -359,6 +359,17 @@ public final class AppDatabase: Sendable {
             try db.create(index: "download_series", on: "download", columns: ["seriesId"])
             try db.create(index: "download_filePath", on: "download", columns: ["filePath"])
         }
+
+        // Smart guide matching (Settings › AI): the guide key picked by name for a channel with no exact match, and
+        // its score. Rewritten by every key resolution, emptied while the feature is off. No foreign key: like
+        // `channel.epgKey` it outlives a resync.
+        m.registerMigration("v6-epgAutoMatch") { db in
+            try db.create(table: "epgAutoMatch") { t in
+                t.primaryKey("channelId", .text)
+                t.column("epgKey", .text).notNull()
+                t.column("score", .double).notNull()
+            }
+        }
         return m
     }
 }
