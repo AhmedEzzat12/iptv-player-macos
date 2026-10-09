@@ -134,10 +134,6 @@ final class Preferences {
     var aiSmartContinueWatching: Bool { didSet { set(aiSmartContinueWatching, "aiSmartContinueWatching") } }
     /// "More Like This" on detail pages and "Because You Watched" rows on Home.
     var aiRecommendations: Bool { didSet { set(aiRecommendations, "aiRecommendations") } }
-    /// Shows subtitles translated (Apple's on-device Translation) into `aiSubtitleLanguage`.
-    var aiSubtitleTranslation: Bool { didSet { set(aiSubtitleTranslation, "aiSubtitleTranslation") } }
-    /// Language code subtitles are translated into ("ar", "en", …); empty = the system language.
-    var aiSubtitleLanguage: String { didSet { set(aiSubtitleLanguage, "aiSubtitleLanguage") } }
     /// Search understands phrases like "90s comedy series" (Apple's on-device language model where available).
     var aiNaturalLanguageSearch: Bool { didSet { set(aiNaturalLanguageSearch, "aiNaturalLanguageSearch") } }
 
@@ -201,8 +197,6 @@ final class Preferences {
         aiGuideMatching = v("aiGuideMatching", false)
         aiSmartContinueWatching = v("aiSmartContinueWatching", false)
         aiRecommendations = v("aiRecommendations", false)
-        aiSubtitleTranslation = v("aiSubtitleTranslation", false)
-        aiSubtitleLanguage = v("aiSubtitleLanguage", "")
         aiNaturalLanguageSearch = v("aiNaturalLanguageSearch", false)
 
         shortcutOverrides = defaults.dictionary(forKey: "shortcutOverrides") as? [String: String] ?? [:]

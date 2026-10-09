@@ -38,15 +38,6 @@ struct SettingsAIPane: View {
                 }
             } header: {
                 Text("Search")
-            }
-
-            Section {
-                Toggle(isOn: $prefs.aiSubtitleTranslation) {
-                    Text("Translate subtitles")
-                    Text("Shows the subtitles you've turned on in another language, translated on this device.")
-                }
-            } header: {
-                Text("Playback")
             } footer: {
                 Text("Everything here runs on this device. Nothing about your library or what you watch is sent anywhere.")
             }
