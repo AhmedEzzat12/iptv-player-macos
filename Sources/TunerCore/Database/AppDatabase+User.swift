@@ -158,6 +158,65 @@ extension AppDatabase {
         }
     }
 
+    /// Smart Continue Watching (Settings › AI): resume points plus the next cached episode of shows whose latest
+    /// episode was finished, ordered and filtered by `SmartContinueWatching`. One read; no network.
+    public func smartContinueWatching(limit: Int = 20, now: Date = Date()) async throws -> [ContinueWatchingItem] {
+        try await writer.read { db in
+            // Recent unfinished movies, plus every record of the most recently watched shows.
+            let progress = try WatchProgress.fetchAll(db, sql: """
+                SELECT * FROM (
+                    SELECT * FROM watchProgress WHERE seriesId IS NULL AND kind IN ('movie', 'episode')
+                        AND completed = 0 AND position > 10 ORDER BY updatedAt DESC LIMIT ?)
+                UNION ALL
+                SELECT * FROM watchProgress WHERE kind = 'episode' AND seriesId IN (
+                    SELECT seriesId FROM watchProgress WHERE kind = 'episode' AND seriesId IS NOT NULL
+                    GROUP BY seriesId ORDER BY MAX(updatedAt) DESC LIMIT ?)
+                """, arguments: [limit * 5, limit * 3])
+
+            // Episode order (ids, seasons and numbers only) for shows whose latest episode was finished.
+            let shows = SmartContinueWatching.showsNeedingEpisodes(progress)
+            var episodes: [String: [Episode]] = [:]
+            if !shows.isEmpty {
+                let list = try Episode.fetchAll(db, sql: """
+                    SELECT id, seriesId, sourceId, season, number, '' AS title, providerId, '' AS streamURL
+                    FROM episode WHERE seriesId IN (\(databaseQuestionMarks(count: shows.count)))
+                    """, arguments: StatementArguments(Array(shows)))
+                episodes = Dictionary(grouping: list, by: \.seriesId)
+            }
+
+            let entries = SmartContinueWatching.rank(progress: progress, episodes: episodes, now: now, limit: limit)
+
+            // Full details for the next episodes picked, and their shows' names and artwork.
+            var nextIds: [String] = []
+            var nextSeries = Set<String>()
+            for case .nextEpisode(let episode, _) in entries {
+                nextIds.append(episode.id)
+                nextSeries.insert(episode.seriesId)
+            }
+            var fullEpisodes: [String: Episode] = [:]
+            var series: [String: Series] = [:]
+            if !nextIds.isEmpty {
+                let list = try Episode.fetchAll(db, sql: "SELECT * FROM episode WHERE id IN (\(databaseQuestionMarks(count: nextIds.count)))",
+                                                arguments: StatementArguments(nextIds))
+                fullEpisodes = Dictionary(list.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+                let rows = try Series.fetchAll(db, sql: "SELECT * FROM series WHERE id IN (\(databaseQuestionMarks(count: nextSeries.count)))",
+                                               arguments: StatementArguments(Array(nextSeries)))
+                series = Dictionary(rows.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+            }
+
+            return entries.compactMap { entry -> ContinueWatchingItem? in
+                switch entry {
+                case .resume(let p):
+                    return .resume(p)
+                case .nextEpisode(let skeleton, let finished):
+                    guard let episode = fullEpisodes[skeleton.id] else { return nil }
+                    let record = SmartContinueWatching.nextEpisodeRecord(episode, series: series[episode.seriesId], after: finished)
+                    return .nextEpisode(episode, progress: record)
+                }
+            }
+        }
+    }
+
     // MARK: VOD favourites
 
     public func isVODFavorite(mediaId: String) async throws -> Bool {

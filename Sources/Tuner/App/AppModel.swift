@@ -409,6 +409,16 @@ final class AppModel {
         }
     }
 
+    /// Plays a Continue Watching card: resumes a resume point, starts a next episode from the beginning (as Up Next does).
+    func play(_ item: ContinueWatchingItem) async {
+        switch item {
+        case .resume(let progress):
+            await resume(progress)
+        case .nextEpisode(let episode, _):
+            if let s = try? await db.series(id: episode.seriesId) { await playEpisode(episode, in: s) }
+        }
+    }
+
     func play(recording: Recording) {
         guard recording.filePath != nil else { return }
         player.play(.recording(recording))
