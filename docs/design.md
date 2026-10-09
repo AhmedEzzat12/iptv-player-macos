@@ -85,6 +85,50 @@ Apple frameworks plus SQLite and libmpv.
   and signs the bundle with `--deep`. `TUNER_UPDATE_FEED` points a test build at a local appcast; scratch runs with
   `TUNER_DATA_DIR` and no test feed never check.
 
+### On-device AI features (Settings → AI, all off by default)
+
+Each is a pref (`aiGuideMatching`, `aiSmartContinueWatching`, `aiNaturalLanguageSearch`); off means exactly the
+previous code path and no extra work. Logic lives in TunerCore with tests; nothing leaves the device.
+
+- **Smart guide matching** (`GuideMatcher`): runs only when `GuideService.smartMatching` is on. Ingest also keeps
+  programmes for each feed's best fuzzy pick among channels with no guide or only an automatic one;
+  `resolveEPGKeys` gives channels still without a key (and without an override) the matcher's pick and records it
+  in `epgAutoMatch` (migration `v6-epgAutoMatch`). Off: the table is emptied and resolution is exactly override →
+  Stalker → tvg-id → normalised name. Names are cleaned (quality/VIP/backup tags, country/language prefixes,
+  number words, Arabic transliterated); numbers, timeshift, region and country must agree and every word needs a
+  partner; score = 0.6 × edit-distance similarity + 0.4 × word agreement, ≥ 0.8 to match; Arabic vs Latin only by
+  consonant skeleton; near-ties between different names are refused.
+- **Smart Continue Watching** (`SmartContinueWatching.rank`, via `AppDatabase.smartContinueWatching` in one
+  read): each show's newest record decides — unfinished → resume; finished → the next cached episode
+  (`EpisodeNavigation`, no network), none after the finale or if already watched. Nearly finished (≥ 75 % or
+  < 15 min left, touched within 30 days) and next episodes of shows watched in the last 7 days come first, then
+  recency; < 20 % and untouched 21+ days is hidden. Removing an episode card marks it unwatched rather than
+  deleting it, so the show doesn't come back as the following episode.
+- **Recommendations** (`RecommendationIndex`, `Recommender`): a content-based index with no model. Each movie/show
+  is a sparse TF-IDF vector over weighted tokens (genre ×2, director ×2, cast ×1.5, language ×1.5, category ×1.2,
+  title ×1.2, category words ×0.6, plot ×0.5), with genres/languages canonicalised from English and Arabic and
+  text normalised once for both (harakat/tatweel removed, alef/yaa/taa marbuta unified, ال stripped, EN+AR stop
+  words). Queries: cosine similarity through an inverted index × year proximity × rating prior, then MMR with a
+  per-category cap; the title itself and other copies of it are excluded. The `Recommender` actor builds the index
+  lazily off the main actor (≈0.9 s for 50k titles in release, ≈22 MB) and rebuilds in the background when a cheap
+  library fingerprint changes; hidden categories and the adult filter apply per query (≈3 ms). No new tables.
+- **Natural-language search** (`QueryUnderstanding`): a rule-based EN/AR parser (Arabic spelling folded, articles
+  and prefixes removed, a lexicon plus year grammar) into `SearchFilter`s and leftover title text; connecting words
+  are dropped only next to understood words, and `AppDatabase.understandSearch` keeps the query plain when it
+  names a library title ("Family Guy"). Channels and programmes are searched as typed. The optional Foundation
+  Models step (`NaturalSearchModel`, app target, `DynamicGenerationSchema` so no macro plugin is needed) runs only
+  on Return for English 3+-word queries with leftover words and no results, with a 6 s timeout, and
+  `QueryUnderstanding.refine` validates its answer. FoundationModels is weak-linked (`-weak_framework`) so the
+  Mac app still launches on macOS 15.
+
+### Artwork loading
+
+`RemoteImage` loads through `ArtworkLoader` rather than `AsyncImage` + `URLCache`: decoded images stay in an
+`NSCache` keyed by URL and a pixel-size bucket (the largest copy per URL is drawn in the first frame, so there's no
+placeholder flash when scrolling back); bytes go to `ImageDiskCache` (TunerCore, 600 MB, least recently used out,
+file names are SHA-256 of the URL) whatever the server's caching headers say; decoding uses ImageIO's thumbnail
+path off the main thread, sized to the view. One request per URL is shared by every view asking for it.
+
 ## Architecture
 
 ```

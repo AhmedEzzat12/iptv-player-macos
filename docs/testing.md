@@ -179,6 +179,15 @@ Live URLs: `/live/test/test/<id>.ts`, `/live/test/test/<id>.m3u8`, and the short
    `[SPA] Subtítulo n`. MP4 muxers always flag the first subtitle track as enabled, so English subtitles may show by default.
 9. **Resume / seek**: movies and episodes show a frame-accurate timecode, so a resumed position is easy to verify.
 10. **Bad credentials**: an Xtream source with password `nope` must fail login with a clear error.
+11. **AI features** (Settings → AI): with **Understand natural searches** on, "comedy movies" and "90s comedy series"
+    show chips under the search field and filter movies/shows (tap a chip to turn it off); a library title like
+    "Signal Lost" stays a plain search. With **Smart Continue Watching** on, finish an episode of a show whose
+    episodes were opened once: Home offers "S1, E2 · Next Episode". **Smart guide matching** needs a guide whose
+    names differ from the playlist's (e.g. a playlist entry `VIP DE: ZDF HD` and a guide channel `ZDF`): off, no
+    guide; on, ZDF's programmes after the guide refresh. With **Recommendations** on, Elephants Dream's page shows
+    "More Like This" (Sintel, Tears of Steel, Big Buck Bunny). Turning each off restores the old behaviour at once.
+12. **Artwork cache**: posters appear without a placeholder flash when scrolling back; the files are in
+    `~/Library/Caches/<bundle id>/Artwork` (Settings → Metadata → Clear Metadata Cache empties it).
 
 ## 9. Quick command-line checks
 

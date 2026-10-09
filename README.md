@@ -22,8 +22,12 @@ A native IPTV player for **Mac, iPhone and iPad** with an Apple TV app–style e
 | ![Episodes panel](docs/media/12-player-episodes.png) | ![Up Next](docs/media/13-up-next.png) |
 | **Automatic updates** | **Settings → Shortcuts** |
 | ![Update available](docs/media/14-update.png) | ![Shortcuts](docs/media/09-settings-shortcuts.png) |
-| **Settings → Metadata** | |
-| ![Metadata](docs/media/10-settings-metadata.png) | |
+| **Settings → Metadata** | **Settings → AI (all off until you turn them on)** |
+| ![Metadata](docs/media/10-settings-metadata.png) | ![AI settings](docs/media/15-settings-ai.png) |
+| **Search that understands phrases** | **iPhone player** |
+| ![Search with understood filters](docs/media/16-search-understood.png) | ![iPhone player](docs/media/17-iphone-player.png) |
+| **iPhone player in landscape** | |
+| ![iPhone player in landscape](docs/media/18-iphone-player-landscape.png) | |
 
 <sub>Screenshots and video use the local test kit (`scripts/testkit`): synthetic channels and titles, plus four
 Blender Foundation open movies (CC BY). No provider content is shown.</sub>
@@ -72,6 +76,26 @@ Blender Foundation open movies (CC BY). No provider content is shown.</sub>
   pressed Return on, opened or played) and shown while the field is empty. ⌘F on the Mac, or tapping the Search tab
   again on iPhone/iPad, puts the cursor in the field.
 - **Recordings (Mac):** record now or schedule from the guide (ffmpeg stream copy).
+- **On-device AI features** (Settings → AI, each off until you turn it on; nothing about your library or what
+  you watch leaves the device):
+  - **Smart guide matching:** channels the guide doesn't list by ID or exact name get the guide channel with the
+    closest name, ignoring tags like HD/FHD/4K, VIP and backup markers and prefixes like `UK:` or `|AR|`, and
+    comparing Arabic and Latin names. Numbers and +1 timeshifts must agree (beIN Sports 1 never gets beIN
+    Sports 2), near-ties are skipped, and a guide chosen by hand always wins.
+  - **Smart Continue Watching:** when you finish an episode, Home offers the next one ("S2, E4 · Next Episode");
+    what you're about to finish and shows you watched this week come first; titles you stopped early and
+    haven't touched in three weeks leave the row (their progress is kept).
+  - **Recommendations:** "More Like This" on movie and show pages and up to two "Because You Watched …" rows on
+    Home, worked out on this device from genres, cast, directors, categories, titles and plots in English and
+    Arabic. Rows are seeded by what you finished or mostly watched and by your favourites; hidden categories (and
+    adult ones when adult content is hidden) are never recommended.
+  - **Understand natural searches:** "90s comedy series", "top rated Korean dramas", "Arabic movies since 2015",
+    "مسلسلات تركية رومانسية" become filters for type, years, genre, language, 4K and rating, shown as chips you
+    can tap off. Works offline in English and Arabic; with Apple Intelligence (OS 26+), Return on an English
+    phrase the rules can't read also asks Apple's on-device model.
+- **Artwork cache:** posters and backdrops are kept on disk (up to 600 MB, oldest out first) whatever the
+  server's caching headers say, scaled to the size they're shown at, and kept in memory once loaded, so rows
+  scroll smoothly and pictures appear at once when you come back.
 
 ## iPhone and iPad
 

@@ -43,7 +43,7 @@ struct SettingsAIPane: View {
             } header: {
                 Text("Search")
             } footer: {
-                Text("Everything here runs on this device. Nothing about your library or what you watch is sent anywhere.")
+                SettingsFooter("Everything here runs on this device. Nothing about your library or what you watch is sent anywhere.")
             }
         }
         .formStyle(.grouped)
