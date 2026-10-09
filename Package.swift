@@ -37,6 +37,9 @@ let package = Package(
             linkerSettings: [
                 // Sparkle.framework is embedded in Contents/Frameworks by scripts/build-app.sh.
                 .unsafeFlags(["-Xlinker", "-rpath", "-Xlinker", "@executable_path/../Frameworks"]),
+                // Apple's on-device language model (macOS 26+) is an optional extra for search; weak-linked so the
+                // app still launches on macOS 15, where the framework doesn't exist.
+                .unsafeFlags(["-Xlinker", "-weak_framework", "-Xlinker", "FoundationModels"]),
                 .linkedFramework("OpenGL"),
                 .linkedFramework("AVKit"),
                 .linkedFramework("UserNotifications"),

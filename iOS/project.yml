@@ -78,6 +78,8 @@ targets:
         SWIFT_VERSION: "5.0"
         # mpv renders through OpenGL ES on purpose (iOS/Sources/Player/MPVVideoLayer.swift).
         OTHER_SWIFT_FLAGS: "$(inherited) -Xcc -DGLES_SILENCE_DEPRECATION"
+        # Apple's on-device language model is an optional extra for search (used behind availability checks).
+        OTHER_LDFLAGS: "$(inherited) -weak_framework FoundationModels"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         CODE_SIGN_STYLE: Automatic
 
