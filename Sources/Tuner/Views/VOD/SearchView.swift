@@ -28,15 +28,26 @@ private struct SearchContent: View {
     @ViewState private var results: SearchResults?
     @ViewState private var isSearching = false
     @ViewState private var showAllPrograms = false
+    // Settings › AI › Understand natural searches: what the shown results were searched as (nil = a plain search),
+    // filters the user switched off by tapping their chip, and the on-device model's reading after Return.
+    @ViewState private var understood: ParsedSearch?
+    @ViewState private var removedFilters: Set<SearchFilter> = []
+    @ViewState private var modelReading: ParsedSearch?
+    @ViewState private var isAskingModel = false
+    @ViewState private var modelTask: Task<Void, Never>?
+    @ViewState private var askModelAfterSearch: String?
 
     private var query: String { model.searchQuery.trimmingCharacters(in: .whitespacesAndNewlines) }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 28) {
-                searchField
-                    .padding(.horizontal, VODMetrics.inset)
-                    .padding(.top, 18)
+                VStack(spacing: 12) {
+                    searchField
+                    understoodFilters
+                }
+                .padding(.horizontal, VODMetrics.inset)
+                .padding(.top, 18)
                 resultsBody
             }
             .padding(.bottom, 40)
@@ -55,10 +66,23 @@ private struct SearchContent: View {
         .toolbar(.hidden, for: .navigationBar)
         #endif
         .onChange(of: model.searchFocusRequest) { fieldFocused = true }
-        .task(id: SearchKey(query: query, library: model.libraryRevision, guide: model.guideRevision)) {
+        .task(id: SearchKey(
+            query: query, library: model.libraryRevision, guide: model.guideRevision,
+            natural: model.prefs.aiNaturalLanguageSearch, removed: removedFilters, modelReading: modelReading
+        )) {
             await runSearch(query)
         }
-        .onChange(of: query) { showAllPrograms = false }
+        .onChange(of: query) {
+            showAllPrograms = false
+            removedFilters = []
+            modelReading = nil
+            modelTask?.cancel()
+            isAskingModel = false
+            askModelAfterSearch = nil
+        }
+        .onChange(of: fieldFocused) { _, focused in
+            if focused, model.prefs.aiNaturalLanguageSearch { NaturalSearchModel.prewarm() }
+        }
         .onChange(of: model.player.main.item?.id) { _, id in
             // Playing a channel or programme from the results.
             if id != nil, results?.isEmpty == false { model.prefs.rememberSearch(query) }
@@ -81,8 +105,9 @@ private struct SearchContent: View {
                 .onSubmit {
                     fieldFocused = false
                     model.prefs.rememberSearch(model.searchQuery)
+                    askModelIfUseful()
                 }
-            if isSearching {
+            if isSearching || isAskingModel {
                 ProgressView().controlSize(.small)
             }
             if !model.searchQuery.isEmpty {
@@ -104,6 +129,44 @@ private struct SearchContent: View {
         .frame(maxWidth: 760)
         .frame(maxWidth: .infinity)
         .animation(.easeOut(duration: 0.15), value: fieldFocused)
+    }
+
+    // MARK: Understood filters
+
+    /// Chips for what a natural search was understood as ("TV Shows", "1990s", "Comedy"): tap one to search
+    /// without it, tap it again to bring it back.
+    @ViewBuilder
+    private var understoodFilters: some View {
+        if model.prefs.aiNaturalLanguageSearch, let understood, understood.hasFilters, query.count >= 2 {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    Image(systemName: modelReading != nil ? "sparkles" : "text.magnifyingglass")
+                        .font(.callout.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .help(modelReading != nil ? "Understood with Apple Intelligence" : "Understood from your search")
+                        .accessibilityHidden(true)
+                    ForEach(understood.filters, id: \.self) { filter in
+                        SearchFilterChip(filter: filter, isOn: !removedFilters.contains(filter)) {
+                            withAnimation(.easeOut(duration: 0.15)) {
+                                if removedFilters.contains(filter) { removedFilters.remove(filter) } else { removedFilters.insert(filter) }
+                            }
+                        }
+                    }
+                    if !understood.text.isEmpty {
+                        Text("“\(understood.text)”")
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .help("Searched in titles")
+                    }
+                }
+                .padding(.horizontal, 4)
+            }
+            .scrollClipDisabled()
+            .frame(maxWidth: 760)
+            .frame(maxWidth: .infinity)
+            .transition(.opacity)
+        }
     }
 
     // MARK: Results
@@ -241,16 +304,55 @@ private struct SearchContent: View {
     private func runSearch(_ q: String) async {
         guard q.count >= 2 else {
             results = nil
+            understood = nil
             isSearching = false
             return
         }
         try? await Task.sleep(for: .milliseconds(250))
         guard !Task.isCancelled else { return }
         isSearching = true
-        let found = await SearchResults.load(query: q, model: model)
+        // Natural searches: filters for movies and shows (channels and the guide are searched as typed).
+        var reading: ParsedSearch?
+        if model.prefs.aiNaturalLanguageSearch {
+            if let modelReading, modelReading.query == q {
+                reading = modelReading
+            } else {
+                reading = await model.db.understandSearch(q)
+            }
+        }
+        let vodSearch = reading.map { $0.removing(removedFilters) }.flatMap { $0.hasFilters ? $0 : nil }
+        let found = await SearchResults.load(query: q, understood: vodSearch, model: model)
         guard !Task.isCancelled else { return }
-        withAnimation(.easeOut(duration: 0.2)) { results = found }
+        withAnimation(.easeOut(duration: 0.2)) {
+            results = found
+            understood = reading
+        }
         isSearching = false
+        if askModelAfterSearch == q { askModelIfUseful() }
+    }
+
+    /// Return on an English phrase the rules couldn't fully read and that found no movies or shows: ask Apple's
+    /// on-device model (where available) for the same filters. Never needed; the rule-based results stay otherwise.
+    /// Return pressed before this query's search finished is remembered and answered when it does.
+    private func askModelIfUseful() {
+        guard model.prefs.aiNaturalLanguageSearch, modelReading == nil, NaturalSearchModel.isAvailable else { return }
+        guard let rules = understood, rules.query == query, results?.query == query else {
+            askModelAfterSearch = query
+            return
+        }
+        askModelAfterSearch = nil
+        guard let results, results.movies.isEmpty, results.shows.isEmpty, QueryUnderstanding.shouldAskModel(rules) else { return }
+        let q = query
+        modelTask?.cancel()
+        isAskingModel = true
+        modelTask = Task {
+            let suggestion = await NaturalSearchModel.suggestion(for: q)
+            guard !Task.isCancelled, q == query else { return }
+            isAskingModel = false
+            guard let suggestion else { return }
+            let refined = QueryUnderstanding.refine(rules, with: suggestion)
+            if refined != rules, refined.hasFilters { modelReading = refined }
+        }
     }
 }
 
@@ -258,6 +360,50 @@ private struct SearchKey: Hashable {
     let query: String
     let library: Int
     let guide: Int
+    var natural = false
+    var removed: Set<SearchFilter> = []
+    var modelReading: ParsedSearch?
+}
+
+/// One understood filter: on (filled, with ×) or switched off by the user (outlined, struck through).
+private struct SearchFilterChip: View {
+    let filter: SearchFilter
+    let isOn: Bool
+    let toggle: () -> Void
+    @ViewState private var hovering = false
+
+    var body: some View {
+        Button(action: toggle) {
+            HStack(spacing: 5) {
+                Image(systemName: filter.symbol)
+                    .font(.caption.weight(.semibold))
+                Text(filter.title)
+                    .strikethrough(!isOn)
+                    .lineLimit(1)
+                Image(systemName: isOn ? "xmark" : "plus")
+                    .font(.caption2.weight(.bold))
+                    .foregroundStyle(.secondary)
+            }
+            .font(.callout.weight(.medium))
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .foregroundStyle(isOn ? AnyShapeStyle(.primary) : AnyShapeStyle(.secondary))
+            .background(
+                Capsule().fill(Color.primary.opacity(isOn ? (hovering ? 0.16 : 0.1) : 0))
+            )
+            .overlay(
+                Capsule().strokeBorder(Color.primary.opacity(isOn ? 0 : 0.18), lineWidth: 1)
+            )
+            .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .fixedSize()
+        .onHover { hovering = $0 }
+        .help(isOn ? "Search without “\(filter.title)”" : "Search with “\(filter.title)” again")
+        .accessibilityLabel(filter.title)
+        .accessibilityValue(isOn ? "On" : "Off")
+        .accessibilityHint(isOn ? "Removes this filter" : "Adds this filter again")
+    }
 }
 
 // MARK: - Results model
@@ -283,8 +429,9 @@ private struct SearchResults {
 
     var isEmpty: Bool { channels.isEmpty && programs.isEmpty && movies.isEmpty && shows.isEmpty }
 
+    /// `understood`: filters for movies and shows from a natural search (nil = search titles for `q`, as typed).
     @MainActor
-    static func load(query q: String, model: AppModel) async -> SearchResults {
+    static func load(query q: String, understood: ParsedSearch? = nil, model: AppModel) async -> SearchResults {
         let db = model.db
         let now = Date()
         let hideAdult = model.prefs.hideAdultContent
@@ -292,8 +439,8 @@ private struct SearchResults {
         let lookBack: TimeInterval = 3 * 86_400
 
         async let channelsQuery = db.channels(scope: .all, search: q, sort: .provider, limit: channelLimit)
-        async let moviesQuery = db.movies(search: q, sort: .name, limit: 200)
-        async let seriesQuery = db.series(search: q, sort: .name, limit: 200)
+        async let moviesQuery = movies(db, query: q, understood: understood)
+        async let seriesQuery = series(db, query: q, understood: understood)
         async let programsQuery = db.searchPrograms(q, from: now.addingTimeInterval(-lookBack), hours: 72 + lookBack / 3600, limit: 300)
         async let favoriteMoviesQuery = db.favoriteMovies()
         async let favoriteSeriesQuery = db.favoriteSeries()
@@ -310,8 +457,10 @@ private struct SearchResults {
             }
         }
 
-        result.movies = Array(rank((try? await moviesQuery) ?? [], query: q, name: \.name).prefix(vodLimit)).map(VODItem.movie)
-        result.shows = Array(rank((try? await seriesQuery) ?? [], query: q, name: \.name).prefix(vodLimit)).map(VODItem.series)
+        // Filter-only natural searches keep the database's order (best rated first).
+        let titleText = understood?.text ?? q
+        result.movies = Array(rank((try? await moviesQuery) ?? [], query: titleText, name: \.name).prefix(vodLimit)).map(VODItem.movie)
+        result.shows = Array(rank((try? await seriesQuery) ?? [], query: titleText, name: \.name).prefix(vodLimit)).map(VODItem.series)
         let favMovies = (try? await favoriteMoviesQuery) ?? []
         let favSeries = (try? await favoriteSeriesQuery) ?? []
         result.favoriteIds = Set(favMovies.map(\.id) + favSeries.map(\.id))
@@ -347,8 +496,19 @@ private struct SearchResults {
         return result
     }
 
+    private static func movies(_ db: AppDatabase, query q: String, understood: ParsedSearch?) async throws -> [Movie] {
+        if let understood { return try await db.movies(understood: understood) }
+        return try await db.movies(search: q, sort: .name, limit: 200)
+    }
+
+    private static func series(_ db: AppDatabase, query q: String, understood: ParsedSearch?) async throws -> [Series] {
+        if let understood { return try await db.series(understood: understood) }
+        return try await db.series(search: q, sort: .name, limit: 200)
+    }
+
     /// Exact title matches first, then prefix matches, then the rest (stable).
     private static func rank<T>(_ list: [T], query: String, name: KeyPath<T, String>) -> [T] {
+        guard !query.isEmpty else { return list }
         let q = query.lowercased()
         func score(_ item: T) -> Int {
             let n = item[keyPath: name].lowercased()
