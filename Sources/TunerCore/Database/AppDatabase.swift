@@ -370,6 +370,17 @@ public final class AppDatabase: Sendable {
                 t.column("score", .double).notNull()
             }
         }
+
+        // Public popularity charts for Home's "Top 10" rows (`PopularityChart` as JSON), one row per source, so the
+        // rows work offline and the files are fetched only when a newer list can exist.
+        m.registerMigration("v6-topTen") { db in
+            try db.create(table: "popularityChart") { t in
+                t.primaryKey("id", .text)
+                t.column("json", .text).notNull()
+                t.column("lastModified", .text)
+                t.column("checkedAt", .datetime).notNull()
+            }
+        }
         return m
     }
 }

@@ -37,6 +37,8 @@ private struct HomeContent: View {
     @ViewState private var viewHeight: CGFloat = 800
     /// "Because You Watched" rows (Settings › AI › Recommendations; always empty when that's off).
     @ViewState private var recommendations: [VODRecommendationRow] = []
+    /// Settings › AI › Home › Top 10 (see HomeTopTenRows.swift).
+    @ViewState private var topTen = TopTenService.Rows()
 
     private var hasHero: Bool { !library.hero.isEmpty }
 
@@ -72,6 +74,8 @@ private struct HomeContent: View {
                     }
                 }
 
+                HomeTopTenRows(rows: topTen, favoriteIds: personal.favoriteIds)
+
                 if !onNow.isEmpty {
                     VODShelf("On Now", subtitle: onNowSubtitle) {
                         ForEach(onNow) { entry in
@@ -99,6 +103,7 @@ private struct HomeContent: View {
         .background(VODTheme.background)
         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { viewHeight = $0 }
         .navigationTitle("Home")
+        .homeTopTenRows($topTen)
         .task(id: model.libraryRevision) { await loadLibrary() }
         .vodRecommendationRows($recommendations)
         .task(id: HomePersonalKey(user: model.userRevision, smart: smartRow, library: smartRow ? model.libraryRevision : 0)) {
