@@ -126,7 +126,9 @@ struct VODRankedPosterCard: View {
                 .frame(height: posterHeight, alignment: .bottom)
                 .offset(y: numeralSize * 0.1)
                 .accessibilityHidden(true)
+            // Natural height: a card with a year line would otherwise shrink its poster to the row's height.
             VODPosterCard(item: item, width: width, isFavorite: isFavorite)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Number \(rank), \(item.title)")

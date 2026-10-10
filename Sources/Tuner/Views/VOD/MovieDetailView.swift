@@ -13,6 +13,8 @@ struct MovieDetailView: View {
     @Environment(AppModel.self) private var model
     @ViewState private var movie: Movie
     @ViewState private var info: MediaMetadata?
+    /// Settings › AI › Recommendations: "More Like This" (empty while that's off).
+    @ViewState private var moreLikeThis: [VODItem] = []
     @ViewState private var category: TunerCore.Category?
     @ViewState private var progress: WatchProgress?
     @ViewState private var isFavorite = false
@@ -73,8 +75,9 @@ struct MovieDetailView: View {
                         VODCastShelf(cast: cast)
                             .transition(.opacity)
                     }
-                    if model.prefs.aiRecommendations {
-                        VODMoreLikeThisShelf(item: .movie(movie), metadata: info)
+                    if model.prefs.aiRecommendations, !moreLikeThis.isEmpty {
+                        VODMoreLikeThisShelf(items: moreLikeThis)
+                            .transition(.opacity)
                     }
                     VStack(alignment: .leading, spacing: 14) {
                         VODAboutSection(plot: plot, rows: infoRows)
@@ -93,6 +96,7 @@ struct MovieDetailView: View {
         .background(VODTheme.background)
         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { viewHeight = $0 }
         .navigationTitle(movie.name)
+        .vodMoreLikeThis(.movie(movie), metadata: info, items: $moreLikeThis)
         .task(id: MovieDetailLoadKey(id: movie.id, offline: model.isOffline)) { await loadDetails() }
         .task(id: VODMetadataTaskKey(id: movie.id, settings: model.prefs.metadataSettings)) { await loadMetadata() }
         .task(id: model.userRevision) { await loadUserState() }

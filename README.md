@@ -93,6 +93,12 @@ Blender Foundation open movies (CC BY). No provider content is shown.</sub>
     "مسلسلات تركية رومانسية" become filters for type, years, genre, language, 4K and rating, shown as chips you
     can tap off. Works offline in English and Arabic; with Apple Intelligence (OS 26+), Return on an English
     phrase the rules can't read also asks Apple's on-device model.
+- **Top 10 on Home** (Settings → AI → Home, off by default): "Top 10 Movies" and "Top 10 TV Shows" rows with
+  what's popular this week, showing only titles your playlists have, with a big rank number beside each poster.
+  The lists come from Netflix's public weekly Top 10 for your country (or worldwide), else TMDB trending (with your
+  key) or Cinemeta's popular lists; titles are matched by IMDb/TMDB id or by cleaned name and year. Nothing about
+  your library leaves the device. The country list is read once a week (up to ~30 MB, never on cellular or Low
+  Data Mode); the others are small.
 - **Artwork cache:** posters and backdrops are kept on disk (up to 600 MB, oldest out first) whatever the
   server's caching headers say, scaled to the size they're shown at, and kept in memory once loaded, so rows
   scroll smoothly and pictures appear at once when you come back.

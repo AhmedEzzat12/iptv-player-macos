@@ -5,43 +5,59 @@ import TunerCore
 // The work happens in `Recommender` (TunerCore, off the main actor); these views only ask and show. With the
 // preference off they're never created (detail pages) or load nothing (Home), so pages look exactly as without them.
 
-/// "More Like This" poster shelf for a movie or show page. The page's own details and online metadata make the query,
-/// so the shelf sharpens when they arrive.
+/// "More Like This" poster shelf for a movie or show page. The page adds it only when `items` isn't empty (an empty
+/// shelf in the page's stack would still take its spacing); `vodMoreLikeThis` fills `items`.
 struct VODMoreLikeThisShelf: View {
     @Environment(AppModel.self) private var model
-    let item: VODItem
-    var metadata: MediaMetadata?
+    let items: [VODItem]
 
-    @ViewState private var items: [VODItem] = []
     @ViewState private var favoriteIds: Set<String> = []
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            if !items.isEmpty {
-                VODShelf("More Like This") {
-                    ForEach(items) { item in
-                        NavigationLink(value: item.route) {
-                            VODPosterCard(item: item)
-                        }
-                        .buttonStyle(.plain)
-                        .contextMenu {
-                            VODItemMenu(item: item, isFavorite: favoriteIds.contains(item.mediaId))
-                        }
-                    }
+        VODShelf("More Like This") {
+            ForEach(items) { item in
+                NavigationLink(value: item.route) {
+                    VODPosterCard(item: item)
                 }
-                .transition(.opacity)
+                .buttonStyle(.plain)
+                .contextMenu {
+                    VODItemMenu(item: item, isFavorite: favoriteIds.contains(item.mediaId))
+                }
             }
-        }
-        .task(id: VODMoreLikeThisKey(item: item, metadata: metadata?.fetchedAt, library: model.libraryRevision,
-                                     hideAdult: model.prefs.hideAdultContent)) {
-            await load()
         }
         .task(id: model.userRevision) {
             favoriteIds = (try? await model.db.vodFavoriteIds()) ?? []
         }
     }
+}
+
+extension View {
+    /// Fills `items` with titles like `item` while Settings › AI › Recommendations is on (empties it when off). The
+    /// page's own details and online metadata make the query, so the list sharpens when they arrive.
+    func vodMoreLikeThis(_ item: VODItem, metadata: MediaMetadata?, items: Binding<[VODItem]>) -> some View {
+        modifier(VODMoreLikeThisLoader(item: item, metadata: metadata, items: items))
+    }
+}
+
+private struct VODMoreLikeThisLoader: ViewModifier {
+    @Environment(AppModel.self) private var model
+    let item: VODItem
+    let metadata: MediaMetadata?
+    @Binding var items: [VODItem]
+
+    func body(content: Content) -> some View {
+        content.task(id: VODMoreLikeThisKey(item: item, metadata: metadata?.fetchedAt, library: model.libraryRevision,
+                                            hideAdult: model.prefs.hideAdultContent,
+                                            enabled: model.prefs.aiRecommendations)) {
+            await load()
+        }
+    }
 
     private func load() async {
+        guard model.prefs.aiRecommendations else {
+            if !items.isEmpty { items = [] }
+            return
+        }
         let recommender = model.recommender
         let revision = model.libraryRevision
         let hideAdult = model.prefs.hideAdultContent
@@ -66,6 +82,7 @@ private struct VODMoreLikeThisKey: Hashable {
     let metadata: Date?
     let library: Int
     let hideAdult: Bool
+    let enabled: Bool
 }
 
 /// A "Because You Watched …" row for Home.

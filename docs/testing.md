@@ -186,7 +186,10 @@ Live URLs: `/live/test/test/<id>.ts`, `/live/test/test/<id>.m3u8`, and the short
     names differ from the playlist's (e.g. a playlist entry `VIP DE: ZDF HD` and a guide channel `ZDF`): off, no
     guide; on, ZDF's programmes after the guide refresh. With **Recommendations** on, Elephants Dream's page shows
     "More Like This" (Sintel, Tears of Steel, Big Buck Bunny). Turning each off restores the old behaviour at once.
-12. **Artwork cache**: posters appear without a placeholder flash when scrolling back; the files are in
+12. **Top 10 rows**: the test kit's made-up titles won't match real charts. Add a scratch M3U whose movies/shows are
+    named after this week's Netflix titles (VOD URLs with `/movie/` or `/series/` pointing at the test kit), turn on
+    Settings → AI → Home → Top 10 (chart: Worldwide), and Home shows the matched titles ranked 1, 2, 3…
+13. **Artwork cache**: posters appear without a placeholder flash when scrolling back; the files are in
     `~/Library/Caches/<bundle id>/Artwork` (Settings → Metadata → Clear Metadata Cache empties it).
 
 ## 9. Quick command-line checks

@@ -121,6 +121,21 @@ previous code path and no extra work. Logic lives in TunerCore with tests; nothi
   `QueryUnderstanding.refine` validates its answer. FoundationModels is weak-linked (`-weak_framework`) so the
   Mac app still launches on macOS 15.
 
+### Top 10 rows
+
+`TopTenService` (TunerCore actor, tested) gets public popularity charts and matches them with the library. Sources in
+order (`TopTenRegion.chain`): Netflix's Top 10 for the device's country (`all-weeks-countries.tsv`, ~32 MB, grouped
+by country, newest week first), Netflix worldwide (`all-weeks-global.tsv`), TMDB weekly trending (only with the
+user's key) and Cinemeta `catalog/{movie,series}/top`. Netflix's server ignores Range and If-Modified-Since, so
+`NetflixTop10.LatestWeekParser` reads the file line by line and stops once the wanted week is complete (global ≈3 KB,
+Egypt ≈7 MB); the country file is skipped on cellular and Low Data Mode. Charts are cached in `popularityChart`
+(migration `v6-topTen`) and reused offline; Netflix is checked again only once the next week can be out, the others
+every 6 h, a failure waits an hour. `TopTenMatcher` matches by IMDb/TMDB id first (provider or cached metadata), else
+by equal cleaned names (TitleMatcher clean-up, Arabic and English parts compared separately) with agreeing years; a
+yearless chart title matching library items from different years is skipped. Duplicates come from the most-watched
+playlist; hidden (and, when hidden, adult) categories are left out. A row uses the first source with ≥ 3 matches and
+shows up to 10, numbered by position. Off: the service is never called.
+
 ### Artwork loading
 
 `RemoteImage` loads through `ArtworkLoader` rather than `AsyncImage` + `URLCache`: decoded images stay in an

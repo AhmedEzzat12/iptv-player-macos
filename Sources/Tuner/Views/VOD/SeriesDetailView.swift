@@ -16,6 +16,8 @@ struct SeriesDetailView: View {
     @Environment(\.tunerCompact) private var compact
     @ViewState private var series: Series
     @ViewState private var info: MediaMetadata?
+    /// Settings › AI › Recommendations: "More Like This" (empty while that's off).
+    @ViewState private var moreLikeThis: [VODItem] = []
     @ViewState private var category: TunerCore.Category?
     @ViewState private var episodes: [Episode] = []
     @ViewState private var phase: SeriesEpisodesPhase = .loading
@@ -91,8 +93,9 @@ struct SeriesDetailView: View {
                         VODCastShelf(cast: cast)
                             .transition(.opacity)
                     }
-                    if model.prefs.aiRecommendations {
-                        VODMoreLikeThisShelf(item: .series(series), metadata: info)
+                    if model.prefs.aiRecommendations, !moreLikeThis.isEmpty {
+                        VODMoreLikeThisShelf(items: moreLikeThis)
+                            .transition(.opacity)
                     }
                     VStack(alignment: .leading, spacing: 14) {
                         VODAboutSection(plot: plot, rows: infoRows)
@@ -111,6 +114,7 @@ struct SeriesDetailView: View {
         .background(VODTheme.background)
         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { viewHeight = $0 }
         .navigationTitle(series.name)
+        .vodMoreLikeThis(.series(series), metadata: info, items: $moreLikeThis)
         .task(id: SeriesEpisodesLoadKey(token: reloadToken, offline: model.isOffline)) { await loadEpisodes() }
         .task(id: VODMetadataTaskKey(id: series.id, settings: model.prefs.metadataSettings)) { await loadMetadata() }
         .task(id: model.userRevision) { await loadUserState() }
