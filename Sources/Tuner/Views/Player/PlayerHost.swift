@@ -80,6 +80,13 @@ struct PlayerHost: View {
                                      onPointer: { chrome.pointerMoved(to: $0) })
         }
         .onChange(of: model.channelChangeToken) { flashZapBanner() }
+        // Pausing (from the controls, a key, the media keys or Control Center) brings the controls up.
+        .onChange(of: model.player.main.phase) { _, phase in
+            switch phase {
+            case .paused, .ended, .failed: chrome.touch()
+            default: break
+            }
+        }
         .onChange(of: model.player.hasMedia) { _, hasMedia in
             if !hasMedia { recoverFromEmptyMain() }
         }
@@ -114,12 +121,18 @@ struct PlayerHost: View {
         return previewRect != nil ? .preview : .mini
     }
 
-    /// Chrome stays up while paused/failed/ended or while the user works the controls.
+    /// No auto-hide while paused/failed/ended or while the user works the controls.
     private var chromePinned: Bool {
         switch model.player.main.phase {
         case .paused, .ended, .failed: true
-        default: chrome.isPinnedByUser || model.player.isEpisodeListOpen
+        default: chromeHeld
         }
+    }
+
+    /// Shown whatever the user taps: while they work the controls or the episode list is open. (Paused isn't
+    /// here: as in the TV app, pausing brings the controls up and stops the auto-hide, but a tap still hides them.)
+    private var chromeHeld: Bool {
+        chrome.isPinnedByUser || model.player.isEpisodeListOpen
     }
 
     // MARK: - Stage
@@ -130,7 +143,7 @@ struct PlayerHost: View {
         let mode = self.mode
         let isFull = mode == .full
         let bounds = CGRect(origin: .zero, size: size)
-        let chromeShown = isFull && (chrome.isVisible || chromePinned)
+        let chromeShown = isFull && (chrome.isVisible || chromeHeld)
         let compact = compactRect(for: mode, safe: safe)
         // Touch screens: the full-screen player is a card that follows a swipe down, shrinking as it goes (0…1).
         let drag = isFull && self.compact ? min(max(dismissOffset / max(size.height, 1), 0), 1) : 0

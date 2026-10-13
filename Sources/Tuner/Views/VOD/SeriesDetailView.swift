@@ -25,6 +25,8 @@ struct SeriesDetailView: View {
     @ViewState private var pickedSeason: Int?
     /// Asking whether to mark earlier unwatched episodes too (TV Time style).
     @ViewState private var earlierPrompt: EarlierEpisodesPrompt?
+    /// "Mark Show as Watched/Unwatched" waits for a confirmation (it changes every episode).
+    @ViewState private var showWatchedPrompt: ShowWatchedPrompt?
     /// Asking before a whole season is queued for download.
     @ViewState private var seasonDownloadPrompt: SeasonDownloadPrompt?
     /// Asking before a downloaded episode's file is deleted.
@@ -121,6 +123,19 @@ struct SeriesDetailView: View {
         .task(id: series.categoryId) {
             category = if let id = series.categoryId { try? await model.db.category(id: id) } else { nil }
         }
+        .confirmationDialog(showWatchedPrompt.map { $0.watched ? "Mark the whole show as watched?" : "Mark the whole show as unwatched?" } ?? "",
+                            isPresented: Binding(get: { showWatchedPrompt != nil }, set: { if !$0 { showWatchedPrompt = nil } }),
+                            titleVisibility: .visible, presenting: showWatchedPrompt) { prompt in
+            Button(prompt.watched ? "Mark \(prompt.episodes.count) Episodes as Watched" : "Mark \(prompt.episodes.count) Episodes as Unwatched",
+                   role: prompt.watched ? nil : .destructive) {
+                setWatched(prompt.episodes, watched: prompt.watched)
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: { prompt in
+            Text(prompt.watched
+                 ? "Every episode of \(series.name) will show as watched, and Up Next moves past the last one."
+                 : "Progress for every episode of \(series.name) will be cleared.")
+        }
         .confirmationDialog("Mark earlier episodes as watched too?",
                             isPresented: Binding(get: { earlierPrompt != nil }, set: { if !$0 { earlierPrompt = nil } }),
                             titleVisibility: .visible, presenting: earlierPrompt) { prompt in
@@ -215,7 +230,39 @@ struct SeriesDetailView: View {
             }
             .buttonStyle(GlassButtonStyle(circle: true))
             .help(isFavorite ? "Remove from Favorites" : "Add to Favorites")
+
+            if !episodes.isEmpty {
+                Menu {
+                    let watched = watchedCount(episodes)
+                    if watched < episodes.count {
+                        Button {
+                            showWatchedPrompt = ShowWatchedPrompt(episodes: episodes, watched: true)
+                        } label: {
+                            Label("Mark Show as Watched", systemImage: "checkmark.circle")
+                        }
+                    }
+                    if watched > 0 {
+                        Button {
+                            showWatchedPrompt = ShowWatchedPrompt(episodes: episodes, watched: false)
+                        } label: {
+                            Label("Mark Show as Unwatched", systemImage: "eye.slash")
+                        }
+                    }
+                } label: {
+                    Image(systemName: "ellipsis")
+                }
+                .menuStyle(.button)
+                .menuIndicator(.hidden)
+                .buttonStyle(GlassButtonStyle(circle: true))
+                .fixedSize()
+                .help("More")
+            }
         }
+    }
+
+    /// Episodes in `list` marked as finished.
+    private func watchedCount(_ list: [Episode]) -> Int {
+        list.filter { progress[$0.id]?.completed == true }.count
     }
 
     private var infoRows: [(String, String)] {
@@ -249,6 +296,7 @@ struct SeriesDetailView: View {
                             seasonCount
                             Spacer(minLength: 8)
                             seasonDownloadControl
+                            seasonWatchedMenu
                         }
                     }
                 }
@@ -260,6 +308,7 @@ struct SeriesDetailView: View {
                     if !seasonEpisodes.isEmpty {
                         seasonCount
                         seasonDownloadControl
+                        seasonWatchedMenu
                     }
                 }
                 .padding(.horizontal, VODMetrics.inset)
@@ -374,6 +423,40 @@ struct SeriesDetailView: View {
 
     /// "Download Season" (asks first, with the episode count); "Downloading 3 of 10" while the season downloads;
     /// "Downloaded" once every episode is on this Mac.
+    /// "…" beside the season's download button: mark every episode of the season watched or unwatched.
+    @ViewBuilder
+    private var seasonWatchedMenu: some View {
+        let list = seasonEpisodes
+        if let season = selectedSeason, !list.isEmpty {
+            let watched = watchedCount(list)
+            let name = VODFormat.seasonTitle(season)
+            Menu {
+                if watched < list.count {
+                    Button {
+                        setWatched(list, watched: true)
+                    } label: {
+                        Label("Mark \(name) as Watched", systemImage: "checkmark.circle")
+                    }
+                }
+                if watched > 0 {
+                    Button {
+                        setWatched(list, watched: false)
+                    } label: {
+                        Label("Mark \(name) as Unwatched", systemImage: "eye.slash")
+                    }
+                }
+            } label: {
+                Image(systemName: "ellipsis")
+            }
+            .menuStyle(.button)
+            .menuIndicator(.hidden)
+            .buttonStyle(DownloadsIconButtonStyle())
+            .fixedSize()
+            .help("More for \(name)")
+            .accessibilityLabel("More for \(name)")
+        }
+    }
+
     @ViewBuilder
     private var seasonDownloadControl: some View {
         let list = seasonEpisodes
@@ -396,7 +479,10 @@ struct SeriesDetailView: View {
                 Button {
                     seasonDownloadPrompt = SeasonDownloadPrompt(season: season, episodes: missing, others: list.count - missing.count)
                 } label: {
-                    Label(missing.count == list.count ? "Download Season" : "Download \(missing.count) More", systemImage: "arrow.down.circle")
+                    // iPhone: "Download" (the row is the season's), so the count, the button and "…" fit one line.
+                    Label(missing.count == list.count ? (compact ? "Download" : "Download Season") : "Download \(missing.count) More",
+                          systemImage: "arrow.down.circle")
+                        .lineLimit(1)
                 }
                 .buttonStyle(.bordered)
                 .buttonBorderShape(.capsule)
@@ -896,6 +982,12 @@ enum VODStillLoader {
 }
 
 /// An episode being marked watched and the earlier unwatched episodes to offer as well.
+struct ShowWatchedPrompt: Identifiable {
+    let id = UUID()
+    let episodes: [Episode]
+    let watched: Bool
+}
+
 struct EarlierEpisodesPrompt: Identifiable {
     let id = UUID()
     let episode: Episode

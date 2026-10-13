@@ -46,6 +46,9 @@ Blender Foundation open movies (CC BY). No provider content is shown.</sub>
   shows the playlist's own title (also under a title logo from online metadata) and where it's listed
   (Playlist › Category). Trailers
   play inside the app (YouTube's official embedded player, or Apple's player for direct links).
+- **Watched state for shows:** mark an episode watched or unwatched from its card (Tuner offers to mark the earlier
+  ones too), a whole season from the "…" beside Download Season, or the whole show from the "…" next to Play
+  (asks first).
 - **Episodes in the player:** ⏮/⏭ previous/next episode (across seasons; ⌘⇧←/→), an Episodes panel to jump to any
   episode with its picture, progress and **IMDb rating**, and a Netflix-style "Up Next" countdown (Off/5–30 s in
   Settings → Playback) with Play Now and Cancel. Episode ratings come from IMDb's public data sets (≈64 MB, downloaded
