@@ -13,11 +13,11 @@ struct HomeTopTenRows: View {
     var body: some View {
         if let movies = rows.movies {
             HomeTopTenShelf(title: "Top 10 Movies", subtitle: TopTenText.subtitle(movies.source),
-                            items: movies.items.map(VODItem.movie), favoriteIds: favoriteIds)
+                            items: movies.items.map(VODItem.movie), ranks: movies.ranks, favoriteIds: favoriteIds)
         }
         if let series = rows.series {
             HomeTopTenShelf(title: "Top 10 TV Shows", subtitle: TopTenText.subtitle(series.source),
-                            items: series.items.map(VODItem.series), favoriteIds: favoriteIds)
+                            items: series.items.map(VODItem.series), ranks: series.ranks, favoriteIds: favoriteIds)
         }
     }
 }
@@ -76,6 +76,8 @@ private struct HomeTopTenShelf: View {
     let title: String
     let subtitle: String
     let items: [VODItem]
+    /// The chart's own rank for each item (with gaps where the library lacks a title).
+    let ranks: [Int]
     let favoriteIds: Set<String>
 
     var body: some View {
@@ -88,7 +90,7 @@ private struct HomeTopTenShelf: View {
             VODShelf {
                 ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
                     NavigationLink(value: item.route) {
-                        VODRankedPosterCard(rank: index + 1, item: item, width: compact ? 116 : VODMetrics.posterWidth,
+                        VODRankedPosterCard(rank: index < ranks.count ? ranks[index] : index + 1, item: item, width: compact ? 116 : VODMetrics.posterWidth,
                                             isFavorite: favoriteIds.contains(item.mediaId))
                     }
                     .buttonStyle(.plain)

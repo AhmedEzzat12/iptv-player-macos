@@ -44,11 +44,13 @@ public actor TopTenService {
         }
     }
 
-    /// One row: the chart it follows and the matched library items, in chart order.
+    /// One row: the chart it follows and the matched library items, in chart order, with each one's chart rank
+    /// (`ranks[i]` belongs to `items[i]`).
     public struct Row<Item: Sendable & Hashable>: Sendable, Hashable {
         public var source: ChartSource
         public var week: String?
         public var items: [Item]
+        public var ranks: [Int]
     }
 
     public struct Rows: Sendable, Hashable {
@@ -102,18 +104,20 @@ public actor TopTenService {
                 guard let chart = await chart(source, settings: settings), isCurrent(chart) else { continue }
                 let entries = chart.entries(kind)
                 guard entries.count >= TopTenMatcher.minimumMatches else { continue }
-                let ids = await match(entries, kind: kind, hideAdult: settings.hideAdultContent, usage: usage)
-                guard ids.count >= TopTenMatcher.minimumMatches else { continue }
+                let matched = await match(entries, kind: kind, hideAdult: settings.hideAdultContent, usage: usage)
+                guard matched.count >= TopTenMatcher.minimumMatches else { continue }
                 if kind == .movie {
                     var items: [Movie] = []
-                    for id in ids { if let m = try? await db.movie(id: id) { items.append(m) } }
+                    var ranks: [Int] = []
+                    for m in matched { if let movie = try? await db.movie(id: m.id) { items.append(movie); ranks.append(m.rank) } }
                     guard items.count >= TopTenMatcher.minimumMatches else { continue }
-                    rows.movies = Row(source: source, week: chart.week, items: items)
+                    rows.movies = Row(source: source, week: chart.week, items: items, ranks: ranks)
                 } else {
                     var items: [Series] = []
-                    for id in ids { if let s = try? await db.series(id: id) { items.append(s) } }
+                    var ranks: [Int] = []
+                    for m in matched { if let show = try? await db.series(id: m.id) { items.append(show); ranks.append(m.rank) } }
                     guard items.count >= TopTenMatcher.minimumMatches else { continue }
-                    rows.series = Row(source: source, week: chart.week, items: items)
+                    rows.series = Row(source: source, week: chart.week, items: items, ranks: ranks)
                 }
                 break
             }
@@ -123,11 +127,11 @@ public actor TopTenService {
 
     // MARK: - Matching
 
-    func match(_ entries: [ChartEntry], kind: MediaMetadata.Kind, hideAdult: Bool, usage: [String: Int]) async -> [String] {
+    func match(_ entries: [ChartEntry], kind: MediaMetadata.Kind, hideAdult: Bool, usage: [String: Int]) async -> [(id: String, rank: Int)] {
         let words = entries.flatMap { [$0.title, $0.originalTitle].compactMap { $0 } }.compactMap { TopTenMatcher.searchWord($0, kind: kind) }
         let candidates = (try? await db.topTenCandidates(kind: kind, words: words, imdbIds: entries.compactMap(\.imdbId),
                                                          tmdbIds: entries.compactMap(\.tmdbId), hideAdult: hideAdult)) ?? []
-        return TopTenMatcher.match(entries, kind: kind, candidates: candidates, sourceUsage: usage)
+        return TopTenMatcher.matchRanked(entries, kind: kind, candidates: candidates, sourceUsage: usage)
     }
 
     // MARK: - Charts

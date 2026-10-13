@@ -134,7 +134,7 @@ every 6 h, a failure waits an hour. `TopTenMatcher` matches by IMDb/TMDB id firs
 by equal cleaned names (TitleMatcher clean-up, Arabic and English parts compared separately) with agreeing years; a
 yearless chart title matching library items from different years is skipped. Duplicates come from the most-watched
 playlist; hidden (and, when hidden, adult) categories are left out. A row uses the first source with ≥ 3 matches and
-shows up to 10, numbered by position. Off: the service is never called.
+shows up to 10, each with its chart rank (`ChartEntry.rank`: Netflix's `weekly_rank` in a country list, a show at its best season; otherwise its position in the list), gaps kept. Off: the service is never called.
 
 ### Artwork loading
 

@@ -52,6 +52,8 @@ struct NetflixTop10Tests {
         #expect(chart.movies.map(\.title) == ["UNABOMBER", "Kill Shot", "Doing Life", "Anora"])
         // One entry per show (its best season), by views.
         #expect(chart.series.map(\.title) == ["Wednesday", "The Assassins"])
+        // The merged list has no single Netflix rank: positions stand for it.
+        #expect(chart.movies.allSatisfy { $0.rank == nil })
         // Stopped at the first row of the previous week.
         #expect(read == 9)
     }
@@ -62,6 +64,9 @@ struct NetflixTop10Tests {
         #expect(chart.source == .netflixCountry("EG"))
         #expect(chart.movies.map(\.title) == ["UNABOMBER", "The Mummy"])
         #expect(chart.series.map(\.title) == ["Not a Stranger", "The Gentlemen"])
+        // Netflix's own ranks; a show listed with two seasons keeps its best one.
+        #expect(chart.movies.map(\.rank) == [1, 2])
+        #expect(chart.series.map(\.rank) == [1, 2])
         #expect(chart.movies.allSatisfy { $0.year == nil && $0.imdbId == nil })
         #expect(read == 8) // the older Egypt week ends it; Finland is never read
     }
@@ -208,6 +213,17 @@ struct TopTenMatcherTests {
         #expect(TopTenMatcher.match([ChartEntry(title: "Anora")], kind: .movie, candidates: library) == ["a1"])
     }
 
+    @Test func ranksAreTheChartsOwnWithGaps() {
+        let library = [candidate("a", "Anora"), candidate("w", "Wednesday")]
+        let ranked = [ChartEntry(title: "Anora", rank: 1), ChartEntry(title: "Missing Film", rank: 2), ChartEntry(title: "Wednesday", rank: 4)]
+        let matched = TopTenMatcher.matchRanked(ranked, kind: .movie, candidates: library)
+        #expect(matched.map(\.id) == ["a", "w"])
+        #expect(matched.map(\.rank) == [1, 4])
+        // Without the source's rank, the position in the list stands for it.
+        let unranked = [ChartEntry(title: "Missing Film"), ChartEntry(title: "Wednesday")]
+        #expect(TopTenMatcher.matchRanked(unranked, kind: .movie, candidates: library).map(\.rank) == [2])
+    }
+
     @Test func eachItemOnceAndAtMostTheLimit() {
         let library = (1...12).map { candidate("m\($0)", "Film Number \($0)") } + [candidate("w", "Wednesday")]
         let entries = [ChartEntry(title: "Wednesday"), ChartEntry(title: "Wednesday")] + (1...12).map { ChartEntry(title: "Film Number \($0)") }
@@ -333,6 +349,7 @@ struct TopTenServiceTests {
         let movies = try #require(rows.movies)
         #expect(movies.source == .netflixCountry("EG"))
         #expect(movies.items.map(\.id) == ["m-unabomber", "m-mummy", "m-kill"])
+        #expect(movies.ranks == [1, 2, 3])
         #expect(rows.series == nil) // "Kill Shot" is a film here; Wednesday + The Gentlemen are only two shows
 
         // Same week: no new requests, even from a new service (the chart is in the database).
@@ -420,6 +437,6 @@ struct TopTenServiceTests {
         #expect(json.requests.count == 2)
         let entries = CinemetaClient.parsePopular(list)
         let ids = await service(StubNetflix(files: [:]), json: json).match(entries, kind: .series, hideAdult: false, usage: [:])
-        #expect(ids == ["s-gent", "s-wed"])
+        #expect(ids.map(\.id) == ["s-gent", "s-wed"])
     }
 }

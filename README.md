@@ -94,7 +94,7 @@ Blender Foundation open movies (CC BY). No provider content is shown.</sub>
     can tap off. Works offline in English and Arabic; with Apple Intelligence (OS 26+), Return on an English
     phrase the rules can't read also asks Apple's on-device model.
 - **Top 10 on Home** (Settings → AI → Home, off by default): "Top 10 Movies" and "Top 10 TV Shows" rows with
-  what's popular this week, showing only titles your playlists have, with a big rank number beside each poster.
+  what's popular this week, showing only titles your playlists have, with its chart rank as a big number beside each poster (Netflix's own rank, so "1, 3, 4" when your library lacks number 2).
   The lists come from Netflix's public weekly Top 10 for your country (or worldwide), else TMDB trending (with your
   key) or Cinemeta's popular lists; titles are matched by IMDb/TMDB id or by cleaned name and year. Nothing about
   your library leaves the device. The country list is read once a week (up to ~30 MB, never on cellular or Low

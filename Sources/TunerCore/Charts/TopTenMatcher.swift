@@ -45,14 +45,21 @@ public enum TopTenMatcher {
     /// Media ids of the matched items, in chart order, at most `limit`, each item once.
     public static func match(_ entries: [ChartEntry], kind: MediaMetadata.Kind, candidates: [Candidate],
                              sourceUsage: [String: Int] = [:], limit: Int = rowLimit) -> [String] {
+        matchRanked(entries, kind: kind, candidates: candidates, sourceUsage: sourceUsage, limit: limit).map(\.id)
+    }
+
+    /// As `match`, with each item's chart rank: the source's own rank, else its position in the list (1-based). Ranks
+    /// keep their gaps ("1, 3, 4" when the library lacks number 2).
+    public static func matchRanked(_ entries: [ChartEntry], kind: MediaMetadata.Kind, candidates: [Candidate],
+                                   sourceUsage: [String: Int] = [:], limit: Int = rowLimit) -> [(id: String, rank: Int)] {
         let prepared = candidates.map { Prepared($0, kind: kind) }
         var used = Set<String>()
-        var out: [String] = []
-        for entry in entries {
+        var out: [(id: String, rank: Int)] = []
+        for (index, entry) in entries.enumerated() {
             guard out.count < limit else { break }
             guard let id = bestMatch(for: entry, kind: kind, in: prepared, sourceUsage: sourceUsage, excluding: used) else { continue }
             used.insert(id)
-            out.append(id)
+            out.append((id, entry.rank ?? index + 1))
         }
         return out
     }

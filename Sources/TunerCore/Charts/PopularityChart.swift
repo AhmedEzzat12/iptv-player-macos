@@ -39,13 +39,18 @@ public struct ChartEntry: Sendable, Hashable, Codable {
     public var year: Int?
     public var imdbId: String?
     public var tmdbId: String?
+    /// The source's own rank when it has one (Netflix's `weekly_rank` in a country list); otherwise the entry's
+    /// position in the list stands for it.
+    public var rank: Int?
 
-    public init(title: String, originalTitle: String? = nil, year: Int? = nil, imdbId: String? = nil, tmdbId: String? = nil) {
+    public init(title: String, originalTitle: String? = nil, year: Int? = nil, imdbId: String? = nil, tmdbId: String? = nil,
+                rank: Int? = nil) {
         self.title = title
         self.originalTitle = originalTitle
         self.year = year
         self.imdbId = imdbId
         self.tmdbId = tmdbId
+        self.rank = rank
     }
 }
 
@@ -224,7 +229,9 @@ public enum NetflixTop10 {
             }
             var seen = Set<String>()
             return sorted.compactMap { item in
-                seen.insert(item.element.title.lowercased()).inserted ? ChartEntry(title: item.element.title) : nil
+                guard seen.insert(item.element.title.lowercased()).inserted else { return nil }
+                // Country lists keep Netflix's rank (a show's best season); the merged global list has no single one.
+                return ChartEntry(title: item.element.title, rank: global || item.element.rank == .max ? nil : item.element.rank)
             }
         }
     }
