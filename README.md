@@ -142,8 +142,8 @@ is the same code on both.
 With a **free Apple ID** the install expires after 7 days (your library and settings are kept): run the script
 again before then, or install a login agent that does it for you. Every 3 hours it checks, and once the last install
 is 4 days old it re-installs whatever is checked out, as soon as the device is reachable (plugged in, or on the
-same Wi-Fi once paired; it may be locked). It waits while the sources have uncommitted changes, and from day 5 posts
-a notification if it still couldn't. Log: `~/Library/Logs/Tuner-iOS-resign.log`.
+same Wi-Fi once paired; it may be locked). It waits while the sources have uncommitted changes, posts a notification
+after each successful re-install, and from day 5 posts one if it still couldn't. Log: `~/Library/Logs/Tuner-iOS-resign.log`.
 
 ```bash
 iOS/scripts/install-resign-agent.sh            # --remove to uninstall it

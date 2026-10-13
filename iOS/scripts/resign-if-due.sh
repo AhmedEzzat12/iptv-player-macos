@@ -2,11 +2,13 @@
 # Run by the login agent from install-resign-agent.sh every few hours: re-installs Tuner on the iPhone/iPad once
 # the last install is 4 days old (free Personal Team installs stop opening after 7), so a locked, asleep or
 # away phone just means another try a few hours later. Builds the checkout as it is, so it waits while the
-# sources have uncommitted changes. Posts a notification when the install is close to expiring.
+# sources have uncommitted changes. Posts a notification after each re-install, and when the install is close to
+# expiring.
 #   iOS/scripts/resign-if-due.sh           # what the agent runs
 #   FORCE=1 iOS/scripts/resign-if-due.sh   # re-install now
 set -uo pipefail
 export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+# BSD date/stat on purpose (Homebrew's GNU coreutils may come first on an interactive PATH).
 cd "$(dirname "$0")/../.."
 STAMP="$HOME/Library/Application Support/app.tuner.ios.resign/last-install"
 LOCK="$HOME/Library/Application Support/app.tuner.ios.resign/running"
@@ -15,12 +17,12 @@ notify() { osascript -e "display notification \"$1\" with title \"Tuner for iPho
 
 age_days=99
 if [[ -f "$STAMP" ]]; then
-  age_days=$(( ($(date +%s) - $(stat -f %m "$STAMP")) / 86400 ))
+  age_days=$(( ($(/bin/date +%s) - $(/usr/bin/stat -f %m "$STAMP")) / 86400 ))
 fi
 if [[ "${FORCE:-}" != "1" && $age_days -lt 4 ]]; then
   exit 0
 fi
-echo "$(date): last install $age_days day(s) ago, re-installing"
+echo "$(/bin/date): last install $age_days day(s) ago, re-installing"
 
 mkdir -p "$(dirname "$LOCK")"
 if ! mkdir "$LOCK" 2>/dev/null; then
@@ -36,9 +38,10 @@ if [[ -n "$(git status --porcelain -- Sources iOS Package.swift)" ]]; then
 fi
 
 if iOS/scripts/install-device.sh; then
-  echo "$(date): done"
+  echo "$(/bin/date): done"
+  notify "Re-installed Tuner $(tr -d '[:space:]' < VERSION) on your iPhone. Good until $(/bin/date -v+7d '+%a %-d %b')."
 else
-  echo "$(date): failed; trying again later"
+  echo "$(/bin/date): failed; trying again later"
   [[ $age_days -ge 5 ]] && notify "Couldn't re-install (age $age_days days). Put the iPhone on the Mac's Wi-Fi or plug it in."
   exit 1
 fi
