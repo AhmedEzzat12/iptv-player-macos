@@ -33,21 +33,27 @@ struct SettingsView: View {
             Tab("AI", systemImage: "sparkles", value: SettingsTab.ai) {
                 SettingsAIPane().settingsPaneFrame(height: 620)
             }
-            Tab("Appearance", systemImage: "paintpalette", value: SettingsTab.appearance) {
-                SettingsAppearancePane().settingsPaneFrame(height: 300)
-            }
-            Tab("Shortcuts", systemImage: "keyboard", value: SettingsTab.shortcuts) {
-                SettingsShortcutsEditor().settingsPaneFrame(height: 560)
-            }
-            Tab("About", systemImage: "info.circle", value: SettingsTab.about) {
-                SettingsAboutPane().settingsPaneFrame(height: 580)
+            // A tab builder takes at most 10 children.
+            Group {
+                Tab("Sync", systemImage: "icloud", value: SettingsTab.sync) {
+                    SettingsSyncPane().settingsPaneFrame(height: 560)
+                }
+                Tab("Appearance", systemImage: "paintpalette", value: SettingsTab.appearance) {
+                    SettingsAppearancePane().settingsPaneFrame(height: 300)
+                }
+                Tab("Shortcuts", systemImage: "keyboard", value: SettingsTab.shortcuts) {
+                    SettingsShortcutsEditor().settingsPaneFrame(height: 560)
+                }
+                Tab("About", systemImage: "info.circle", value: SettingsTab.about) {
+                    SettingsAboutPane().settingsPaneFrame(height: 580)
+                }
             }
         }
     }
 }
 
 private enum SettingsTab: Hashable {
-    case playlists, playback, guide, metadata, recording, downloads, ai, appearance, shortcuts, about
+    case playlists, playback, guide, metadata, recording, downloads, ai, sync, appearance, shortcuts, about
 }
 
 private extension View {

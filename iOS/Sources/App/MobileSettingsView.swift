@@ -12,6 +12,7 @@ struct MobileSettingsView: View {
             List {
                 Section {
                     row("Playlists", "play.square.stack", .blue) { SettingsPlaylistsPane() }
+                    row("iCloud Sync", "icloud", .cyan) { SettingsSyncPane() }
                 }
                 Section {
                     row("Playback", "play.rectangle", .orange) { SettingsPlaybackPane() }
