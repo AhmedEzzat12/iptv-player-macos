@@ -144,6 +144,74 @@ placeholder flash when scrolling back); bytes go to `ImageDiskCache` (TunerCore,
 file names are SHA-256 of the URL) whatever the server's caching headers say; decoding uses ImageIO's thumbnail
 path off the main thread, sized to the view. One request per URL is shared by every view asking for it.
 
+### Sync between devices (iCloud Drive folder)
+
+**Why not CloudKit:** the iPhone app is signed with a free Personal Team and the Mac app is ad-hoc/Developer ID signed
+from SwiftPM, so neither can have the iCloud/CloudKit entitlement. Sync goes through a plain folder in iCloud Drive
+instead: on the Mac `~/Library/Mobile Documents/com~apple~CloudDocs/Tuner Sync/` (created when iCloud Drive is on,
+or any folder chosen with the open panel); on iPhone/iPad a folder picked once in the Files picker, kept as a
+security-scoped bookmark (`UserDefaults`), resolved and opened for each pass (a stale bookmark is refreshed, or the
+user is asked again). Off by default (Settings → Sync).
+
+- **One file per device**, `<deviceId>.json` (device id: a UUID made once, in `UserDefaults`). A device writes only
+  its own file and reads the others, so there are no write conflicts. Reads and writes are coordinated
+  (`NSFileCoordinator`), writes atomic; iCloud placeholders (`.<name>.json.icloud`) and evicted files get
+  `startDownloadingUbiquitousItem` and are read on a later pass. Corrupt, partial and other-schema files are skipped
+  with a status message. The file is only rewritten when its records change.
+- **Change detection by snapshot diff** (`CloudSyncMerge.diff`), so no write site had to change: the `syncLedger`
+  table (migration `v7-syncLedger`) keeps, per key, what this device last published, its time (ms) and a hash of the
+  local data it came from. Each pass builds the current state (`AppDatabase.snapshot`); a changed hash means a local
+  change (time = now, or the record's own newer time: watch progress `updatedAt`, history `watchedAt`, favourite
+  `addedAt`); a key that vanished becomes a deletion (pruned after 60 days; playlist deletions are kept). On a
+  device's very first sync its values get a provisional time older than everything, so the other devices' settings
+  win over a fresh install's defaults.
+- **Merge** (`CloudSyncMerge.decide`): per key, the newest record across all files wins (ties: the larger device
+  id). Applied values are written to the tables in the same transaction and recorded in the ledger with the remote
+  time, the remote value published verbatim and the hash of what the local tables now hold, so they aren't
+  re-exported as local changes (no ping-pong when two devices hold cosmetically different forms of a value).
+- **Ids across devices:** local ids are `"<sourceId>_<suffix>"` with a random source id per device (channels,
+  categories, movies, series, episodes — Xtream, Stalker and M3U alike). Files use `"<fingerprint>|<suffix>"`
+  (`CloudSyncSourceMap`); the fingerprint (`SourceFingerprint`) hashes the kind, the normalised URL (lowercased scheme
+  and host, no default port, user info or trailing slash, password/token-like query parameters removed, the rest
+  sorted), the lowercased username and the Stalker MAC — never the password. Records of a playlist this device
+  doesn't have are left alone (not applied, not in the ledger) and apply once the playlist appears.
+- **What syncs** (`CloudSyncKind`): `progress` (position, duration, completed, title, subtitle, poster, kind, show),
+  `vodFavorite`, `channelPref` (favourite + order, hidden, alias, guide override — an XMLTV id, synced as is),
+  `categoryPref` (hidden, alias, order), `history`, `group` and `groupMember`, whitelisted preferences
+  (`CloudSyncPreferences.keys`: recent searches, pinned categories — ids translated, and a change keeps pins of
+  playlists this device doesn't have — category names, adult filter, episode pictures, autoplay/Up Next, resume,
+  metadata on/language, accent, the AI toggles and Top 10), and `source`: a playlist's settings with the URL's
+  secrets removed and no password (URLs with secrets are left out of the backup/guide lists). Never synced: downloads,
+  recordings, reminders, guide data, metadata caches, the library itself, and device-specific preferences (engine,
+  buffers, paths, user agents, TMDB key, shortcuts, volume, last channel).
+- **Playlists:** one that arrives without its secret (Xtream, or an M3U link whose token was removed) is created off
+  with `source.needsPassword` (migration `v7-sourceNeedsPassword`): provider sync skips it and Settings → Playlists
+  shows "Needs password"; saving the editor with the password turns it on. Others (Stalker, plain M3U) are created
+  on and refreshed. A playlist removed on one device stays on the others (its deletion is published but never
+  applied); its records simply stop syncing from that device. Editing a playlist's server or username changes its
+  fingerprint, so the other devices get it as a new playlist.
+- **When** (`CloudSyncController`, app target): after the library loads, when the app becomes active, every 2 minutes
+  while it is, 3 s after user-state or preference changes (60 s after watch-progress saves, which happen every few
+  seconds during playback), when leaving the app if a pass is pending, and on Sync Now. Passes run in the
+  `CloudSyncEngine` actor (one at a time, never while a source editor is open); applied rows bump the usual revisions
+  through the table observers. `TUNER_SYNC_DIR` (or `-TunerSyncDir` in iOS debug builds) uses a plain folder and turns
+  sync on, for testing; a scratch library (`TUNER_DATA_DIR`) defaults to `<data dir>/Sync`, never iCloud Drive.
+  Logging: `Logger(subsystem: "app.tuner.macos", category: "Sync")`, counts only.
+
+File format (schema 1; `updatedAt` in ms since 1970; `deleted` records have no value):
+
+```json
+{"appVersion":"1.6.0","deviceId":"6F1C…","deviceName":"Mac","exportedAt":"2026-10-29T10:00:00Z","platform":"macOS","schema":1,
+ "records":[
+  {"key":"channelPref/3fa9c2e1d07b5a6c4e21|101","updatedAt":1793260800000,"value":{"alias":null,"epgIdOverride":"news.example","favoriteOrder":1,"isFavorite":true,"isHidden":false}},
+  {"key":"progress/3fa9c2e1d07b5a6c4e21|vod_7","updatedAt":1793260812345,"value":{"completed":false,"duration":6000,"kind":"movie","position":1200,"posterURL":null,"seriesId":null,"subtitle":"2024","title":"A Movie"}},
+  {"key":"groupMember/0D2B…/3fa9c2e1d07b5a6c4e21|101","updatedAt":1793260800000,"value":{"sortIndex":0}},
+  {"key":"pref/accent","updatedAt":1793260800000,"value":"purple"},
+  {"key":"source/3fa9c2e1d07b5a6c4e21","updatedAt":1793260800000,"value":{"kind":"xtream","name":"My Provider","needsSecret":true,"url":"http://provider.example:8080","username":"me","…":"…"}},
+  {"deleted":true,"key":"vodFavorite/3fa9c2e1d07b5a6c4e21|vod_9","updatedAt":1793260900000}
+ ]}
+```
+
 ## Architecture
 
 ```
@@ -161,6 +229,8 @@ Sources/
                    +Downloads
     Downloads/     DownloadService (actor: queue, resume, suspend), FileTransfer (one URLSession per transfer),
                    DownloadFiles (naming, free space)
+    CloudSync/     iCloud Drive folder sync: SourceFingerprint, CloudSyncMerge (diff + LWW), CloudSyncFolder (file I/O),
+                   CloudSyncEngine (actor); AppDatabase+CloudSync (snapshot, apply, ledger)
     Services/      SyncService (actor), GuideService (actor: ingest + key resolution), StreamResolver (actor),
                    RecordingService (actor, ffmpeg), M3UExporter
   Tuner/       (SwiftUI app, Swift 5 mode)
@@ -191,6 +261,7 @@ Data flow: views call `AppModel` actions and read `model.db` in `.task(id:)` blo
   after each guide ingest: override → Stalker native → tvg-id → normalised name; preferring keys with programmes,
   then the channel's own source feeds, then global feeds, then other sources' feeds.
 - `watchProgress`, `vodFavorite`, `history` (recent channels), `customGroup(+Member)`, `reminder`, `recording`.
+- `syncLedger` — iCloud sync: per key, what this device last published and the hash of the local data behind it.
 - Failover candidates are computed on demand (same EPG key, tvg-id or normalised name) instead of curated groups.
 
 ## UX — Apple TV app style (user requirement: "fully native, experience like the Apple TV app")

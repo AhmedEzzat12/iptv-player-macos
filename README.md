@@ -104,6 +104,14 @@ Blender Foundation open movies (CC BY). No provider content is shown.</sub>
   key) or Cinemeta's popular lists; titles are matched by IMDb/TMDB id or by cleaned name and year. Nothing about
   your library leaves the device. The country list is read once a week (up to ~30 MB, never on cellular or Low
   Data Mode); the others are small.
+- **iCloud sync** (Settings → Sync, off by default): watch progress, favourites, custom groups, hidden and pinned
+  categories, channel names and guide choices, recently watched channels, recent searches and settings follow you
+  between your Macs, iPhone and iPad. Playlists come along without their passwords: an Xtream account (or an M3U
+  link with a token) shows "Needs password" in Settings → Playlists until you enter it on that device. Each device
+  keeps one small file in a folder in your iCloud Drive (on the Mac `iCloud Drive/Tuner Sync`; on iPhone/iPad you
+  pick that folder once in Files); the newest change wins. Removing a playlist on one device leaves it on the others.
+  Downloads, recordings, reminders and the guide stay on each device. The files are end-to-end encrypted only with
+  Advanced Data Protection.
 - **Artwork cache:** posters and backdrops are kept on disk (up to 600 MB, oldest out first) whatever the
   server's caching headers say, scaled to the size they're shown at, and kept in memory once loaded, so rows
   scroll smoothly and pictures appear at once when you come back.
@@ -125,6 +133,7 @@ devices from Xcode, with a free Apple ID or a paid developer account.
 | AirPlay | All formats (ffmpeg re-wraps the rest) | AVFoundation streams; others via Screen Mirroring |
 | Recordings | Yes (ffmpeg) | No (iOS apps can't run ffmpeg) |
 | Downloads | `~/Movies/Tuner Downloads` (choose in Settings) | Files › On My iPhone › Tuner › Downloads (not in iCloud backups) |
+| iCloud sync | `iCloud Drive/Tuner Sync` (or a folder you choose) | Choose the same folder once in the Files picker |
 | Updates | Automatic (Sparkle) | Reinstall from the checkout (below) |
 
 Everything else — sources, sync, guide, metadata, categories, search, episodes and Up Next, downloads —
