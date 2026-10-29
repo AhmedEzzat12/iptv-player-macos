@@ -28,6 +28,8 @@ A native IPTV player for **Mac, iPhone and iPad** with an Apple TV app–style e
 | ![Search with understood filters](docs/media/16-search-understood.png) | ![iPhone player](docs/media/17-iphone-player.png) |
 | **iPhone player in landscape** | **Top 10 on Home (iPhone)** |
 | ![iPhone player in landscape](docs/media/18-iphone-player-landscape.png) | ![Top 10 rows](docs/media/19-top10.png) |
+| **Mark a season or show as watched** | |
+| ![Season menu](docs/media/20-season-watched.png) | |
 
 <sub>Screenshots and video use the local test kit (`scripts/testkit`): synthetic channels and titles, plus four
 Blender Foundation open movies (CC BY). No provider content is shown.</sub>
