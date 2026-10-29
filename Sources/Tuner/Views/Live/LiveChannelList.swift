@@ -17,6 +17,7 @@ struct LiveChannelList: View {
             .padding(.top, 4)
             .padding(.bottom, 24)
         }
+        .pullToSync()
         .scrollDismissesKeyboard(.immediately)
     }
 }

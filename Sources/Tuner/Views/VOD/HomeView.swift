@@ -109,6 +109,7 @@ private struct HomeContent: View {
             .padding(.bottom, 40)
         }
         .ignoresSafeArea(edges: hasHero ? .top : [])
+        .pullToSync()
         .background(VODTheme.background)
         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { viewHeight = $0 }
         .navigationTitle("Home")

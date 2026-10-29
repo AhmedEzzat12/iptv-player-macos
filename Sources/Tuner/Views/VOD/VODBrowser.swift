@@ -82,6 +82,7 @@ struct VODBrowser: View {
             }
             .padding(.bottom, 40)
         }
+        .pullToSync()
         .scrollPosition($scrollPosition)
         .background(VODTheme.background)
         .navigationTitle(kind.title)
