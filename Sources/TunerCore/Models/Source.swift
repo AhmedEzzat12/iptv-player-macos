@@ -47,6 +47,9 @@ public struct Source: Codable, Sendable, Identifiable, Hashable {
     public var refreshHours: Int?
     public var sortIndex: Int
     public var createdAt: Date
+    /// Added by iCloud sync from another device without its password: off (and not refreshed) until the password is
+    /// entered in the source editor.
+    public var needsPassword: Bool
 
     // MARK: Sync status (written by SyncService)
     public var lastSyncedAt: Date?
@@ -80,7 +83,8 @@ public struct Source: Codable, Sendable, Identifiable, Hashable {
         includeVOD: Bool = true,
         refreshHours: Int? = nil,
         sortIndex: Int = 0,
-        createdAt: Date = Date()
+        createdAt: Date = Date(),
+        needsPassword: Bool = false
     ) {
         self.id = id
         self.name = name
@@ -101,6 +105,7 @@ public struct Source: Codable, Sendable, Identifiable, Hashable {
         self.refreshHours = refreshHours
         self.sortIndex = sortIndex
         self.createdAt = createdAt
+        self.needsPassword = needsPassword
         self.channelCount = 0
         self.movieCount = 0
         self.seriesCount = 0

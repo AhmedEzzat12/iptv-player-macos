@@ -381,6 +381,27 @@ public final class AppDatabase: Sendable {
                 t.column("checkedAt", .datetime).notNull()
             }
         }
+
+        // iCloud Drive sync: per sync key, what this device last published (`value`, JSON; NULL for a deletion), when
+        // it changed (ms since 1970) and the hash of the local data it was built from, so an export can tell local
+        // changes from values taken from other devices (`CloudSyncLedgerEntry`).
+        m.registerMigration("v7-syncLedger") { db in
+            try db.create(table: "syncLedger") { t in
+                t.primaryKey("key", .text)
+                t.column("value", .text)
+                t.column("localHash", .text).notNull()
+                t.column("updatedAt", .integer).notNull()
+                t.column("deleted", .boolean).notNull().defaults(to: false)
+            }
+        }
+
+        // A playlist that arrived through sync without its password (Xtream, or an M3U link with a token): stays off
+        // until the password is entered in the source editor.
+        m.registerMigration("v7-sourceNeedsPassword") { db in
+            try db.alter(table: "source") { t in
+                t.add(column: "needsPassword", .boolean).notNull().defaults(to: false)
+            }
+        }
         return m
     }
 }

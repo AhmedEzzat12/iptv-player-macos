@@ -68,7 +68,8 @@ public actor SyncService {
     // MARK: - Sync
 
     public func sync(sourceId: String, options: SyncOptions = .all) async {
-        guard !running.contains(sourceId), let source = try? await db.source(id: sourceId), source.enabled else { return }
+        guard !running.contains(sourceId), let source = try? await db.source(id: sourceId), source.enabled,
+              !source.needsPassword else { return }
         running.insert(sourceId)
         defer { running.remove(sourceId) }
         emit(source, .started)
@@ -282,7 +283,7 @@ public actor SyncService {
     /// Syncs sources whose data is older than their refresh interval (0 = manual only).
     public func syncDueSources(defaultLiveHours: Int, defaultVODHours: Int, now: Date = Date()) async {
         guard let sources = try? await db.sources() else { return }
-        for source in sources where source.enabled {
+        for source in sources where source.enabled && !source.needsPassword {
             var options: SyncOptions = []
             let liveHours = source.refreshHours ?? defaultLiveHours
             if liveHours > 0, (source.lastSyncedAt.map { now.timeIntervalSince($0) > Double(liveHours) * 3600 } ?? true) {
