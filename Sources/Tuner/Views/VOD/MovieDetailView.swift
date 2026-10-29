@@ -208,9 +208,12 @@ struct MovieDetailView: View {
         if let fresh = try? await model.db.movie(id: movie.id) { movie = fresh }
         // Offline the page shows what the library has (downloads still play); details load next time.
         guard !model.isOffline else { return }
+        // Asked recently (this session): the saved details are current.
+        if let at = model.detailsFetchedAt[movie.id], Date().timeIntervalSince(at) < 15 * 60 { return }
         loadingDetails = true
         defer { loadingDetails = false }
         guard let details = try? await model.sync.movieDetails(movie), !Task.isCancelled else { return }
+        model.detailsFetchedAt[movie.id] = Date()
         withAnimation(.easeOut(duration: 0.25)) { movie = merged(movie, details) }
     }
 

@@ -507,21 +507,22 @@ struct SeriesDetailView: View {
     // MARK: Loading
 
     private func loadEpisodes() async {
-        phase = .loading
         let cached = (try? await model.db.episodes(seriesId: series.id)) ?? []
         if !cached.isEmpty, episodes.isEmpty {
             episodes = cached
         }
+        // Episodes saved from an earlier visit show at once (no spinner); the provider is asked in the background.
+        phase = episodes.isEmpty ? .loading : .loaded
         // Offline the library's episodes are what there is (downloaded ones play); they refresh when back online.
-        if model.isOffline, !episodes.isEmpty {
-            phase = .loaded
-            return
-        }
+        if model.isOffline, !episodes.isEmpty { return }
+        // Asked recently (this session): nothing new to expect.
+        if !episodes.isEmpty, let at = model.detailsFetchedAt[series.id], Date().timeIntervalSince(at) < 15 * 60 { return }
         do {
             let fresh = try await model.sync.episodes(for: series)
             guard !Task.isCancelled else { return }
+            model.detailsFetchedAt[series.id] = Date()
             withAnimation(.smooth(duration: 0.25)) {
-                episodes = fresh
+                if fresh != episodes { episodes = fresh }
                 phase = .loaded
             }
             if let updated = try? await model.db.series(id: series.id) {

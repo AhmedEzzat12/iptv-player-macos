@@ -50,6 +50,9 @@ final class AppModel {
     /// Channel list shown in the Live TV guide.
     var liveScope: ChannelScope = .all
     var searchQuery = ""
+    /// When each show's episodes / movie's details were last fetched from the provider this session (their pages
+    /// skip asking again for 15 minutes and show what's saved at once).
+    @ObservationIgnored var detailsFetchedAt: [String: Date] = [:]
     /// Bumped to put the cursor in Search's field (⌘F, or tapping the Search tab again on iPhone/iPad).
     private(set) var searchFocusRequest = 0
     var sourceEditor: SourceEditorRequest?

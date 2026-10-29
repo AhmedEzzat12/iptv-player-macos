@@ -108,14 +108,6 @@ final class PlayerSlot: Identifiable {
     @ObservationIgnored private var serverErrorRetries = 0
     @ObservationIgnored private var lastHTTPStatus: Int?
 
-    /// Channels/titles whose video AVFoundation couldn't decode this session (e.g. HEVC in MPEG-TS HLS).
-    /// Shared by all slots so zapping back goes straight to mpv, and AirPlay uses the bridge for them.
-    private static var nativeVideoUnsupported: Set<String> = []
-
-    /// Live and catch-up share the channel's encoding, so they share one key.
-    private static func videoKey(_ item: PlaybackItem) -> String {
-        item.channel.map { "ch:\($0.id)" } ?? item.id
-    }
 
     init(id: Int, services: PlayerServices) {
         self.id = id
@@ -261,7 +253,7 @@ final class PlayerSlot: Identifiable {
         guard let item else { return false }
         if engineKind == .av { return true }
         // AVFoundation showed no picture for it before: only the bridge (re-wrap) can make it AirPlay-able.
-        if Self.nativeVideoUnsupported.contains(Self.videoKey(item)) { return false }
+        if EngineMemory.prefersMPV(item) { return false }
         // Xtream live channels (incl. Xtream-panel M3U links) can be requested as HLS.
         if let channel = item.channel, item.isLive, channel.providerStreamId != nil || channel.streamURL.isEmpty { return true }
         guard let url = stream?.url else { return false }
@@ -430,8 +422,8 @@ final class PlayerSlot: Identifiable {
             guard gen == self.generation, !Task.isCancelled else { return }
             do {
                 // Native first: ask Xtream panels for HLS, which AVFoundation plays; fall back to TS for mpv.
-                // Items whose video AVFoundation already failed to decode go straight to mpv.
-                let knownBlind = choice == .automatic && mpvOK && Self.nativeVideoUnsupported.contains(Self.videoKey(item))
+                // Items AVFoundation already failed on (this launch or an earlier one) go straight to mpv.
+                let knownBlind = choice == .automatic && mpvOK && EngineMemory.prefersMPV(item)
                 let wantNative = forced.map { $0 == .av } ?? (!knownBlind && (choice != .mpv || !mpvOK))
                 let stream = try await self.resolve(item, liveFormat: wantNative ? .m3u8 : .ts)
                 guard gen == self.generation else { return }
@@ -567,7 +559,7 @@ final class PlayerSlot: Identifiable {
     /// which decodes it, and remember the item so the next tune skips AVFoundation.
     private func videoUnsupported() {
         guard let item else { return }
-        Self.nativeVideoUnsupported.insert(Self.videoKey(item))
+        EngineMemory.remember(item)
         let mayFallBack = services.prefs.engine == .automatic || airPlaySwitchPending
         if EngineFactory.mpvAvailable, !triedKinds.contains(.mpv), mayFallBack {
             engine?.stop()
@@ -608,6 +600,8 @@ final class PlayerSlot: Identifiable {
             let other: EngineKind = current == .av ? .mpv : .av
             let otherAvailable = other == .av || EngineFactory.mpvAvailable
             if otherAvailable, !triedKinds.contains(other), services.prefs.engine == .automatic || airPlaySwitchPending {
+                // Remember it, so the next start (even after a relaunch) skips AVFoundation for this title/show.
+                if current == .av, other == .mpv, !airPlaySwitchPending { EngineMemory.remember(item) }
                 engineLoaded = false
                 load(item, preferring: other)
                 return

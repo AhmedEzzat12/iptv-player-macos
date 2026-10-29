@@ -32,8 +32,11 @@ Apple frameworks plus SQLite and libmpv.
   MPEG-TS HLS segments (Apple only allows HEVC in fMP4), e.g. many "HEVC"/"4K" sports channels. The result is a
   black picture with sound. `AVEngine` checks `AVPlayerItem.tracks` at `readyToPlay`: audio but no video means it
   holds playback for up to 1.5 s, then sends `.videoUnsupported`. Healthy streams list their video track by
-  `readyToPlay`. `PlayerSlot` reopens the stream in mpv (when the engine preference is Automatic) and remembers the
-  channel for the session, so re-tuning goes straight to mpv and AirPlay uses the bridge for it.
+  `readyToPlay`. `PlayerSlot` reopens the stream in mpv (when the engine preference is Automatic) and remembers it
+  (`EngineMemory`), so re-tuning goes straight to mpv and AirPlay uses the bridge for it.
+- **Engine memory** (`EngineMemory`, UserDefaults, 30 days): a channel, movie or episode AVFoundation failed on
+  (error, load timeout or no picture) starts in mpv next time, also after a relaunch; an episode also marks its
+  show. Without it every relaunch paid for AVFoundation failing again (up to the 15 s timeout) before mpv started.
 - **AirPlay bridge** (`AirPlayBridge`): ffmpeg `-c copy` re-wraps a stream AirPlay can't take into LAN HLS
   (H.264 → TS segments; HEVC → fMP4 + `hvc1` tag + `aac_adtstoasc`. Without that filter, ADTS AAC from TS fails
   with a misleading EPERM). It runs under a `/bin/sh` watchdog that stops ffmpeg when the app's PID disappears
