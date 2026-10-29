@@ -61,6 +61,9 @@ public actor CloudSyncEngine {
         do {
             result = try await db.cloudSyncPass(remote: CloudSyncMerge.newest(listing.files), preferences: ownPrefs,
                                                 deviceId: device.id, now: now)
+        } catch is CancellationError {
+            // A newer pass took over (a change or Sync Now while this one ran): nothing went wrong.
+            return report
         } catch {
             Self.log.error("Sync pass failed: \(error.localizedDescription, privacy: .public)")
             report.error = "Couldn't update the library: \(error.localizedDescription)"

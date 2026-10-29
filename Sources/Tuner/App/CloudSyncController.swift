@@ -213,6 +213,8 @@ final class CloudSyncController {
         }
         let report = await engine.sync(folder: folder, preferences: model.prefs.cloudSyncValues())
         endAccess()
+        // Superseded by a newer pass: that one reports.
+        guard !Task.isCancelled else { return }
 
         if report.appliedCount > 0 || !report.preferences.isEmpty { quietUntil = Date().addingTimeInterval(2) }
         if !report.preferences.isEmpty {
