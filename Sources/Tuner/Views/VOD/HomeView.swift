@@ -74,6 +74,15 @@ private struct HomeContent: View {
                     }
                 }
 
+                // The next episode of shows you're watching (the one after an episode you finished).
+                if !personal.upNext.isEmpty {
+                    VODShelf("Up Next") {
+                        ForEach(personal.upNext) { item in
+                            if case .nextEpisode(let episode, let progress) = item { nextEpisodeCard(episode, progress) }
+                        }
+                    }
+                }
+
                 HomeTopTenRows(rows: topTen, favoriteIds: personal.favoriteIds)
 
                 if !onNow.isEmpty {
@@ -144,7 +153,7 @@ private struct HomeContent: View {
                 title: progress.title,
                 subtitle: progress.subtitle,
                 caption: VODFormat.timeLeft(progress),
-                imageURL: progress.posterURL,
+                imageURLs: [progress.posterURL] + (personal.artwork[progress.seriesId ?? progress.mediaId] ?? []),
                 symbol: progress.kind == .movie ? "film" : "tv",
                 progress: progress.fraction
             )
@@ -192,7 +201,7 @@ private struct HomeContent: View {
                 title: progress.title,
                 subtitle: "\(VODFormat.episodeCode(episode)) · Next Episode",
                 caption: episode.title.nilIfEmpty,
-                imageURL: progress.posterURL,
+                imageURLs: [episode.imageURL, progress.posterURL] + (personal.artwork[episode.seriesId] ?? []),
                 symbol: "tv"
             )
         }
@@ -346,24 +355,56 @@ private struct HomeContent: View {
         }
     }
 
+    /// Backup pictures for Continue Watching / Up Next cards, from cached online metadata and the library records.
+    private func fallbackArtwork(for items: [ContinueWatchingItem]) async -> [String: [String]] {
+        let db = model.db
+        var ids: [(id: String, isSeries: Bool)] = []
+        for item in items {
+            switch item {
+            case .resume(let p): ids.append(p.seriesId.map { ($0, true) } ?? (p.mediaId, false))
+            case .nextEpisode(let e, _): ids.append((e.seriesId, true))
+            }
+        }
+        let metadata = await model.metadata.cachedMetadata(mediaIds: ids.map(\.id))
+        var result: [String: [String]] = [:]
+        for (id, isSeries) in ids where result[id] == nil {
+            var urls: [String?] = [metadata[id]?.backdropURL]
+            if isSeries, let s = try? await db.series(id: id) {
+                urls += [s.backdropURL, s.coverURL]
+            } else if !isSeries, let m = try? await db.movie(id: id) {
+                urls += [m.backdropURL, m.posterURL]
+            }
+            urls.append(metadata[id]?.posterURL)
+            result[id] = urls.compactMap { $0?.nilIfEmpty }
+        }
+        return result
+    }
+
     /// Settings › AI › Smart Continue Watching.
     private var smartRow: Bool { model.prefs.aiSmartContinueWatching }
 
     private func loadPersonal() async {
         let db = model.db
         let smart = smartRow
-        async let continueWatching: [ContinueWatchingItem] = smart
-            ? db.smartContinueWatching(limit: 20)
-            : db.continueWatching(limit: 20).map(ContinueWatchingItem.resume)
+        // One ranked list gives both rows: next episodes go to "Up Next", resume points to Continue Watching (smart
+        // order when Settings › AI › Smart Continue Watching is on, plain recency otherwise).
+        async let ranked = db.smartContinueWatching(limit: 40)
+        async let plain = db.continueWatching(limit: 20)
         async let favoriteMovies = db.favoriteMovies()
         async let favoriteSeries = db.favoriteSeries()
-        let cw = (try? await continueWatching) ?? []
+        let all = (try? await ranked) ?? []
+        let upNext = all.filter { if case .nextEpisode = $0 { true } else { false } }
+        let cw: [ContinueWatchingItem] = smart
+            ? Array(all.filter { if case .resume = $0 { true } else { false } }.prefix(20))
+            : ((try? await plain) ?? []).map(ContinueWatchingItem.resume)
         let fm = (try? await favoriteMovies) ?? []
         let fs = (try? await favoriteSeries) ?? []
         guard !Task.isCancelled else { return }
 
         var p = HomePersonal()
         p.continueWatching = cw
+        p.upNext = upNext
+        p.artwork = await fallbackArtwork(for: cw + upNext)
         p.favorites = Array((fm.map(VODItem.movie) + fs.map(VODItem.series)).prefix(40))
         p.favoriteIds = Set(fm.map(\.id) + fs.map(\.id))
         let resumed = cw.compactMap { item -> WatchProgress? in
@@ -419,6 +460,10 @@ private struct HomeLibrary: Equatable {
 
 private struct HomePersonal: Equatable {
     var continueWatching: [ContinueWatchingItem] = []
+    var upNext: [ContinueWatchingItem] = []
+    /// Backup pictures per show/movie id for its cards (online backdrop, then the library's backdrop and poster),
+    /// for when the saved one doesn't load.
+    var artwork: [String: [String]] = [:]
     var favorites: [VODItem] = []
     var favoriteIds: Set<String> = []
     var movieProgress: [String: Double] = [:]

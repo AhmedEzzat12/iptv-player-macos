@@ -4,9 +4,10 @@ import TunerCore
 
 /// Remote artwork (posters, backdrops, logos), loaded through `ArtworkLoader`: shown at once when it's already in
 /// memory (no placeholder flash when scrolling back), otherwise read from the disk cache or downloaded, scaled down
-/// to the size it's drawn at off the main thread, and faded in.
+/// to the size it's drawn at off the main thread, and faded in. With several URLs, the first that actually loads
+/// is shown (providers sometimes answer with an empty or broken file).
 struct RemoteImage<Placeholder: View>: View {
-    let url: String?
+    let urls: [String]
     var contentMode: ContentMode = .fill
     @ViewBuilder var placeholder: () -> Placeholder
 
@@ -15,20 +16,26 @@ struct RemoteImage<Placeholder: View>: View {
     @ViewState private var loaded: ArtworkLoader.Loaded?
 
     init(url: String?, contentMode: ContentMode = .fill, @ViewBuilder placeholder: @escaping () -> Placeholder) {
-        self.url = url
+        self.init(urls: [url], contentMode: contentMode, placeholder: placeholder)
+    }
+
+    /// Tries `urls` in order (nil/empty ones and repeats skipped).
+    init(urls: [String?], contentMode: ContentMode = .fill, @ViewBuilder placeholder: @escaping () -> Placeholder) {
+        var seen = Set<String>()
+        self.urls = urls.compactMap { $0?.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty && seen.insert($0).inserted }
         self.contentMode = contentMode
         self.placeholder = placeholder
     }
 
-    private var parsedURL: URL? {
-        guard let url, let parsed = URL(string: url), parsed.scheme != nil else { return nil }
-        return parsed
+    private var parsedURLs: [URL] {
+        urls.compactMap { URL(string: $0) }.filter { $0.scheme != nil }
     }
 
     var body: some View {
-        let parsed = parsedURL
+        let candidates = parsedURLs
         // Already decoded (any size): draw it in this very pass, then let the task fetch a sharper copy if needed.
-        let image = loaded?.url == parsed ? loaded?.image : parsed.flatMap { ArtworkLoader.shared.cachedImage(for: $0) }
+        let image = loaded.flatMap { candidates.contains($0.url) ? $0.image : nil }
+            ?? candidates.lazy.compactMap { ArtworkLoader.shared.cachedImage(for: $0) }.first
         ZStack {
             if let image {
                 Image(decorative: image, scale: 1)
@@ -40,29 +47,36 @@ struct RemoteImage<Placeholder: View>: View {
             }
         }
         .onGeometryChange(for: CGSize.self) { $0.size } action: { size = $0 }
-        .task(id: LoadKey(url: parsed, pixels: ArtworkLoader.bucket(for: size, scale: displayScale))) {
-            await load(parsed)
+        .task(id: LoadKey(urls: candidates, pixels: ArtworkLoader.bucket(for: size, scale: displayScale))) {
+            await load(candidates)
         }
     }
 
-    private func load(_ url: URL?) async {
-        guard let url else {
+    private func load(_ candidates: [URL]) async {
+        guard !candidates.isEmpty else {
             loaded = nil
             return
         }
         guard size.width > 0 || size.height > 0 else { return }
         let pixels = ArtworkLoader.bucket(for: size, scale: displayScale)
-        let wasShowing = loaded?.url == url || ArtworkLoader.shared.cachedImage(for: url) != nil
-        guard let image = await ArtworkLoader.shared.image(for: url, maxPixels: pixels), !Task.isCancelled else { return }
-        if wasShowing {
-            loaded = .init(url: url, image: image)
-        } else {
-            withAnimation(.easeOut(duration: 0.2)) { loaded = .init(url: url, image: image) }
+        let wasShowing = loaded.map { candidates.contains($0.url) } ?? false
+            || candidates.contains { ArtworkLoader.shared.cachedImage(for: $0) != nil }
+        // The first candidate that loads wins; a failed one falls through to the next.
+        for url in candidates {
+            guard !Task.isCancelled else { return }
+            guard let image = await ArtworkLoader.shared.image(for: url, maxPixels: pixels) else { continue }
+            guard !Task.isCancelled else { return }
+            if wasShowing {
+                loaded = .init(url: url, image: image)
+            } else {
+                withAnimation(.easeOut(duration: 0.2)) { loaded = .init(url: url, image: image) }
+            }
+            return
         }
     }
 
     private struct LoadKey: Equatable {
-        let url: URL?
+        let urls: [URL]
         let pixels: Int
     }
 }
@@ -94,6 +108,9 @@ final class ArtworkLoader: @unchecked Sendable {
     private let session: URLSession
     private let lock = NSLock()
     private var inFlight: [URL: Task<Data?, Never>] = [:]
+    /// URLs that just failed (error, not an image, or an empty file — some IPTV panels answer 200 with no
+    /// bytes): not asked again for 10 minutes, so the next fallback shows at once.
+    private var failedAt: [URL: Date] = [:]
 
     private init() {
         #if os(macOS)
@@ -155,6 +172,7 @@ final class ArtworkLoader: @unchecked Sendable {
         if url.isFileURL {
             return await Task.detached(priority: .userInitiated) { try? Data(contentsOf: url) }.value
         }
+        if let at = lock.withLock({ failedAt[url] }), Date().timeIntervalSince(at) < 600 { return nil }
         let task: Task<Data?, Never> = lock.withLock {
             if let running = inFlight[url] { return running }
             let task = Task<Data?, Never> { [disk, session] in
@@ -170,7 +188,10 @@ final class ArtworkLoader: @unchecked Sendable {
             return task
         }
         let data = await task.value
-        lock.withLock { if inFlight[url] == task { inFlight[url] = nil } }
+        lock.withLock {
+            if inFlight[url] == task { inFlight[url] = nil }
+            if data == nil { failedAt[url] = Date() }
+        }
         return data
     }
 

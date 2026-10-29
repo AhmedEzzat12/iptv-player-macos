@@ -40,7 +40,8 @@ Blender Foundation open movies (CC BY). No provider content is shown.</sub>
 - **Guide:** XMLTV (gzip, multi-member), provider guides (Xtream `xmltv.php`, M3U `url-tvg`, Stalker), extra and
   global feeds, automatic matching by tvg-id or normalised name, per-source time shift, programme search, reminders
   with auto-switch.
-- **Movies & TV Shows:** browsing with posters, details, seasons/episodes, resume and Continue Watching.
+- **Movies & TV Shows:** browsing with posters, details, seasons/episodes, resume and Continue Watching, plus an
+  **Up Next** row on Home with the next episode of each show you're watching (the one after an episode you finished).
   Providers' long category lists are grouped into a few menus — Featured, Languages & Countries, Platforms, Genres,
   By Year, Sports, Kids, Quality, More — read from English and Arabic category names. Pin the categories you use
   (they become chips), hide the rest, and choose whether names show their English part, their Arabic part or the
@@ -87,9 +88,9 @@ Blender Foundation open movies (CC BY). No provider content is shown.</sub>
     closest name, ignoring tags like HD/FHD/4K, VIP and backup markers and prefixes like `UK:` or `|AR|`, and
     comparing Arabic and Latin names. Numbers and +1 timeshifts must agree (beIN Sports 1 never gets beIN
     Sports 2), near-ties are skipped, and a guide chosen by hand always wins.
-  - **Smart Continue Watching:** when you finish an episode, Home offers the next one ("S2, E4 · Next Episode");
-    what you're about to finish and shows you watched this week come first; titles you stopped early and
-    haven't touched in three weeks leave the row (their progress is kept).
+  - **Smart Continue Watching:** what you're about to finish and shows you watched this week come first; titles
+    you stopped early and haven't touched in three weeks leave the row (their progress is kept). (The next
+    episode of a show you finished an episode of is always in the Up Next row.)
   - **Recommendations:** "More Like This" on movie and show pages and up to two "Because You Watched …" rows on
     Home, worked out on this device from genres, cast, directors, categories, titles and plots in English and
     Arabic. Rows are seeded by what you finished or mostly watched and by your favourites; hidden categories (and

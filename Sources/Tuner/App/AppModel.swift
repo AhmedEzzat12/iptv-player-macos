@@ -246,29 +246,18 @@ final class AppModel {
         switch event.phase {
         case .finished:
             activeSyncs[event.sourceId] = nil
-            let id = event.sourceId
-            let name = event.sourceName
-            Task { await hintIfNoGuide(sourceId: id, name: name) }
         case .failed:
             activeSyncs[event.sourceId] = nil
             notify(Banner(symbol: "exclamationmark.triangle.fill", title: "Couldn't refresh \(event.sourceName)", message: event.message, isError: true))
         case .guide where event.message != nil:
             activeSyncs[event.sourceId] = event
-            notify(Banner(symbol: "calendar.badge.exclamationmark", title: "Guide problem for \(event.sourceName)", message: event.message, isError: true))
+            // Once per playlist per launch: a provider whose guide keeps failing would otherwise repeat it on every refresh.
+            if guideHintShown.insert(event.sourceId).inserted {
+                notify(Banner(symbol: "calendar.badge.exclamationmark", title: "Guide problem for \(event.sourceName)", message: event.message, isError: true))
+            }
         default:
             activeSyncs[event.sourceId] = event
         }
-    }
-
-    /// Some providers publish no guide at all (empty xmltv.php, no per-channel EPG). Say so once, with the fix,
-    /// rather than leaving every row reading "No guide information".
-    private func hintIfNoGuide(sourceId: String, name: String) async {
-        guard !guideHintShown.contains(sourceId),
-              let coverage = try? await db.guideCoverage(sourceId: sourceId),
-              coverage.channels > 0, coverage.withGuide == 0 else { return }
-        guideHintShown.insert(sourceId)
-        notify(Banner(symbol: "calendar.badge.exclamationmark", title: "\(name) doesn't include a TV guide",
-                      message: "Add an XMLTV guide under Settings → Playlists → Global Guide Feeds; channels are matched by name."))
     }
 
     func syncAll() {

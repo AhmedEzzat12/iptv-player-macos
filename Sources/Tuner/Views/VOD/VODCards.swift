@@ -907,7 +907,8 @@ struct VODLandscapeCard: View {
     let title: String
     var subtitle: String?
     var caption: String?
-    var imageURL: String?
+    /// Tried in order (the first that loads); see `RemoteImage(urls:)`.
+    var imageURLs: [String?] = []
     var symbol: String = "play.rectangle"
     var progress: Double?
     var width: CGFloat = VODMetrics.landscapeWidth
@@ -916,7 +917,7 @@ struct VODLandscapeCard: View {
         Color.clear
             .aspectRatio(16 / 9, contentMode: .fit)
             .overlay {
-                RemoteImage(url: imageURL) { VODArtworkPlaceholder(title: title, symbol: symbol) }
+                RemoteImage(urls: imageURLs) { VODArtworkPlaceholder(title: title, symbol: symbol) }
             }
             .overlay {
                 LinearGradient(colors: [.clear, .black.opacity(0.15), .black.opacity(0.85)], startPoint: .top, endPoint: .bottom)
