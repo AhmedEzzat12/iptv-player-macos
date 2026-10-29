@@ -30,6 +30,8 @@ final class AppModel {
     let downloads: DownloadService
     let prefs: Preferences
     let player: PlayerManager
+    /// iCloud Drive sync of user state between the user's devices (Settings → Sync; off by default).
+    let cloudSync: CloudSyncController
 
     // MARK: Navigation
     var sidebarSelection: SidebarItem? = .home {
@@ -51,6 +53,8 @@ final class AppModel {
     /// Bumped to put the cursor in Search's field (⌘F, or tapping the Search tab again on iPhone/iPad).
     private(set) var searchFocusRequest = 0
     var sourceEditor: SourceEditorRequest?
+    /// Source editors on screen; iCloud sync waits while one is open.
+    @ObservationIgnored var openSourceEditors = 0
     var showShortcutHelp = false
     /// Trailer playing in the in-app trailer overlay (`TrailerOverlay`), if any.
     private(set) var trailer: TrailerRequest?
@@ -128,6 +132,7 @@ final class AppModel {
         recommender = Recommender(db: db)
         topTen = TopTenService(db: db)
         player = PlayerManager(services: PlayerServices(db: db, resolver: resolver, prefs: prefs))
+        cloudSync = CloudSyncController(db: db)
         for slot in player.slots { wire(slot) }
     }
 
@@ -165,6 +170,8 @@ final class AppModel {
             model.userRevision += 1
             Task { await model.reloadUserData() }
         }
+
+        cloudSync.start(model: self)
 
         // Auto refresh (stale sources), shortly after launch then every 10 minutes.
         tasks.append(Task { [weak self] in

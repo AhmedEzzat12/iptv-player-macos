@@ -7,6 +7,8 @@ import UIKit
 ///   xcrun simctl launch booted <bundle id> -TunerDebugPlayMovie "Matroska Nights"
 ///   xcrun simctl launch booted <bundle id> -TunerDebugPlayChannel "Tuner News" [-TunerDebugEngine mpv]
 /// Waits for the library, then plays the first match full screen, so each engine can be checked without tapping.
+/// iCloud sync reads `-TunerSyncDir <path>` itself (`CloudSyncController`): a plain folder shared with a scratch Mac
+/// app, instead of a folder picked in Files.
 @MainActor
 enum DebugLaunch {
     static func run(_ model: AppModel) async {

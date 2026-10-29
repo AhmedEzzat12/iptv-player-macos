@@ -239,6 +239,14 @@ private struct SettingsSourceRow: View {
                         .padding(.vertical, 1)
                         .background(Capsule().fill(.quaternary))
                         .foregroundStyle(.secondary)
+                    if source.needsPassword {
+                        Text("Needs password")
+                            .font(.caption2.weight(.semibold))
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 1)
+                            .background(Capsule().fill(Color.orange.opacity(0.2)))
+                            .foregroundStyle(.orange)
+                    }
                 }
                 statusLine
                 if source.enabled, sync == nil, !accountDetails.isEmpty {
@@ -274,10 +282,16 @@ private struct SettingsSourceRow: View {
                     .help("Exported")
             }
 
+            if source.needsPassword {
+                Button(source.kind == .m3u ? "Enter Link…" : "Enter Password…", action: onEdit)
+                    .controlSize(.small)
+            }
+
             Toggle("Enabled", isOn: enabledBinding)
                 .labelsHidden()
                 .toggleStyle(.switch)
                 .controlSize(.small)
+                .disabled(source.needsPassword)
                 .help(source.enabled ? "Turn off to hide this playlist without deleting it" : "Turn on to show this playlist")
 
             Button(action: onEdit) {
@@ -365,6 +379,11 @@ private struct SettingsSourceRow: View {
             }
             .font(.callout)
             .foregroundStyle(.secondary)
+        } else if source.needsPassword {
+            Text(source.kind == .m3u ? "Added from another device · enter the full playlist link to turn it on"
+                                     : "Added from another device · enter the password to turn it on")
+                .font(.callout)
+                .foregroundStyle(.secondary)
         } else if !source.enabled {
             Text("Off").font(.callout).foregroundStyle(.secondary)
         } else {

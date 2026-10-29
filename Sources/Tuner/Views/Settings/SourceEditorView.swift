@@ -46,6 +46,7 @@ struct SourceEditorView: View {
         VStack(spacing: 0) {
             header
             Form {
+                if request.source?.needsPassword == true { needsPasswordSection }
                 generalSection
                 connectionSection
                 advancedSection
@@ -59,8 +60,14 @@ struct SourceEditorView: View {
         .frame(width: 560)
         .frame(minHeight: 440, idealHeight: 520, maxHeight: 860)
         #endif
-        .onAppear { if !isEditing { focus = .url } }
-        .onDisappear { testTask?.cancel() }
+        .onAppear {
+            model.openSourceEditors += 1
+            if !isEditing { focus = .url } else if request.source?.needsPassword == true { focus = draft.kind == .m3u ? .url : .password }
+        }
+        .onDisappear {
+            model.openSourceEditors = max(0, model.openSourceEditors - 1)
+            testTask?.cancel()
+        }
         .onChange(of: draft.url) { _, newValue in splitXtreamLinkIfNeeded(newValue) }
         .onChange(of: draft) { _, _ in if test != .testing { test = .idle } }
         .onChange(of: draft.kind) { _, kind in kindChanged(kind) }
@@ -145,6 +152,20 @@ struct SourceEditorView: View {
     }
 
     // MARK: Sections
+
+    /// Shown for a playlist that iCloud sync added from another device without its password.
+    private var needsPasswordSection: some View {
+        Section {
+            Label {
+                Text(draft.kind == .m3u
+                     ? "Added from another device. Its link had a password or token, which isn't synced: paste the full playlist link again to turn it on."
+                     : "Added from another device. Passwords aren't synced: enter it to turn this playlist on.")
+            } icon: {
+                Image(systemName: "key.fill").foregroundStyle(.orange)
+            }
+            .font(.callout)
+        }
+    }
 
     private var generalSection: some View {
         Section {
@@ -515,6 +536,11 @@ struct SourceEditorView: View {
             current.includeLive = edited.includeLive
             current.includeVOD = edited.includeVOD
             current.refreshHours = edited.refreshHours
+            // A playlist that came from another device without its password turns on once it has one.
+            if current.needsPassword {
+                current.needsPassword = false
+                current.enabled = true
+            }
             model.updateSource(current)
         } else {
             model.addSource(edited)
