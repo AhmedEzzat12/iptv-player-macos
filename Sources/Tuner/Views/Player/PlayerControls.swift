@@ -335,8 +335,8 @@ extension View {
     /// isn't inside the glass, so the glass foreground treatment doesn't wash out tinted content — with
     /// `glassEffect` on the content, the red LIVE pill, yellow favourite star, red record dot and orange
     /// warnings render white/black.
-    func playerGlass<S: Shape>(in shape: S, interactive: Bool = false) -> some View {
-        background { PlayerGlassBackground(shape: shape, interactive: interactive) }
+    func playerGlass<S: Shape>(in shape: S, interactive: Bool = false, clear: Bool = false) -> some View {
+        background { PlayerGlassBackground(shape: shape, interactive: interactive, clear: clear) }
     }
 
     func playerGlass(cornerRadius: CGFloat) -> some View {
@@ -347,12 +347,15 @@ extension View {
 private struct PlayerGlassBackground<S: Shape>: View {
     let shape: S
     let interactive: Bool
+    /// The more see-through glass (the control panel over the picture).
+    var clear = false
 
     var body: some View {
         if #available(macOS 26.0, *) {
-            Color.clear.glassEffect(interactive ? .regular.interactive() : .regular, in: shape)
+            let glass: Glass = clear ? .clear : .regular
+            Color.clear.glassEffect(interactive ? glass.interactive() : glass, in: shape)
         } else {
-            shape.fill(.ultraThinMaterial)
+            shape.fill(.ultraThinMaterial).opacity(clear ? 0.6 : 1)
         }
     }
 }
