@@ -170,8 +170,14 @@ private struct PlayerTopBar: View {
             .help(stopsOnExit ? "Close Player" : "Back")
             .accessibilityLabel(stopsOnExit ? "Close Player" : "Back")
 
-            Spacer(minLength: 12)
-
+            // What's playing, next to the close button (live: favourite and record on its right).
+            if let item = slot.item {
+                PlayerInfoRow(slot: slot, item: item, compact: false)
+                    .foregroundStyle(.white)
+                    .shadow(color: .black.opacity(0.45), radius: 6)
+            } else {
+                Spacer(minLength: 12)
+            }
 
             if slot.isPictureInPicturePossible {
                 let active = slot.isPictureInPictureActive
@@ -272,7 +278,6 @@ struct PlayerControlPanel: View {
         if let item = slot.item {
             let shape = RoundedRectangle(cornerRadius: compact ? 22 : 28, style: .continuous)
             VStack(alignment: .leading, spacing: compact ? 10 : 14) {
-                PlayerInfoRow(slot: slot, item: item, compact: compact)
                 if item.isLive {
                     PlayerLiveTimeline(slot: slot, compact: compact)
                 } else {
@@ -282,8 +287,8 @@ struct PlayerControlPanel: View {
             }
             .padding(compact ? 14 : 20)
             .frame(maxWidth: compact ? 640 : 920)
-            .background(Color.black.opacity(0.22), in: shape)
-            .playerGlass(in: shape)
+            .background(Color.black.opacity(0.08), in: shape)
+            .playerGlass(in: shape, clear: true)
             .foregroundStyle(.white)
             .onHover { chrome.isHoveringControls = $0 }
         }
@@ -382,7 +387,7 @@ struct PlayerControlPanel: View {
     }
 }
 
-/// Artwork, title/subtitle and (live) favourite + record.
+/// Title/subtitle and (live) favourite + record, in the player's top bar.
 private struct PlayerInfoRow: View {
     @Environment(AppModel.self) private var model
     let slot: PlayerSlot
@@ -393,7 +398,6 @@ private struct PlayerInfoRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            if !compact { artwork }
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 8) {
                     Text(item.title)
@@ -420,34 +424,6 @@ private struct PlayerInfoRow: View {
     private var subtitle: String? {
         if item.isLive { return item.channel?.number.map { "Channel \($0)" } }
         return item.subtitle
-    }
-
-    @ViewBuilder
-    private var artwork: some View {
-        if item.isLive, let channel = item.channel {
-            ChannelLogo(url: channel.logoURL, name: channel.displayName, size: 40)
-        } else {
-            let shape = RoundedRectangle(cornerRadius: 8, style: .continuous)
-            RemoteImage(url: item.artworkURL, contentMode: .fill) {
-                shape.fill(.white.opacity(0.08))
-                    .overlay {
-                        Image(systemName: placeholderSymbol)
-                            .font(.system(size: 18, weight: .medium))
-                            .foregroundStyle(.white.opacity(0.5))
-                    }
-            }
-            .frame(width: 96, height: 54)
-            .clipShape(shape)
-        }
-    }
-
-    private var placeholderSymbol: String {
-        switch item {
-        case .recording: "record.circle"
-        case .episode: "tv"
-        case .catchup, .channel: "clock.arrow.circlepath"
-        case .movie: "film"
-        }
     }
 
     @ViewBuilder
