@@ -153,6 +153,10 @@ iOS/scripts/install-resign-agent.sh            # --remove to uninstall it
 FORCE=1 iOS/scripts/resign-if-due.sh           # re-install now
 ```
 
+To re-install from [Raycast](https://www.raycast.com), add the folder `iOS/scripts/raycast` in Raycast → Settings →
+Extensions → Script Commands → Add Directories, then run **Reinstall Tuner on iPhone**. It notifies when it starts and
+when it's done (or why it couldn't), and logs to the same file.
+
 A paid Apple Developer Program membership makes installs last a year.
 
 ## Install
