@@ -18,7 +18,6 @@ extension Preferences {
             "metadataLanguage": .string(metadataLanguage),
             "accent": .string(accent.rawValue),
             "aiGuideMatching": .bool(aiGuideMatching),
-            "aiSmartContinueWatching": .bool(aiSmartContinueWatching),
             "aiRecommendations": .bool(aiRecommendations),
             "aiNaturalLanguageSearch": .bool(aiNaturalLanguageSearch),
             "homeTopTen": .bool(homeTopTen),
@@ -46,7 +45,6 @@ extension Preferences {
             case "metadataLanguage": update(\.metadataLanguage, v.string)
             case "accent": update(\.accent, v.string.flatMap(AccentTheme.init(rawValue:)))
             case "aiGuideMatching": update(\.aiGuideMatching, v.bool)
-            case "aiSmartContinueWatching": update(\.aiSmartContinueWatching, v.bool)
             case "aiRecommendations": update(\.aiRecommendations, v.bool)
             case "aiNaturalLanguageSearch": update(\.aiNaturalLanguageSearch, v.bool)
             case "homeTopTen": update(\.homeTopTen, v.bool)

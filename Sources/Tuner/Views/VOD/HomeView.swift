@@ -116,7 +116,7 @@ private struct HomeContent: View {
         .homeTopTenRows($topTen)
         .task(id: model.libraryRevision) { await loadLibrary() }
         .vodRecommendationRows($recommendations)
-        .task(id: HomePersonalKey(user: model.userRevision, smart: smartRow, library: smartRow ? model.libraryRevision : 0)) {
+        .task(id: HomePersonalKey(user: model.userRevision, library: model.libraryRevision)) {
             await loadPersonal()
         }
         .task(id: HomeHeroMetadataKey(ids: library.hero.map(\.id), settings: model.prefs.metadataSettings)) {
@@ -179,20 +179,14 @@ private struct HomeContent: View {
             }
             Button {
                 let id = progress.mediaId
-                // Smart row: an episode goes back to the start rather than away, so its show doesn't come back
-                // as the next episode after the one before it.
-                if smartRow, progress.kind == .episode {
-                    Task { try? await model.db.markWatched(progress, watched: false) }
-                } else {
-                    Task { try? await model.db.deleteProgress(mediaId: id) }
-                }
+                Task { try? await model.db.deleteProgress(mediaId: id) }
             } label: {
                 Label("Remove from Continue Watching", systemImage: "xmark.circle")
             }
         }
     }
 
-    /// Smart Continue Watching: the episode after one just finished, played from the start.
+    /// Up Next: the episode after one just finished, played from the start.
     private func nextEpisodeCard(_ episode: Episode, _ progress: WatchProgress) -> some View {
         let item = ContinueWatchingItem.nextEpisode(episode, progress: progress)
         return Button {
@@ -381,23 +375,17 @@ private struct HomeContent: View {
         return result
     }
 
-    /// Settings › AI › Smart Continue Watching.
-    private var smartRow: Bool { model.prefs.aiSmartContinueWatching }
-
     private func loadPersonal() async {
         let db = model.db
-        let smart = smartRow
-        // One ranked list gives both rows: next episodes go to "Up Next", resume points to Continue Watching (smart
-        // order when Settings › AI › Smart Continue Watching is on, plain recency otherwise).
+        // Continue Watching: resume points, most recent first. Up Next: the next episode of shows whose latest
+        // watched episode was finished.
         async let ranked = db.smartContinueWatching(limit: 40)
         async let plain = db.continueWatching(limit: 20)
         async let favoriteMovies = db.favoriteMovies()
         async let favoriteSeries = db.favoriteSeries()
         let all = (try? await ranked) ?? []
         let upNext = all.filter { if case .nextEpisode = $0 { true } else { false } }
-        let cw: [ContinueWatchingItem] = smart
-            ? Array(all.filter { if case .resume = $0 { true } else { false } }.prefix(20))
-            : ((try? await plain) ?? []).map(ContinueWatchingItem.resume)
+        let cw = ((try? await plain) ?? []).map(ContinueWatchingItem.resume)
         let fm = (try? await favoriteMovies) ?? []
         let fs = (try? await favoriteSeries) ?? []
         guard !Task.isCancelled else { return }
@@ -479,7 +467,7 @@ private struct HomeLiveEntry: Identifiable, Equatable {
 /// Reloads Home's personal shelves; with the smart row on, also when episodes get cached (they feed next episodes).
 private struct HomePersonalKey: Hashable {
     let user: Int
-    let smart: Bool
+    /// Newly cached episodes can give a show its Up Next card.
     let library: Int
 }
 

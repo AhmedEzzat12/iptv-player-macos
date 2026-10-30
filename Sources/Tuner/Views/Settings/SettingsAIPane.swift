@@ -19,10 +19,6 @@ struct SettingsAIPane: View {
             }
 
             Section {
-                Toggle(isOn: $prefs.aiSmartContinueWatching) {
-                    Text("Smart Continue Watching")
-                    Text("Offers the next episode when you finish one, puts what you're about to finish first, and drops titles you stopped early and haven't touched in weeks.")
-                }
                 Toggle(isOn: $prefs.aiRecommendations) {
                     Text("Recommendations")
                     Text("“More Like This” on movie and show pages and “Because You Watched” rows on Home, worked out on this device from genres, cast, categories and plots.")

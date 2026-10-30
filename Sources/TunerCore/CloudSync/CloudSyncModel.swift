@@ -216,7 +216,7 @@ public enum CloudSyncPreferences {
     public static let keys: [String] = [
         "recentSearches", "pinnedCategoryIds", "categoryNameStyle", "hideAdultContent", "episodeThumbnails",
         "autoplayNextEpisode", "upNextCountdown", "resumePlayback", "metadataEnabled", "metadataLanguage", "accent",
-        "aiGuideMatching", "aiSmartContinueWatching", "aiRecommendations", "aiNaturalLanguageSearch",
+        "aiGuideMatching", "aiRecommendations", "aiNaturalLanguageSearch",
         "homeTopTen", "homeTopTenRegion",
     ]
 

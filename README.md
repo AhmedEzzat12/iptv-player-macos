@@ -90,9 +90,6 @@ Blender Foundation open movies (CC BY). No provider content is shown.</sub>
     closest name, ignoring tags like HD/FHD/4K, VIP and backup markers and prefixes like `UK:` or `|AR|`, and
     comparing Arabic and Latin names. Numbers and +1 timeshifts must agree (beIN Sports 1 never gets beIN
     Sports 2), near-ties are skipped, and a guide chosen by hand always wins.
-  - **Smart Continue Watching:** what you're about to finish and shows you watched this week come first; titles
-    you stopped early and haven't touched in three weeks leave the row (their progress is kept). (The next
-    episode of a show you finished an episode of is always in the Up Next row.)
   - **Recommendations:** "More Like This" on movie and show pages and up to two "Because You Watched …" rows on
     Home, worked out on this device from genres, cast, directors, categories, titles and plots in English and
     Arabic. Rows are seeded by what you finished or mostly watched and by your favourites; hidden categories (and

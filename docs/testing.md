@@ -181,8 +181,8 @@ Live URLs: `/live/test/test/<id>.ts`, `/live/test/test/<id>.m3u8`, and the short
 10. **Bad credentials**: an Xtream source with password `nope` must fail login with a clear error.
 11. **AI features** (Settings → AI): with **Understand natural searches** on, "comedy movies" and "90s comedy series"
     show chips under the search field and filter movies/shows (tap a chip to turn it off); a library title like
-    "Signal Lost" stays a plain search. With **Smart Continue Watching** on, finish an episode of a show whose
-    episodes were opened once: Home offers "S1, E2 · Next Episode". **Smart guide matching** needs a guide whose
+    "Signal Lost" stays a plain search. Finish an episode of a show whose episodes were opened once: Home's
+    **Up Next** row offers "S1, E2 · Next Episode". **Smart guide matching** needs a guide whose
     names differ from the playlist's (e.g. a playlist entry `VIP DE: ZDF HD` and a guide channel `ZDF`): off, no
     guide; on, ZDF's programmes after the guide refresh. With **Recommendations** on, Elephants Dream's page shows
     "More Like This" (Sintel, Tears of Steel, Big Buck Bunny). Turning each off restores the old behaviour at once.

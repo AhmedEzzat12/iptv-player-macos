@@ -158,8 +158,8 @@ extension AppDatabase {
         }
     }
 
-    /// Smart Continue Watching (Settings › AI): resume points plus the next cached episode of shows whose latest
-    /// episode was finished, ordered and filtered by `SmartContinueWatching`. One read; no network.
+    /// Resume points plus the next cached episode of shows whose latest episode was finished, ordered and filtered by
+    /// `SmartContinueWatching` (Home takes its next episodes for the Up Next row). One read; no network.
     public func smartContinueWatching(limit: Int = 20, now: Date = Date()) async throws -> [ContinueWatchingItem] {
         try await writer.read { db in
             // Recent unfinished movies, plus every record of the most recently watched shows.

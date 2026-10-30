@@ -18,7 +18,7 @@ public enum ContinueWatchingItem: Sendable, Hashable, Identifiable {
     }
 }
 
-/// Smart Continue Watching (Settings › AI): which entries the row shows and in what order.
+/// Which resume points and next episodes to offer, and in what order (Home's Up Next row uses the next episodes).
 ///
 /// Per show, the most recent record decides: an unfinished episode is resumed; a finished one offers the next
 /// cached episode (none after the finale, or when the next is already watched); a record reset to the start

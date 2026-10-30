@@ -130,8 +130,6 @@ final class Preferences {
     // AI features: all off by default, all on-device (Settings › AI).
     /// Channels without an exact guide match get the closest guide channel by name.
     var aiGuideMatching: Bool { didSet { set(aiGuideMatching, "aiGuideMatching") } }
-    /// Continue Watching offers next episodes, puts what's nearly finished first and drops abandoned titles.
-    var aiSmartContinueWatching: Bool { didSet { set(aiSmartContinueWatching, "aiSmartContinueWatching") } }
     /// "More Like This" on detail pages and "Because You Watched" rows on Home.
     var aiRecommendations: Bool { didSet { set(aiRecommendations, "aiRecommendations") } }
     /// Search understands phrases like "90s comedy series" (Apple's on-device language model where available).
@@ -199,7 +197,6 @@ final class Preferences {
         followSystemAppearance = v("followSystemAppearance", false)
 
         aiGuideMatching = v("aiGuideMatching", false)
-        aiSmartContinueWatching = v("aiSmartContinueWatching", false)
         aiRecommendations = v("aiRecommendations", false)
         aiNaturalLanguageSearch = v("aiNaturalLanguageSearch", false)
         homeTopTen = v("homeTopTen", false)

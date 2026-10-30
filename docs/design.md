@@ -90,7 +90,7 @@ Apple frameworks plus SQLite and libmpv.
 
 ### On-device AI features (Settings → AI, all off by default)
 
-Each is a pref (`aiGuideMatching`, `aiSmartContinueWatching`, `aiNaturalLanguageSearch`); off means exactly the
+Each is a pref (`aiGuideMatching`, `aiRecommendations`, `aiNaturalLanguageSearch`); off means exactly the
 previous code path and no extra work. Logic lives in TunerCore with tests; nothing leaves the device.
 
 - **Smart guide matching** (`GuideMatcher`): runs only when `GuideService.smartMatching` is on. Ingest also keeps
@@ -101,12 +101,11 @@ previous code path and no extra work. Logic lives in TunerCore with tests; nothi
   number words, Arabic transliterated); numbers, timeshift, region and country must agree and every word needs a
   partner; score = 0.6 × edit-distance similarity + 0.4 × word agreement, ≥ 0.8 to match; Arabic vs Latin only by
   consonant skeleton; near-ties between different names are refused.
-- **Smart Continue Watching** (`SmartContinueWatching.rank`, via `AppDatabase.smartContinueWatching` in one
-  read): each show's newest record decides — unfinished → resume; finished → the next cached episode
-  (`EpisodeNavigation`, no network), none after the finale or if already watched. Nearly finished (≥ 75 % or
-  < 15 min left, touched within 30 days) and next episodes of shows watched in the last 7 days come first, then
-  recency; < 20 % and untouched 21+ days is hidden. Removing an episode card marks it unwatched rather than
-  deleting it, so the show doesn't come back as the following episode.
+- **Up Next** (Home, always on; not an AI setting): `AppDatabase.smartContinueWatching` (one read,
+  `SmartContinueWatching.rank`) gives each show's next cached episode when its newest record is a finished
+  episode (`EpisodeNavigation`, no network; none after the finale or if already watched). Continue Watching itself
+  is plain recency (`continueWatching`). A "Smart Continue Watching" setting that also re-ordered and hid
+  resume points existed in 1.3–1.8 and was removed.
 - **Recommendations** (`RecommendationIndex`, `Recommender`): a content-based index with no model. Each movie/show
   is a sparse TF-IDF vector over weighted tokens (genre ×2, director ×2, cast ×1.5, language ×1.5, category ×1.2,
   title ×1.2, category words ×0.6, plot ×0.5), with genres/languages canonicalised from English and Arabic and
