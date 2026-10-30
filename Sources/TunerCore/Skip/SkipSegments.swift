@@ -97,7 +97,7 @@ public enum SkipSegments {
         if !set.isDisjoint(with: arabicEnd) { return .credits }
         // "Opening credits" is the intro, so opening words win over "credits".
         let intro: Set<String> = ["intro", "introduction", "opening", "op", "theme", "titles", "title",
-                                  "مقدمة", "المقدمة", "شارة", "الشارة", "تتر", "التتر", "البداية", "بداية"]
+                                  "مقدمة", "المقدمة", "شارة", "الشارة", "تتر", "التتر"]
         let introWords = set.intersection(intro)
         let credits: Set<String> = ["credits", "credit", "ending", "ed", "outro", "closing", "end", "endcredits"]
         if introWords.contains(where: { ["intro", "introduction", "opening", "op"].contains($0) }) { return .intro }

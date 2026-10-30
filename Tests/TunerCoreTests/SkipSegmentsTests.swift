@@ -17,7 +17,8 @@ struct SkipChapterTests {
     }
 
     @Test(arguments: ["Chapter 1", "Post-credits scene", "Mid-Credits Scene", "Next Episode Preview", "Prologue",
-                      "Titles", "The Night Everything Ended Badly For Everyone", "مشهد بعد التتر", "", "05"])
+                      "Titles", "The Night Everything Ended Badly For Everyone", "مشهد بعد التتر", "البداية الباردة",
+                      "Cold Open", "", "05"])
     func storyChaptersAreIgnored(title: String) {
         #expect(SkipSegments.classify(chapterTitle: title) == nil)
     }

@@ -342,7 +342,11 @@ final class AVEngine: NSObject, PlaybackEngine {
     /// QuickTime/MP4 chapter tracks (HLS has none).
     func chapters() async -> [ChapterMark] {
         guard let asset = item?.asset else { return [] }
-        let groups = (try? await asset.loadChapterMetadataGroups(bestMatchingPreferredLanguages: Locale.preferredLanguages)) ?? []
+        var groups = (try? await asset.loadChapterMetadataGroups(bestMatchingPreferredLanguages: Locale.preferredLanguages)) ?? []
+        // Chapters without a language ("und", as ffmpeg writes them) match no preferred language.
+        if groups.isEmpty, let locale = try? await asset.load(.availableChapterLocales).first {
+            groups = (try? await asset.loadChapterMetadataGroups(withTitleLocale: locale, containingItemsWithCommonKeys: [])) ?? []
+        }
         var out: [ChapterMark] = []
         for group in groups {
             let titleItem = AVMetadataItem.metadataItems(from: group.items, filteredByIdentifier: .commonIdentifierTitle).first
