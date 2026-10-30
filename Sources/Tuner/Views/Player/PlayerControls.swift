@@ -12,6 +12,7 @@ import TunerCore
 
 /// VOD/catch-up/recording timeline: drag or click to seek, hover shows the time under the pointer.
 struct PlayerScrubber: View {
+    @Environment(AppModel.self) private var model
     let slot: PlayerSlot
     let chrome: PlayerChromeController
     /// Times beside the bar (iPhone, as in the TV app) instead of under it.
@@ -64,6 +65,7 @@ struct PlayerScrubber: View {
             ZStack(alignment: .leading) {
                 Capsule().fill(Color.white.opacity(0.2))
                 Capsule().fill(Color.white.opacity(0.3)).frame(width: width * buffered)
+                skipMarkers(width: width, duration: duration)
                 Capsule().fill(Color.white).frame(width: max(barHeight, width * fraction))
             }
             .frame(height: barHeight)
@@ -117,6 +119,22 @@ struct PlayerScrubber: View {
             .animation(.easeOut(duration: 0.15), value: active)
         }
         .frame(height: 18)
+    }
+
+    /// Known intros, recaps and credits (`SkipController`) as brighter stretches of the bar.
+    @ViewBuilder
+    private func skipMarkers(width: CGFloat, duration: Double?) -> some View {
+        if let duration, slot === model.player.main, model.prefs.skipSegments != .off {
+            ForEach(model.skip.segments, id: \.self) { segment in
+                let start = CGFloat(min(1, max(0, segment.start / duration)))
+                let end = CGFloat(min(1, max(0, segment.resolvedEnd(duration: duration) / duration)))
+                Capsule()
+                    .fill(Color.white.opacity(0.55))
+                    .frame(width: max(3, (end - start) * width))
+                    .offset(x: start * width)
+                    .allowsHitTesting(false)
+            }
+        }
     }
 
     /// Shows the seek target until the engine reports the new position (avoids a jump back).

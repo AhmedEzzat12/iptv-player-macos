@@ -300,9 +300,32 @@ struct PlayerHost: View {
                     .transition(.move(edge: .trailing).combined(with: .opacity))
                     .zIndex(8)
             }
+
+            // Skip Intro / Skip Credits: where the Up Next card goes (which replaces it), shown with the controls and,
+            // with them hidden, for the first seconds of the segment.
+            if upNext == nil, !player.isEpisodeListOpen {
+                if let notice = model.skip.notice {
+                    skipPlaced(PlayerSkipNotice(segment: notice.segment), safe: safe, chromeShown: chromeShown)
+                } else if let prompt = model.skip.prompt, prompt.isFresh || chromeShown {
+                    skipPlaced(PlayerSkipButton(segment: prompt.segment), safe: safe, chromeShown: chromeShown)
+                }
+            }
         }
         .frame(width: size.width, height: size.height, alignment: .topLeading)
         .animation(.smooth(duration: 0.35), value: upNext?.next.id)
+        .animation(.smooth(duration: 0.3), value: model.skip.prompt?.segment)
+        .animation(.smooth(duration: 0.3), value: model.skip.prompt?.isFresh)
+        .animation(.smooth(duration: 0.3), value: model.skip.notice)
+    }
+
+    /// The Skip button's spot: bottom-trailing, above the control panel while it shows.
+    private func skipPlaced(_ content: some View, safe: CGRect, chromeShown: Bool) -> some View {
+        content
+            .padding(.trailing, compact ? 16 : 24)
+            .padding(.bottom, chromeShown && panelHeight > 0 ? panelHeight + (compact ? 12 : 40) : (compact ? 20 : 32))
+            .playerPlaced(in: safe, alignment: .bottomTrailing)
+            .transition(.opacity.combined(with: .scale(scale: 0.92, anchor: .bottomTrailing)))
+            .zIndex(8)
     }
 
     /// The Up Next card's content while an episode is in its last seconds (see `UpNextCountdown`).
