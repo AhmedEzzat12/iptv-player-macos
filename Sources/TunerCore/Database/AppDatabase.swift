@@ -402,6 +402,26 @@ public final class AppDatabase: Sendable {
                 t.add(column: "needsPassword", .boolean).notNull().defaults(to: false)
             }
         }
+
+        // Skip Intro / Skip Credits: timings from the online databases per movie/episode id (`json` is an encoded
+        // `[SkipSegment]`, empty for "not found"), and spans the user skipped by hand per show and episode, from
+        // which a show's intro is learned. No foreign keys: like `mediaMetadata` they outlive a resync.
+        m.registerMigration("v8-skipSegments") { db in
+            try db.create(table: "skipSegmentCache") { t in
+                t.primaryKey("mediaId", .text)
+                t.column("json", .text).notNull()
+                t.column("fetchedAt", .datetime).notNull()
+            }
+            try db.create(table: "skipLearnedSpan") { t in
+                t.column("seriesId", .text).notNull()
+                t.column("episodeId", .text).notNull()
+                t.column("confirmed", .boolean).notNull()
+                t.column("start", .double).notNull()
+                t.column("end", .double).notNull()
+                t.column("recordedAt", .datetime).notNull()
+                t.primaryKey(["seriesId", "episodeId", "confirmed"])
+            }
+        }
         return m
     }
 }
