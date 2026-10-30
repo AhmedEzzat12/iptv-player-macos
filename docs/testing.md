@@ -33,6 +33,10 @@ What it creates:
   they correctly show "no match".
 - `series/`: two series with 2 seasons each: Signal Lost (3 + 3 episodes) and The Test Pattern Bakery (10 + 3, so episode lists
   overflow and scroll). 30 s each, `SxxEyy` and title burned in.
+- Chapter markers (`CHAPTERS` in `server.py`, written by a remux, also into media generated before they existed):
+  Matroska Nights (MKV, read by mpv: Cold Open, Opening 5–20 s, Part One, End Credits from 76 s), Big Buck Test (MP4,
+  read by AVFoundation, Arabic titles: مقدمة 4–16 s, شارة النهاية from 78 s) and every Signal Lost episode
+  (Previously 0–3 s, Intro 3–10 s, Episode, Credits from 18 s). Check with `ffprobe -show_chapters <file>`.
 - `img/`: posters (400x600), backdrops (1280x720), episode stills (640x360) and channel logos (400x400; News and Movies are
   solid, Sports and Kids are transparent).
 
@@ -189,7 +193,17 @@ Live URLs: `/live/test/test/<id>.ts`, `/live/test/test/<id>.m3u8`, and the short
 12. **Top 10 rows**: the test kit's made-up titles won't match real charts. Add a scratch M3U whose movies/shows are
     named after this week's Netflix titles (VOD URLs with `/movie/` or `/series/` pointing at the test kit), turn on
     Settings → AI → Home → Top 10 (chart: Worldwide), and Home shows the matched titles ranked 1, 2, 3…
-13. **Artwork cache**: posters appear without a placeholder flash when scrolling back; the files are in
+13. **Skip Intro / Skip Credits** (chapters; no network needed): play Signal Lost S1E1. "Skip Recap", then "Skip
+    Intro" appear bottom-right (alone for 6 s while the controls are hidden, always with them); the timeline shows the
+    stretches; Skip Intro (or K on the Mac) jumps to 0:10. From 0:18 "Skip Credits" goes to S1E2 (set Settings → Playback
+    → "Up Next" countdown to Off or 5 s, otherwise the Up Next card takes the spot from 0:20). Matroska Nights (mpv) and
+    Big Buck Test (Arabic chapter titles) show Skip Intro and Skip Credits (to the end). With "Skip automatically",
+    the intro is skipped with "Skipped intro · Undo"; Undo goes back and only offers the button. **Learned intros**
+    need real-length episodes (a 20 s+ skip that ends in the first quarter doesn't fit a 30 s clip); unit tests cover
+    them. **Online**: the test kit's
+    titles aren't in the databases; with a real show, the subsystem log shows counts and status codes:
+    `/usr/bin/log stream --predicate 'subsystem == "app.tuner.macos" AND category == "SkipSegments"'`.
+14. **Artwork cache**: posters appear without a placeholder flash when scrolling back; the files are in
     `~/Library/Caches/<bundle id>/Artwork` (Settings → Metadata → Clear Metadata Cache empties it).
 
 ## 9. Quick command-line checks
