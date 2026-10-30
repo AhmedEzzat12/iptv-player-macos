@@ -43,6 +43,8 @@ struct SettingsPlaybackPane: View {
                                   value: $prefs.timeshiftMegabytes, range: 0...4096, step: 64, unit: "MB")
             }
 
+            SettingsAudioSection()
+
             Section("Reliability") {
                 Toggle(isOn: $prefs.autoFailover) {
                     Text("Automatic failover")

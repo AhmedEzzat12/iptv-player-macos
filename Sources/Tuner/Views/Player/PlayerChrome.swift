@@ -309,6 +309,7 @@ struct PlayerControlPanel: View {
             HStack(spacing: compact ? 6 : 8) {
                 PlayerTracksMenu(slot: slot, size: side)
                 PlayerAspectMenu(slot: slot, size: side)
+                PlayerAudioMenu(slot: slot, size: side)
                 if isEpisode {
                     Button {
                         withAnimation(.smooth(duration: 0.3)) { model.player.isEpisodeListOpen.toggle() }
