@@ -142,6 +142,11 @@ final class Preferences {
     var lastChannelId: String? { didSet { set(lastChannelId, "lastChannelId") } }
     var resumeLastChannelOnLaunch: Bool { didSet { set(resumeLastChannelOnLaunch, "resumeLastChannelOnLaunch") } }
 
+    // Audio enhancements (player Audio menu and Settings › Playback › Audio; all off by default, applied live).
+    var dialogueBoost: Bool { didSet { set(dialogueBoost, "dialogueBoost") } }
+    var nightMode: Bool { didSet { set(nightMode, "nightMode") } }
+    var volumeLevelling: Bool { didSet { set(volumeLevelling, "volumeLevelling") } }
+
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         func v<T>(_ key: String, _ fallback: T) -> T { defaults.object(forKey: key) as? T ?? fallback }
@@ -205,6 +210,10 @@ final class Preferences {
         shortcutOverrides = defaults.dictionary(forKey: "shortcutOverrides") as? [String: String] ?? [:]
         lastChannelId = defaults.string(forKey: "lastChannelId")
         resumeLastChannelOnLaunch = v("resumeLastChannelOnLaunch", true)
+
+        dialogueBoost = v("dialogueBoost", false)
+        nightMode = v("nightMode", false)
+        volumeLevelling = v("volumeLevelling", false)
     }
 
     /// `~/Movies/Tuner Downloads`; test runs with a scratch library (TUNER_DATA_DIR) keep downloads inside it, so they

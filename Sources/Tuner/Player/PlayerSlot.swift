@@ -66,7 +66,7 @@ final class PlayerSlot: Identifiable {
     var currentProgram: Program?
 
     /// 0…`maxVolume`. Both engines map it through the same perceptual curve (see `AVEngine.setVolume`).
-    var volume: Double { didSet { engine?.setVolume(volume) } }
+    var volume: Double { didSet { applyVolume() } }
     /// Full volume, no amplification: Apple's player can't boost, so neither engine does (same slider, same sound).
     static let maxVolume: Double = 100
     var isMuted = false { didSet { applyMute() } }
@@ -127,6 +127,8 @@ final class PlayerSlot: Identifiable {
 
     func stop() {
         saveProgress(force: true)
+        setSleepTimer(nil) // a manual stop cancels it; when the timer fires it has already cleared itself
+        audioMovedToMPV = false
         endBridge()
         generation += 1
         loadTask?.cancel()
@@ -325,8 +327,9 @@ final class PlayerSlot: Identifiable {
                 self.lastProgressAt = Date()
                 self.lastPosition = nil
                 self.lastBufferedEnd = nil
-                self.engine?.setVolume(self.volume)
+                self.applyVolume()
                 self.applyMute()
+                self.applyAudioEnhancements()
                 self.engine?.load(PlayableStream(url: session.url, userAgent: HTTPClient.defaultUserAgent,
                                                  kind: item.isLive ? .live : .vod), startAt: nil)
                 self.startPolling()
@@ -416,6 +419,8 @@ final class PlayerSlot: Identifiable {
         lastHTTPStatus = nil
         let choice = services.prefs.engine
         let mpvOK = EngineFactory.mpvAvailable
+        // AVFoundation can't process HLS audio: with an enhancement on that mpv can apply, HLS plays in mpv.
+        let audioViaMPV = forced == nil && wantsMPVForAudio(services.prefs.audioEnhancements)
         loadTask = Task { [weak self] in
             guard let self else { return }
             await self.beforeLoad?(item)
@@ -424,10 +429,14 @@ final class PlayerSlot: Identifiable {
                 // Native first: ask Xtream panels for HLS, which AVFoundation plays; fall back to TS for mpv.
                 // Items AVFoundation already failed on (this launch or an earlier one) go straight to mpv.
                 let knownBlind = choice == .automatic && mpvOK && EngineMemory.prefersMPV(item)
-                let wantNative = forced.map { $0 == .av } ?? (!knownBlind && (choice != .mpv || !mpvOK))
+                let nativeFormat = forced.map { $0 == .av } ?? (!knownBlind && (choice != .mpv || !mpvOK))
+                let wantNative = nativeFormat && !audioViaMPV
                 let stream = try await self.resolve(item, liveFormat: wantNative ? .m3u8 : .ts)
                 guard gen == self.generation else { return }
-                let kind = forced ?? (knownBlind ? .mpv : Self.route(stream.url, choice: choice, mpvAvailable: mpvOK))
+                let routed = forced ?? (knownBlind ? .mpv : Self.route(stream.url, choice: choice, mpvAvailable: mpvOK))
+                var kind = routed
+                if audioViaMPV, routed == .av, AudioTap.isHLS(stream.url) { kind = .mpv }
+                self.audioMovedToMPV = audioViaMPV && kind == .mpv && (routed == .av || wantNative != nativeFormat)
                 self.activate(kind)
                 self.triedKinds.insert(kind)
                 self.stream = stream
@@ -435,8 +444,9 @@ final class PlayerSlot: Identifiable {
                 self.lastProgressAt = Date()
                 self.lastPosition = nil
                 self.lastBufferedEnd = nil
-                self.engine?.setVolume(self.volume)
+                self.applyVolume()
                 self.applyMute()
+                self.applyAudioEnhancements()
                 self.engine?.setAspect(self.aspect)
                 self.engine?.load(stream, startAt: self.pendingStartAt)
                 if self.rate != 1 { self.engine?.setRate(self.rate) }
@@ -663,6 +673,11 @@ final class PlayerSlot: Identifiable {
         saveProgress(force: true, completed: true)
         phase = .ended
         stopPolling()
+        if sleepTimer?.isEndOfItem == true {
+            // "End of episode/movie": stop here, no autoplay into the next one.
+            setSleepTimer(nil)
+            return
+        }
         onEnded?(item)
     }
 
@@ -708,6 +723,7 @@ final class PlayerSlot: Identifiable {
         }
         let pipPossible = avEngineIfActive?.isPictureInPicturePossible ?? false
         if pipPossible != isPictureInPicturePossible { isPictureInPicturePossible = pipPossible }
+        refreshAppliedAudioEnhancements()
         if ticks % 2 == 0 { watchdog() }
         if ticks % 6 == 0 { refreshTracks() }
         if ticks % 20 == 0 { saveProgress() }
@@ -779,7 +795,108 @@ final class PlayerSlot: Identifiable {
         }
     }
 
+    // MARK: - Audio enhancements
+
+    /// Enhancements in effect for the current stream (the menu marks requested ones that aren't).
+    private(set) var appliedAudioEnhancements: Set<AudioEnhancement> = []
+    /// The stream plays in mpv only because an enhancement is on (it'd be HLS in AVFoundation otherwise).
+    @ObservationIgnored private var audioMovedToMPV = false
+
+    /// Whether HLS should open in mpv for these settings: Automatic engine, mpv installed, and mpv can apply at
+    /// least one of them (MPVKit's FFmpeg on iPhone/iPad only has what Dialogue Boost needs). The cost: no native
+    /// Picture in Picture or AirPlay for that stream.
+    private func wantsMPVForAudio(_ settings: AudioEnhancementSettings) -> Bool {
+        guard settings.isActive, services.prefs.engine == .automatic, EngineFactory.mpvAvailable else { return false }
+        // Filter support is probed when the first mpv core starts.
+        if MPVEngine.audioFilters == nil, mpvEngine == nil { mpvEngine = MPVEngine(prefs: services.prefs) }
+        return !settings.enabled.isDisjoint(with: MPVEngine.supportedAudioEnhancements)
+    }
+
+    private func applyAudioEnhancements() {
+        engine?.setAudioEnhancements(services.prefs.audioEnhancements)
+        refreshAppliedAudioEnhancements()
+    }
+
+    private func refreshAppliedAudioEnhancements() {
+        let applied = engine?.appliedAudioEnhancements ?? []
+        if applied != appliedAudioEnhancements { appliedAudioEnhancements = applied }
+    }
+
+    /// The audio preferences changed: apply them live, and move an HLS stream between AVFoundation and mpv when
+    /// that decides whether they can apply (reopens at the same position; live restarts at the live edge).
+    func audioEnhancementsChanged() {
+        applyAudioEnhancements()
+        guard let item, phase.isActive, !isBridged, !isAirPlayActive else { return }
+        let settings = services.prefs.audioEnhancements
+        let resume = item.isLive ? nil : snapshot.position
+        if engineKind == .av, let url = stream?.url, AudioTap.isHLS(url), wantsMPVForAudio(settings) {
+            start(item, startAt: resume, isAutomatic: true)
+        } else if engineKind == .mpv, audioMovedToMPV, !wantsMPVForAudio(settings) {
+            start(item, startAt: resume, isAutomatic: true)
+        }
+    }
+
+    // MARK: - Sleep timer
+
+    /// Per session, never persisted.
+    private(set) var sleepTimer: SleepTimer?
+    /// Whole seconds until the sleep timer stops playback (nil: off, or the end of the item isn't known yet).
+    private(set) var sleepTimerRemaining: Int?
+    @ObservationIgnored private var sleepTick: Timer?
+    /// Volume multiplier while the timer fades out (1 otherwise).
+    @ObservationIgnored private var sleepFade = 1.0
+
+    /// "End of episode/movie" is set: no Up Next and no autoplay at the end.
+    var stopsAtEndOfItem: Bool { sleepTimer?.isEndOfItem == true }
+
+    /// Starts (or replaces) the sleep timer; nil cancels it.
+    func setSleepTimer(_ option: SleepTimerOption?) {
+        sleepTick?.invalidate()
+        sleepTick = nil
+        sleepTimer = option.map { SleepTimer($0) }
+        setSleepFade(1)
+        guard sleepTimer != nil else {
+            sleepTimerRemaining = nil
+            return
+        }
+        let timer = Timer(timeInterval: 0.5, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated { self?.sleepTimerTick() }
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        sleepTick = timer
+        sleepTimerTick()
+    }
+
+    private func sleepTimerTick() {
+        guard let timer = sleepTimer else { return }
+        let isLive = item?.isLive ?? false
+        let itemLeft = isLive
+            ? currentProgram.map { $0.end.timeIntervalSinceNow }
+            : SleepTimer.itemTimeLeft(position: snapshot.position, duration: snapshot.duration, rate: rate)
+        let remaining = timer.remaining(itemTimeLeft: itemLeft)
+        let seconds = remaining.map { Int($0.rounded(.up)) }
+        if seconds != sleepTimerRemaining { sleepTimerRemaining = seconds }
+        setSleepFade(isPlaying ? SleepTimer.volumeFactor(remaining: remaining) : 1)
+        guard timer.shouldFire(remaining: remaining, isLive: isLive) else { return }
+        setSleepTimer(nil)
+        if isLive {
+            stop()
+        } else if phase.isActive {
+            setPaused(true)
+        }
+    }
+
+    private func setSleepFade(_ factor: Double) {
+        guard factor != sleepFade else { return }
+        sleepFade = factor
+        applyVolume()
+    }
+
     // MARK: - Helpers
+
+    private func applyVolume() {
+        engine?.setVolume(volume * sleepFade)
+    }
 
     private func applyMute() {
         engine?.setMuted(isMuted)

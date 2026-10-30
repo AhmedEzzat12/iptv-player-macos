@@ -106,4 +106,10 @@ protocol PlaybackEngine: AnyObject {
     func selectSubtitleTrack(_ id: Int?)
     /// Releases native resources (app quit / engine switch).
     func shutdown()
+
+    /// Applies Dialogue Boost / Night Mode / Volume Levelling live (no reload); kept for later loads.
+    func setAudioEnhancements(_ settings: AudioEnhancementSettings)
+    /// The enhancements actually in effect for the current media (a subset of the requested ones: e.g. none for
+    /// HLS in AVFoundation, which can't tap its audio).
+    var appliedAudioEnhancements: Set<AudioEnhancement> { get }
 }

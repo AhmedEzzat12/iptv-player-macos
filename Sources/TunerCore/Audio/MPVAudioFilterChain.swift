@@ -28,6 +28,8 @@ public enum MPVAudioFilterChain {
         public var value: String
         /// Enhancements the chain actually implements with the available filters.
         public var applied: Set<AudioEnhancement>
+
+        public static let empty = Chain(value: "", applied: [])
     }
 
     /// Enhancements a libmpv with these filters can apply.

@@ -84,6 +84,12 @@ final class AVEngine: NSObject, PlaybackEngine {
 
     private var userPaused = false
     private var rate: Float = 1
+    private var audioEnhancements = AudioEnhancementSettings()
+
+    // MARK: Audio tap (per item, reset by `teardownItem`)
+
+    /// One processor per audio track of the current item, once a tap is attached (see `attachAudioTapIfNeeded`).
+    private var audioProcessors: [AudioEnhancementProcessor] = []
 
     override init() {
         player = AVPlayer()
@@ -346,6 +352,44 @@ final class AVEngine: NSObject, PlaybackEngine {
         stop()
     }
 
+    // MARK: - Audio enhancements
+
+    func setAudioEnhancements(_ settings: AudioEnhancementSettings) {
+        audioEnhancements = settings
+        audioProcessors.forEach { $0.setEnabled(settings) }
+        attachAudioTapIfNeeded()
+    }
+
+    var appliedAudioEnhancements: Set<AudioEnhancement> {
+        audioProcessors.isEmpty ? [] : audioEnhancements.enabled
+    }
+
+    /// Attaches an audio mix with a processing tap per audio track once an enhancement is on and the item's tracks
+    /// are known. Not for HLS (taps never see its audio; `PlayerSlot` routes it to mpv instead). Once attached it
+    /// stays for the item and switching enhancements off just bypasses it, so toggling never rebuilds the mix.
+    private func attachAudioTapIfNeeded() {
+        guard audioEnhancements.isActive, audioProcessors.isEmpty, didLoad, let item, let stream,
+              !AudioTap.isHLS(stream.url) else { return }
+        let tracks = item.tracks.compactMap(\.assetTrack).filter { $0.mediaType == .audio }
+        var parameters: [AVMutableAudioMixInputParameters] = []
+        var processors: [AudioEnhancementProcessor] = []
+        for track in tracks {
+            let processor = AudioEnhancementProcessor()
+            processor.setEnabled(audioEnhancements)
+            guard let tap = AudioTap.make(processor: processor) else { continue }
+            let input = AVMutableAudioMixInputParameters(track: track)
+            input.audioTapProcessor = tap
+            parameters.append(input)
+            processors.append(processor)
+        }
+        guard !parameters.isEmpty else { return }
+        let mix = AVMutableAudioMix()
+        mix.inputParameters = parameters
+        item.audioMix = mix
+        audioProcessors = processors
+        Self.log.notice("Audio tap attached to \(processors.count, privacy: .public) track(s)")
+    }
+
     // MARK: - Picture in Picture
 
     func togglePictureInPicture() {
@@ -403,6 +447,7 @@ final class AVEngine: NSObject, PlaybackEngine {
         legibleGroup = nil
         mediaInfo = MediaInfo()
         frameRateSamples = []
+        audioProcessors = []
         didLoad = false
         reachedEnd = false
         pendingStartAt = nil
@@ -451,6 +496,7 @@ final class AVEngine: NSObject, PlaybackEngine {
         timeoutWork = nil
         loadMediaSelection(gen: gen)
         refreshMediaInfo(gen: gen)
+        attachAudioTapIfNeeded()
         if let start = pendingStartAt {
             pendingStartAt = nil
             performSeek(to: start, item: item)
@@ -503,6 +549,7 @@ final class AVEngine: NSObject, PlaybackEngine {
             return
         }
         refreshMediaInfo(gen: gen)
+        attachAudioTapIfNeeded()
     }
 
     private func didPlayToEnd(gen: Int) {
