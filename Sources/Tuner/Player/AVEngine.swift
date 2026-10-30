@@ -339,6 +339,26 @@ final class AVEngine: NSObject, PlaybackEngine {
         }
     }
 
+    /// QuickTime/MP4 chapter tracks (HLS has none).
+    func chapters() async -> [ChapterMark] {
+        guard let asset = item?.asset else { return [] }
+        var groups = (try? await asset.loadChapterMetadataGroups(bestMatchingPreferredLanguages: Locale.preferredLanguages)) ?? []
+        // Chapters without a language ("und", as ffmpeg writes them) match no preferred language.
+        if groups.isEmpty, let locale = try? await asset.load(.availableChapterLocales).first {
+            groups = (try? await asset.loadChapterMetadataGroups(withTitleLocale: locale, containingItemsWithCommonKeys: [])) ?? []
+        }
+        var out: [ChapterMark] = []
+        for group in groups {
+            let titleItem = AVMetadataItem.metadataItems(from: group.items, filteredByIdentifier: .commonIdentifierTitle).first
+            let title = try? await titleItem?.load(.stringValue)
+            let range = group.timeRange
+            guard range.start.isNumeric else { continue }
+            out.append(ChapterMark(title: title ?? nil, start: range.start.seconds,
+                                   end: range.end.isNumeric ? range.end.seconds : nil))
+        }
+        return out
+    }
+
     func shutdown() {
         if let pip = pipController, pip.isPictureInPictureActive {
             pip.stopPictureInPicture()

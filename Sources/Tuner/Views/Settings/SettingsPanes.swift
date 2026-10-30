@@ -53,7 +53,7 @@ struct SettingsPlaybackPane: View {
                 SettingsNumberRow(title: "Reconnect attempts", value: $prefs.maxRetries, range: 0...50, unit: "")
             }
 
-            Section("Movies & Shows") {
+            Section {
                 Toggle("Resume where you left off", isOn: $prefs.resumePlayback)
                 Toggle("Play the next episode automatically", isOn: $prefs.autoplayNextEpisode)
                 Picker(selection: $prefs.upNextCountdown) {
@@ -66,8 +66,18 @@ struct SettingsPlaybackPane: View {
                          : "Shows the next episode near the end, with Play Now and Cancel.")
                 }
                 .disabled(!prefs.autoplayNextEpisode)
+                Picker(selection: $prefs.skipSegments) {
+                    ForEach(SkipMode.allCases) { Text($0.title).tag($0) }
+                } label: {
+                    Text("Skip intro and credits")
+                    Text(skipDetail(prefs.skipSegments))
+                }
                 SettingsNumberRow(title: "Catch-up padding", subtitle: "Start catch-up programs a little early.",
                                   value: $prefs.catchupPaddingMinutes, range: 0...30, unit: "min")
+            } header: {
+                Text("Movies & Shows")
+            } footer: {
+                SettingsFooter("Intro and credits times come from chapter markers in the video, from the free TheIntroDB and IntroDB databases, and from where you skip ahead yourself in other episodes of a show. The databases are asked only while online lookups are on in Metadata, and only the title's IMDb (or TMDB) id and the season and episode number are sent.")
             }
 
             Section {
@@ -93,6 +103,14 @@ struct SettingsPlaybackPane: View {
         .formStyle(.grouped)
         .onChange(of: prefs.defaultUserAgent) { _, _ in
             Task { await model.applyPreferences() }
+        }
+    }
+
+    private func skipDetail(_ mode: SkipMode) -> String {
+        switch mode {
+        case .button: "A “Skip Intro” or “Skip Credits” button appears while they play."
+        case .automatic: "Known intros are skipped on their own, with Undo. Credits go on to the next episode."
+        case .off: "No skip buttons."
         }
     }
 }

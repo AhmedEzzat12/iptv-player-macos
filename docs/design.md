@@ -54,6 +54,57 @@ Apple frameworks plus SQLite and libmpv.
 - Trailers: `TrailerOverlay` (WKWebView + YouTube IFrame API with an https bundle-id base URL — YouTube refuses embeds
   without one, error 153 — or AVKit for direct links). While a trailer is open, single-key shortcuts are suspended.
 
+### Skip Intro / Skip Credits
+
+Segments (`SkipSegment`: recap, intro or credits, with start/end in seconds and their source) come from three
+places, merged per kind by `SkipSegments.merge` (TunerCore, tested) in this order: **chapters → TheIntroDB → IntroDB →
+learned**; each kind is taken from the first source that has a plausible segment of it.
+
+- **Chapters** in the stream: AVFoundation's chapter metadata groups (MP4/MOV chapter tracks; chapters without a
+  language — "und", as ffmpeg writes them — match no preferred language, so the first available locale is used) and
+  mpv's `chapter-list`. `SkipSegments.classify` recognises short titles: Intro/Opening/OP/Main Titles/Theme,
+  Recap/Previously/Summary, Credits/End Credits/Ending/ED/Outro/End Titles, Arabic مقدمة/شارة/تتر, ملخص/الحلقة
+  السابقة, النهاية/شارة النهاية/تتر النهاية/الختام. Post-/mid-credits scenes, previews, "Cold Open", البداية and long
+  titles are story. A chapter lasts until the next one; an intro chapter must start in the first 40 %, credits after
+  60 %. Read 0.3 s after the engine reports `.loaded`, again at 3 s if there were none.
+- **Online, keyless** (`SkipSegmentService`, actor), asked together when a movie or episode starts, never blocking
+  playback (8 s timeout, no retries), and only while Settings → Metadata online lookups are on and the network is up.
+  The ids come from the cached online metadata (IMDb id, else TMDB id); only those and the season/episode numbers are
+  sent. Verified with real requests on 2026-10-30:
+  - **TheIntroDB** — `GET https://api.theintrodb.org/v4/media?imdb_id=tt0944947&season=1&episode=1` (or `tmdb_id=`;
+    no season/episode for movies) → `{"tvdb_id":121361,"type":"tv","season":1,"episode":1,"intro":[{"start_ms":435691,"end_ms":534851}],"credits":[{"start_ms":3631088,"end_ms":3697669}]}`.
+    A null `start_ms` means 0, a null `end_ms` the end of the file; `recap` and `preview` arrays may appear (previews
+    are ignored). Unknown title or episode → 404 (`media_not_found` / `episode_not_found`). OpenAPI at
+    `theintrodb.org/openapi.yaml`: anonymous reads are limited to 30 requests per 10 s and 5,000 a day per IP (2,000 a
+    day for one title). Free API; no terms of use are published beyond the documented limits.
+  - **IntroDB** — `GET https://api.introdb.app/segments?imdb_id=tt0944947&season=1&episode=1` (`&is_movie=true` for
+    movies) → `{"intro":{"start_ms":437000,"end_ms":531000,…},"recap":null,"outro":{"start_ms":3631500,"end_ms":3699500,…},"post_credits":null,"no_intro":false,…}`;
+    `outro` is the credits. An unknown title answers 200 with every segment null. Reads need no key and are rate
+    limited (429; numbers not published). Its terms (`introdb.app/docs/terms`) allow integrating skip functionality in
+    media players and ask for no bulk downloading; attribution is appreciated, not required.
+  - Not used: AniSkip (`api.aniskip.com/v2/skip-times/{malId}/{episode}`, works keyless) needs MyAnimeList ids, which
+    the app doesn't have.
+  - Database timings describe a specific release, so `SkipSegments.sanitized` checks them against the playing file:
+    an intro/recap lasts 5 s–5 min and ends in the first 25 % and the first 10 minutes; credits start in the last
+    15 %; anything ending after the file's end (another cut, an offset encode) is dropped. TheIntroDB's `duration_ms`
+    version matching isn't used (lookups start before the duration is known).
+  - Cache: `skipSegmentCache` (migration `v8-skipSegments`), one row per movie/episode id with the raw segments of
+    both databases (empty = not found): found 30 days, not found 7. A network failure caches nothing (unless the
+    other database answered with times). Offline, or with lookups off, the cache is used as is.
+- **Learned** (`SkipLearner`): a forward seek by the user (quick successive seeks joined by `ForwardSeekChain`, 3 s
+  apart at most) that starts in the first 15 % of an episode and spans 20 s–3 min is stored in `skipLearnedSpan`
+  (per show and episode, the newest replaces the older). When two episodes have spans agreeing within ±10 s at both
+  ends, later episodes get their median as the show's intro, with the button only; pressing that button stores a
+  confirmation, and after two confirmed episodes it can be skipped automatically.
+
+Playback (`SkipController`, app target, main player only; `SkipTracker` in TunerCore holds the rules): the button
+("Skip Intro", "Skip Recap", "Skip Credits", glass capsule at the Up Next card's spot) shows while the controls are up
+and, with them hidden, for the first 6 s of a segment; the Up Next card replaces it. Intros/recaps seek to their end;
+credits play the next episode (as Up Next would), or seek to the end of a movie or finale. Automatic mode skips each
+segment once, with "Skipped intro · Undo" for 5 s; a segment the user seeks into or undoes is never skipped
+automatically again, credits only when the next episode would autoplay anyway. The Mac shortcut is K (S is Search).
+Segments are drawn on the scrubber. Logs give counts and status codes only.
+
 ### Downloads and offline
 
 - `DownloadService` (TunerCore actor, tested) is a persistent queue in the `download` table (migration v5), one row per
@@ -231,6 +282,8 @@ Sources/
                    +Downloads
     Downloads/     DownloadService (actor: queue, resume, suspend), FileTransfer (one URLSession per transfer),
                    DownloadFiles (naming, free space)
+    Skip/          Skip Intro: SkipSegments (chapter titles, sanity checks, merge), SkipTracker, SkipLearner,
+                   SkipSegmentService (actor: TheIntroDB/IntroDB lookups + cache)
     CloudSync/     iCloud Drive folder sync: SourceFingerprint, CloudSyncMerge (diff + LWW), CloudSyncFolder (file I/O),
                    CloudSyncEngine (actor); AppDatabase+CloudSync (snapshot, apply, ledger)
     Services/      SyncService (actor), GuideService (actor: ingest + key resolution), StreamResolver (actor),
@@ -264,6 +317,8 @@ Data flow: views call `AppModel` actions and read `model.db` in `.task(id:)` blo
   then the channel's own source feeds, then global feeds, then other sources' feeds.
 - `watchProgress`, `vodFavorite`, `history` (recent channels), `customGroup(+Member)`, `reminder`, `recording`.
 - `syncLedger` — iCloud sync: per key, what this device last published and the hash of the local data behind it.
+- `skipSegmentCache` (online intro/credits times per movie/episode id), `skipLearnedSpan` (spans skipped by hand, per
+  show and episode) — Skip Intro.
 - Failover candidates are computed on demand (same EPG key, tvg-id or normalised name) instead of curated groups.
 
 ## UX — Apple TV app style (user requirement: "fully native, experience like the Apple TV app")

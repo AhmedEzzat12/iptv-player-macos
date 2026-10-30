@@ -440,6 +440,33 @@ def run_ffmpeg(args, out: Path):
     print(f"  made {out.relative_to(OUT)}  ({out.stat().st_size / 1_048_576:.1f} MB, {time.time() - t0:.0f}s)", flush=True)
 
 
+FFPROBE = str(Path(FFMPEG).with_name("ffprobe"))
+
+
+def ensure_chapters(out: Path):
+    """Writes the catalog's chapter markers (kit.CHAPTERS) into a file that doesn't have them yet (remux, no re-encode),
+    so media generated before chapters existed gets them too."""
+    chapters = kit.CHAPTERS.get(out.relative_to(OUT).as_posix())
+    if not chapters or not out.exists():
+        return
+    if os.path.exists(FFPROBE):
+        probe = subprocess.run([FFPROBE, "-v", "error", "-show_chapters", "-of", "csv=p=0", str(out)],
+                               capture_output=True, text=True)
+        if probe.returncode == 0 and probe.stdout.strip():
+            return
+    elif out not in made:
+        return
+    meta = WORK / "chapters" / (out.stem + ".txt")
+    meta.parent.mkdir(parents=True, exist_ok=True)
+    lines = [";FFMETADATA1"]
+    for start, end, title in chapters:
+        lines += ["[CHAPTER]", "TIMEBASE=1/1000", f"START={int(start * 1000)}", f"END={int(end * 1000)}", f"title={title}"]
+    meta.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    fmt = ["-movflags", "+faststart", "-f", "mp4"] if out.suffix == ".mp4" else ["-f", "matroska"]
+    run_ffmpeg(["-i", str(out), "-i", str(meta), "-map", "0", "-map_metadata", "0", "-map_chapters", "1",
+                "-c", "copy", *fmt], out)
+
+
 def need(out: Path) -> bool:
     if out.exists() and out.stat().st_size > 0:
         skipped.append(out)
@@ -581,6 +608,8 @@ with cf.ThreadPoolExecutor(max_workers=3) as pool:
         fut.result()
 for n in kit.FEEDS:
     make_hls(n)
+for rel in kit.CHAPTERS:
+    ensure_chapters(OUT / rel)
 
 media_files = [p for p in OUT.rglob("*") if p.is_file() and "_work" not in p.parts]
 total = sum(p.stat().st_size for p in media_files)

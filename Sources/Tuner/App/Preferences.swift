@@ -76,6 +76,8 @@ final class Preferences {
     var upNextCountdown: Int { didSet { set(upNextCountdown, "upNextCountdown") } }
     var volume: Double { didSet { set(volume, "volume") } }
     var catchupPaddingMinutes: Int { didSet { set(catchupPaddingMinutes, "catchupPaddingMinutes") } }
+    /// Skip Intro / Skip Credits: a button (default), automatic, or off.
+    var skipSegments: SkipMode { didSet { set(skipSegments.rawValue, "skipSegments") } }
 
     // Guide & library
     var channelSort: ChannelSort { didSet { set(channelSort.rawValue, "channelSort") } }
@@ -160,6 +162,7 @@ final class Preferences {
         upNextCountdown = v("upNextCountdown", 10)
         volume = v("volume", 100.0)
         catchupPaddingMinutes = v("catchupPaddingMinutes", 0)
+        skipSegments = SkipMode(rawValue: v("skipSegments", "")) ?? .button
 
         channelSort = ChannelSort(rawValue: v("channelSort", "")) ?? .provider
         showChannelNumbers = v("showChannelNumbers", false)

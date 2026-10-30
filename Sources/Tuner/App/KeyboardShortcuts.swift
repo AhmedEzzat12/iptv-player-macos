@@ -12,7 +12,7 @@ import SwiftUI
 enum ShortcutAction: String, CaseIterable, Identifiable, Codable {
     // Playback
     case togglePlay, mute, seekBack, seekForward, volumeUp, volumeDown
-    case cycleAudio, cycleSubtitles, stats, pictureInPicture, fullScreen
+    case cycleAudio, cycleSubtitles, stats, pictureInPicture, fullScreen, skipSegment
     // Player
     case openPlayer, exitPlayer
     // Live TV
@@ -34,7 +34,7 @@ enum ShortcutAction: String, CaseIterable, Identifiable, Codable {
     var group: Group {
         switch self {
         case .togglePlay, .mute, .seekBack, .seekForward, .volumeUp, .volumeDown, .cycleAudio, .cycleSubtitles,
-             .stats, .pictureInPicture, .fullScreen: .playback
+             .stats, .pictureInPicture, .fullScreen, .skipSegment: .playback
         case .openPlayer, .exitPlayer: .player
         case .channelUp, .channelDown, .previousChannel, .toggleFavorite, .recordNow: .liveTV
         case .home, .liveTV, .movies, .series, .search, .recordings, .help: .navigation
@@ -54,6 +54,7 @@ enum ShortcutAction: String, CaseIterable, Identifiable, Codable {
         case .stats: "Playback statistics"
         case .pictureInPicture: "Picture in Picture"
         case .fullScreen: "Full screen"
+        case .skipSegment: "Skip intro or credits"
         case .openPlayer: "Open the player"
         case .exitPlayer: "Leave the player"
         case .channelUp: "Previous channel in list"
@@ -75,6 +76,7 @@ enum ShortcutAction: String, CaseIterable, Identifiable, Codable {
     var contextNote: String? {
         switch self {
         case .seekBack, .seekForward: "While the player fills the window"
+        case .skipSegment: "While an intro, recap or credits are playing full window"
         case .channelUp, .channelDown: "While watching live TV full window"
         case .volumeUp, .volumeDown: "Arrow keys only while the player fills the window; + and − work anytime"
         case .openPlayer: "While something is playing in the preview or mini player"
@@ -97,6 +99,8 @@ enum ShortcutAction: String, CaseIterable, Identifiable, Codable {
         case .stats: "i"
         case .pictureInPicture: "p"
         case .fullScreen: "f"
+        // S is Search; K as in "skip".
+        case .skipSegment: "k"
         case .openPlayer: "return"
         case .exitPlayer: "escape"
         case .channelUp: "pageup"
@@ -287,6 +291,9 @@ final class KeyboardShortcuts {
         case .pictureInPicture:
             guard main.isPictureInPicturePossible else { return false }
             main.togglePictureInPicture()
+        case .skipSegment:
+            guard full, model.skip.prompt != nil else { return false }
+            model.skip.skipCurrent()
         case .fullScreen:
             if player.hasMedia, !full { model.enterFullWindow() }
             model.toggleWindowFullScreen()

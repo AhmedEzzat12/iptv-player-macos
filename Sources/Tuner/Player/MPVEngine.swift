@@ -305,6 +305,18 @@ final class MPVEngine: PlaybackEngine {
         return value.isEmpty ? nil : value
     }
 
+    func chapters() async -> [ChapterMark] {
+        guard !isShutDown else { return [] }
+        var node = mpv_node()
+        guard mpv_get_property(handle, "chapter-list", MPV_FORMAT_NODE, &node) >= 0 else { return [] }
+        defer { mpv_free_node_contents(&node) }
+        guard let list = MPVNode.decode(node) as? [Any] else { return [] }
+        return list.compactMap { entry -> ChapterMark? in
+            guard let chapter = entry as? [String: Any], let time = chapter["time"] as? Double else { return nil }
+            return ChapterMark(title: chapter["title"] as? String, start: time)
+        }
+    }
+
     private func tracks(ofType type: String) -> [MediaTrack] {
         guard !isShutDown else { return [] }
         var node = mpv_node()

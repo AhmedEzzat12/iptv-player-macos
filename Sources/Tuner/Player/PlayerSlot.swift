@@ -80,6 +80,10 @@ final class PlayerSlot: Identifiable {
     /// Awaited before each load resolves and opens its stream (e.g. pausing downloads that hold a
     /// single-connection account's only connection).
     @ObservationIgnored var beforeLoad: ((PlaybackItem) async -> Void)?
+    /// Skip Intro (`SkipController`): each poll of a playing item, each (re)load, and seeks in VOD as (from, to).
+    @ObservationIgnored var onPoll: (() -> Void)?
+    @ObservationIgnored var onLoaded: (() -> Void)?
+    @ObservationIgnored var onSeek: ((_ from: Double, _ to: Double) -> Void)?
 
     @ObservationIgnored private let services: PlayerServices
     @ObservationIgnored private var avEngine: AVEngine?
@@ -171,6 +175,7 @@ final class PlayerSlot: Identifiable {
     }
 
     func seek(by delta: Double) {
+        if item?.isLive == false, let from = snapshot.position { onSeek?(from, max(0, from + delta)) }
         if isBridged, item?.isLive == false {
             seek(to: max(0, (snapshot.position ?? 0) + delta))
             return
@@ -181,6 +186,7 @@ final class PlayerSlot: Identifiable {
 
     func seek(to seconds: Double) {
         lastProgressAt = Date()
+        if item?.isLive == false, let from = snapshot.position { onSeek?(from, seconds) }
         if isBridged, let item, !item.isLive {
             // Inside what the bridge has already re-wrapped: seek locally; beyond it: restart there.
             let relative = seconds - bridgeOffset
@@ -367,6 +373,12 @@ final class PlayerSlot: Identifiable {
 
     func togglePictureInPicture() { avEngineIfActive?.togglePictureInPicture() }
 
+    /// Chapter markers of the playing media (none while re-wrapped for AirPlay: the bridge drops them).
+    func chapters() async -> [ChapterMark] {
+        guard !isBridged, let engine else { return [] }
+        return await engine.chapters()
+    }
+
     func shutdown() {
         saveProgress(force: true)
         endBridge()
@@ -533,6 +545,7 @@ final class PlayerSlot: Identifiable {
             if phase == .loading || phase == .buffering { phase = .playing }
             lastProgressAt = Date()
             refreshTracks()
+            onLoaded?()
             // Tracks often appear a moment after load.
             Task { [weak self] in
                 try? await Task.sleep(for: .seconds(1.5))
@@ -694,6 +707,7 @@ final class PlayerSlot: Identifiable {
             if item?.isLive == false { s.isSeekable = true }
         }
         if s != snapshot { snapshot = s }
+        onPoll?()
 
         if case .failed = phase { return }
         if phase != .ended {

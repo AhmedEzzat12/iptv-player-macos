@@ -58,6 +58,14 @@ Blender Foundation open movies (CC BY). No provider content is shown.</sub>
   episode with its picture, progress and **IMDb rating**, and a Netflix-style "Up Next" countdown (Off/5–30 s in
   Settings → Playback) with Play Now and Cancel. Episode ratings come from IMDb's public data sets (≈64 MB, downloaded
   on first use and refreshed weekly; Cinemeta's episode ratings aren't IMDb's).
+- **Skip Intro / Skip Credits:** while a known intro, recap or end credits play, a Netflix-style button appears
+  bottom-right (K on the Mac); credits of an episode go straight to the next one. The times come from chapter
+  markers in the video, from the free crowd-sourced [TheIntroDB](https://theintrodb.org) and
+  [IntroDB](https://introdb.app) (only the title's IMDb or TMDB id and season/episode number are sent, and only while
+  online lookups are on in Settings → Metadata), and from your own skipping: skip the same stretch early in two
+  episodes of a show and later episodes offer it. They show as brighter stretches on the timeline. Settings →
+  Playback → "Skip intro and credits": Show button (default), Skip automatically (with Undo; credits only into a
+  next episode, learned intros only once you've used their button twice), or Off.
 - **Downloads & offline:** download a movie, an episode or a whole season (Downloads in the sidebar, ⌘6) and
   watch it without a connection: a downloaded title always plays from the Mac. Downloads run one at a time in watch
   order, resume where they stopped (after a pause, a lost connection or a relaunch), and pause automatically while
