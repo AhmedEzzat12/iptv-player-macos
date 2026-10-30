@@ -178,6 +178,20 @@ VOD_CATEGORIES = [("10", "Action & Adventure"), ("11", "Drama & Mystery"), ("12"
                   ("13", "Open Movies (CC BY)")]
 SERIES_CATEGORIES = [("20", "Sci-Fi Series"), ("21", "Comedy Series")]
 
+# Chapter markers written into some files (make_media.sh), for Skip Intro / Skip Credits: (start s, end s, title).
+# Matroska Nights plays in mpv (chapter-list), Big Buck Test and Signal Lost in AVFoundation (MP4 chapter track);
+# Big Buck Test's titles are Arabic.
+CHAPTERS = {
+    "movies/1003-matroska-nights.mkv": [(0, 5, "Cold Open"), (5, 20, "Opening"), (20, 76, "Part One"),
+                                        (76, 90, "End Credits")],
+    "movies/1001-big-buck-test.mp4": [(0, 4, "البداية الباردة"), (4, 16, "مقدمة"), (16, 78, "الفيلم"),
+                                      (78, 90, "شارة النهاية")],
+}
+for _ep_season in (1, 2):
+    for _ep in range(1, 4):
+        CHAPTERS[f"series/signal-lost/s{_ep_season:02d}e{_ep:02d}.mp4"] = [
+            (0, 3, "Previously"), (3, 10, "Intro"), (10, 18, "Episode"), (18, EPISODE_SECONDS, "Credits")]
+
 # Xtream live streams. feed=None is a deliberately dead stream (404) sharing a tvg-id with a working one.
 XTREAM_LIVE = [
     {"id": 1, "feed": 1, "name": "Tuner News", "category": "1", "archive": 3},
