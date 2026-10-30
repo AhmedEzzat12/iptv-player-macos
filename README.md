@@ -22,7 +22,7 @@ A native IPTV player for **Mac, iPhone and iPad** with an Apple TV app–style e
 | ![Episodes panel](docs/media/12-player-episodes.png) | ![Up Next](docs/media/13-up-next.png) |
 | **Automatic updates** | **Settings → Shortcuts** |
 | ![Update available](docs/media/14-update.png) | ![Shortcuts](docs/media/09-settings-shortcuts.png) |
-| **Settings → Metadata** | **Settings → AI (all off until you turn them on)** |
+| **Settings → Metadata** | **Settings → AI (each off until you turn it on)** |
 | ![Metadata](docs/media/10-settings-metadata.png) | ![AI settings](docs/media/15-settings-ai.png) |
 | **Search that understands phrases** | **iPhone player** |
 | ![Search with understood filters](docs/media/16-search-understood.png) | ![iPhone player](docs/media/17-iphone-player.png) |
