@@ -243,13 +243,14 @@ final class SkipController {
             }
             return
         }
-        seek(to: segment.resolvedEnd(duration: duration))
+        let end = segment.resolvedEnd(duration: duration)
+        guard end.isFinite else { return }
+        seek(to: end)
         if automatically {
             showNotice(for: segment)
         } else if segment.source == .learned, let current, current.seriesId != nil {
             // The user accepted a learned intro: two of these let it skip automatically.
-            record(LearnedSkipSpan(episodeId: current.mediaId, start: segment.start,
-                                   end: segment.resolvedEnd(duration: duration), confirmed: true))
+            record(LearnedSkipSpan(episodeId: current.mediaId, start: segment.start, end: end, confirmed: true))
         }
     }
 
