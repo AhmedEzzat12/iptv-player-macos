@@ -30,6 +30,8 @@ final class AppModel {
     let downloads: DownloadService
     let prefs: Preferences
     let player: PlayerManager
+    /// Skip Intro / Skip Credits for the main player.
+    let skip: SkipController
     /// iCloud Drive sync of user state between the user's devices (Settings → Sync; off by default).
     let cloudSync: CloudSyncController
 
@@ -135,8 +137,10 @@ final class AppModel {
         recommender = Recommender(db: db)
         topTen = TopTenService(db: db)
         player = PlayerManager(services: PlayerServices(db: db, resolver: resolver, prefs: prefs))
+        skip = SkipController(service: SkipSegmentService(db: db))
         cloudSync = CloudSyncController(db: db)
         for slot in player.slots { wire(slot) }
+        skip.attach(to: player.main, model: self)
     }
 
     private var isGroupScope: Bool {
@@ -363,7 +367,10 @@ final class AppModel {
         }
         slot.onItemChange = { [weak self, weak slot] item in
             guard let self, let slot else { return }
-            if slot === self.player.main { self.mainItemChanged(item) }
+            if slot === self.player.main {
+                self.mainItemChanged(item)
+                self.skip.itemChanged(item)
+            }
             if let channel = item?.channel, item?.isLive == true {
                 Task { slot.currentProgram = await self.currentProgram(for: channel) }
             }

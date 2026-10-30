@@ -104,6 +104,8 @@ protocol PlaybackEngine: AnyObject {
     func selectAudioTrack(_ id: Int)
     /// nil disables subtitles
     func selectSubtitleTrack(_ id: Int?)
+    /// Chapter markers of the current media (empty when it has none), for Skip Intro / Skip Credits.
+    func chapters() async -> [ChapterMark]
     /// Releases native resources (app quit / engine switch).
     func shutdown()
 }
