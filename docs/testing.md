@@ -203,7 +203,21 @@ Live URLs: `/live/test/test/<id>.ts`, `/live/test/test/<id>.m3u8`, and the short
     them. **Online**: the test kit's
     titles aren't in the databases; with a real show, the subsystem log shows counts and status codes:
     `/usr/bin/log stream --predicate 'subsystem == "app.tuner.macos" AND category == "SkipSegments"'`.
-14. **Artwork cache**: posters appear without a placeholder flash when scrolling back; the files are in
+14. **Audio enhancements** (player Audio menu, or Settings → Playback → Audio): play movie 1002 (MP4, AVFoundation).
+    The test kit's beeps are pure tones, so judge by level, not clarity: **Night Mode** makes the beep clearly louder
+    (quiet material gets +9 dB) without clipping; **Volume Levelling** brings it up over a few seconds; **Dialogue
+    Boost** barely changes pure tones (it lifts 2–3 kHz and cuts the lows), so judge it with real speech: put a local
+    film clip in a scratch M3U. Switching any of them must not restart the movie (the timecode keeps running). The
+    MKV movie 1003 plays in mpv: the same checks apply there. Then play an HLS channel (102 or 201) with one on: the
+    stats overlay shows mpv (Automatic engine); turn them all off and it reopens in AVFoundation. The mpv chain can
+    be tried on its own: `mpv --af='<MPVAudioFilterChain value>' <file>`. Logs:
+    `/usr/bin/log stream --predicate 'subsystem == "app.tuner.macos" AND category == "AVEngine"'` shows
+    "Audio tap attached to N track(s)".
+15. **Sleep timer**: Audio menu → Sleep Timer → End of Movie on movie 1002, seek to the last 20 s: the menu shows the
+    time left, the beep fades over the last 10 s and the movie stops without autoplay. On an episode, End of Episode
+    hides the Up Next card. 15 Minutes on a live channel counts down by the clock and stops the channel; stopping the
+    player yourself cancels it.
+16. **Artwork cache**: posters appear without a placeholder flash when scrolling back; the files are in
     `~/Library/Caches/<bundle id>/Artwork` (Settings → Metadata → Clear Metadata Cache empties it).
 
 ## 9. Quick command-line checks

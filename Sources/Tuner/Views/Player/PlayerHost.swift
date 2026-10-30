@@ -330,7 +330,7 @@ struct PlayerHost: View {
 
     /// The Up Next card's content while an episode is in its last seconds (see `UpNextCountdown`).
     private var upNext: (next: Episode, series: Series, seconds: Int)? {
-        guard model.prefs.autoplayNextEpisode, !model.player.isEpisodeListOpen,
+        guard model.prefs.autoplayNextEpisode, !model.player.isEpisodeListOpen, !model.player.main.stopsAtEndOfItem,
               let current = model.currentEpisode, model.upNextCancelledFor != current.episode.id,
               let next = model.adjacentEpisode(1),
               // Offline, only a downloaded next episode can play.

@@ -286,12 +286,20 @@ struct PlayerMoreMenu: View {
                 Label("Aspect Ratio", systemImage: "aspectratio")
             }
             .pickerStyle(.menu)
+            Menu {
+                PlayerAudioMenuItems(slot: slot)
+            } label: {
+                Label("Audio", systemImage: model.prefs.audioEnhancements.isActive ? "speaker.wave.2.fill" : "speaker.wave.2")
+            }
             Divider()
             Toggle(isOn: $player.showStats) {
                 Label("Playback Statistics", systemImage: "info.circle")
             }
         } label: {
             PlayerGlassSymbol(symbol: "ellipsis", size: size, glass: false)
+                .overlay(alignment: .topTrailing) {
+                    PlayerAudioBadge(isShown: model.prefs.audioEnhancements.isActive || slot.sleepTimer != nil)
+                }
         }
         .playerMenuStyle()
         .accessibilityLabel("More")

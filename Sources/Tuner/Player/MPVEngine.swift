@@ -59,6 +59,7 @@ final class MPVEngine: PlaybackEngine {
             created = MPVEngine.makeCore(prefs: prefs, userOptions: [])
         }
         guard let handle = created else { return nil }
+        if MPVEngine.audioFilters == nil { MPVEngine.audioFilters = MPVEngine.probeAudioFilters(handle) }
         mpv_request_log_messages(handle, "warn")
 
         guard let renderer = MPVRenderer(handle: handle) else {
@@ -259,6 +260,46 @@ final class MPVEngine: PlaybackEngine {
 
     func selectSubtitleTrack(_ id: Int?) {
         command(["set", "sid", id.map(String.init) ?? "no"])
+    }
+
+    // MARK: Audio enhancements
+
+    /// FFmpeg filters (of `MPVAudioFilterChain.filterNames`) this libmpv has; probed once, on the first core.
+    private(set) static var audioFilters: Set<String>?
+    /// What mpv can apply here (Homebrew's mpv: all three; MPVKit on iPhone/iPad: Dialogue Boost only).
+    static var supportedAudioEnhancements: Set<AudioEnhancement> {
+        MPVAudioFilterChain.supported(by: audioFilters ?? [])
+    }
+    private var audioChain = MPVAudioFilterChain.Chain.empty
+    var appliedAudioEnhancements: Set<AudioEnhancement> { audioChain.applied }
+
+    /// mpv validates `af` entry names when the option is set, so setting each filter on the idle core tells whether
+    /// the FFmpeg build has it. The user's own `af` (advanced options) is put back afterwards.
+    private static func probeAudioFilters(_ handle: OpaquePointer) -> Set<String> {
+        let saved = mpv_get_property_string(handle, "af").map { raw -> String in
+            defer { mpv_free(raw) }
+            return String(cString: raw)
+        }
+        var found = Set<String>()
+        for name in MPVAudioFilterChain.filterNames where mpv_set_property_string(handle, "af", "lavfi-\(name)") >= 0 {
+            found.insert(name)
+        }
+        mpv_set_property_string(handle, "af", saved ?? "")
+        let missing = Set(MPVAudioFilterChain.filterNames).subtracting(found).sorted()
+        if !missing.isEmpty { NSLog("Tuner: mpv's FFmpeg lacks audio filters %@", missing.joined(separator: ", ")) }
+        return found
+    }
+
+    /// Replaces Tuner's labelled entries in `af` (the user's own filters stay). mpv re-creates the audio filters
+    /// without reopening the stream; the chain persists across loads.
+    func setAudioEnhancements(_ settings: AudioEnhancementSettings) {
+        let chain = MPVAudioFilterChain.build(settings, available: MPVEngine.audioFilters ?? [])
+        guard chain != audioChain else { return }
+        if !audioChain.value.isEmpty {
+            command(["af", "remove", MPVAudioFilterChain.labels.map { "@" + $0 }.joined(separator: ",")])
+        }
+        if !chain.value.isEmpty { command(["af", "add", chain.value]) }
+        audioChain = chain
     }
 
     func shutdown() {
