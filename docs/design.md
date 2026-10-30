@@ -42,6 +42,42 @@ Apple frameworks plus SQLite and libmpv.
   with a misleading EPERM). It runs under a `/bin/sh` watchdog that stops ffmpeg when the app's PID disappears
   (crash or force-quit), because macOS has no parent-death signal and an orphan would hold the provider connection.
 
+### Audio enhancements and sleep timer
+
+Dialogue Boost, Night Mode and Volume Levelling are global preferences (`dialogueBoost`, `nightMode`,
+`volumeLevelling`; device-specific, not synced), toggled from the player's Audio menu or Settings → Playback → Audio
+and applied live through `PlaybackEngine.setAudioEnhancements`. Each engine reports what it actually applies
+(`appliedAudioEnhancements`); the menu names enhancements that are on but can't apply to the current stream.
+
+- **AVFoundation:** an `MTAudioProcessingTap` per audio track (`AudioTap`, `AVAudioMix` on the item, attached once an
+  enhancement is on and the tracks are known; switching off only bypasses it) runs `AudioEnhancementProcessor`
+  (TunerCore, tested): Dialogue Boost = mid/side with peaking EQ on the mid (−5 dB at 100 Hz, +4 dB at 2.5 kHz),
+  mid ×1.12, side ×0.6, −2 dB headroom (mono/surround: the EQ per channel, since the tap doesn't know which channel is
+  the centre); Volume Levelling = 3 s RMS towards −20 dBFS within ±12 dB, rising ≤ 2 dB/s and falling ≤ 6 dB/s, held
+  below −55 dBFS; Night Mode = soft-knee compressor (−30 dBFS, 4:1, 9 dB knee, 5/200 ms, +9 dB makeup); then a
+  −1 dBFS limiter. Realtime-safe: buffers allocated up front, settings in one atomic byte, no locks.
+- **HLS can't be tapped** (checked on macOS 27.0.1 with a headless probe: a tap bound to an HLS item's audio track is
+  never prepared or called; a tap without a track runs but only sees silence; the same code on an MP4 receives the
+  real samples). So with the engine on Automatic, `PlayerSlot` opens HLS in mpv while an enhancement mpv can apply is
+  on (Xtream live is then requested as TS), and reopens it in AVFoundation when they're all off (VOD at the same
+  position). Trade-off: no native Picture in Picture or AirPlay for that stream meanwhile. AirPlay (which forces
+  AVFoundation) and the AirPlay bridge win over enhancements. iOS 26 wasn't measured; the same behaviour is assumed.
+- **mpv:** `MPVAudioFilterChain` (TunerCore, tested) builds labelled `af` entries (`@tuner-…:lavfi-<filter>=…`), set
+  with `af remove` / `af add` so the user's own `af` from the advanced options stays. Separate entries, not one
+  `lavfi=[graph]`: mpv rejects an unknown entry name when the option is set (keeping the old chain), but an unknown
+  filter inside a graph only fails when audio starts, leaving no sound. The first mpv core probes which filters
+  exist by setting each on the idle core. Dialogue: `pan` (downmix to stereo with the centre ×1.5, surrounds ×0.6;
+  pan ignores absent channels, so one expression fits every layout), `dialoguenhance` + `aformat` when present, then
+  the same `volume` + `equalizer` curve as above. Levelling: `speechnorm` (FFmpeg's "weak and slow" preset);
+  `dynaudnorm` and `loudnorm` were rejected because their seconds of look-ahead made mpv drop seconds of audio
+  whenever the chain changed. Night: `acompressor` with the same parameters as the tap. Homebrew's mpv 0.41 has
+  them all; MPVKit 1.0.0 (iPhone/iPad) only has `pan`, `equalizer`, `volume`, `aformat` among them, so there mpv does
+  Dialogue Boost only (and HLS moves to mpv only for it).
+- **Sleep timer** (`SleepTimer`, TunerCore, tested; state in `PlayerSlot`, never persisted): minutes (wall clock, also
+  while paused) or end of item (movie/episode: on the player's end event, with no autoplay and no Up Next card; live:
+  when `currentProgram` ends). Over the last 10 s the slot's volume is scaled down linearly (the engines' volume curve
+  makes that a perceptual fade); then VOD pauses (volume restored) and live stops. A manual stop cancels it.
+
 ### Episodes, Up Next, ratings, trailers
 
 - `EpisodeNavigation` (TunerCore, tested) orders episodes by season/number for ⏮/⏭, media keys and autoplay; specials
@@ -231,6 +267,8 @@ Sources/
                    +Downloads
     Downloads/     DownloadService (actor: queue, resume, suspend), FileTransfer (one URLSession per transfer),
                    DownloadFiles (naming, free space)
+    Audio/         AudioEnhancementProcessor (tap DSP), Biquad, Dynamics (compressor, leveller), MPVAudioFilterChain,
+                   SleepTimer
     CloudSync/     iCloud Drive folder sync: SourceFingerprint, CloudSyncMerge (diff + LWW), CloudSyncFolder (file I/O),
                    CloudSyncEngine (actor); AppDatabase+CloudSync (snapshot, apply, ledger)
     Services/      SyncService (actor), GuideService (actor: ingest + key resolution), StreamResolver (actor),

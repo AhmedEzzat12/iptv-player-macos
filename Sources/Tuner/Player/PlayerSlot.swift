@@ -127,7 +127,6 @@ final class PlayerSlot: Identifiable {
 
     func stop() {
         saveProgress(force: true)
-        setSleepTimer(nil) // a manual stop cancels it; when the timer fires it has already cleared itself
         audioMovedToMPV = false
         endBridge()
         generation += 1
@@ -135,6 +134,7 @@ final class PlayerSlot: Identifiable {
         retryTask?.cancel()
         stopPolling()
         engine?.stop()
+        setSleepTimer(nil) // a manual stop cancels it (after the engine stopped, so the fade's reset can't blip)
         item = nil
         stream = nil
         phase = .idle
@@ -878,12 +878,13 @@ final class PlayerSlot: Identifiable {
         if seconds != sleepTimerRemaining { sleepTimerRemaining = seconds }
         setSleepFade(isPlaying ? SleepTimer.volumeFactor(remaining: remaining) : 1)
         guard timer.shouldFire(remaining: remaining, isLive: isLive) else { return }
-        setSleepTimer(nil)
+        // Silence first, then restore the volume (cancelling resets the fade), so nothing blips at full level.
         if isLive {
             stop()
         } else if phase.isActive {
             setPaused(true)
         }
+        setSleepTimer(nil)
     }
 
     private func setSleepFade(_ factor: Double) {

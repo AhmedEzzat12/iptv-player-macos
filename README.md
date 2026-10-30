@@ -74,6 +74,14 @@ Blender Foundation open movies (CC BY). No provider content is shown.</sub>
   (`-c copy`, no quality loss) into HLS served on the local network.
 - **HEVC channels:** streams whose video Apple's player can't decode (HEVC in MPEG-TS HLS plays as sound only)
   are detected and reopened in mpv automatically, instead of showing a black picture.
+- **Audio enhancements** (player Audio menu, or Settings → Playback → Audio; off by default): **Dialogue Boost**
+  (clearer, louder speech: centre channel raised, speech band lifted, rumble cut), **Night Mode** (reduces loud
+  sounds and raises quiet ones) and **Volume Levelling** (evens out loudness between channels and titles). They
+  apply live, without restarting the stream. Apple's player can't process HLS sound, so while one is on, HLS
+  streams play with mpv (Automatic engine) and lose Picture in Picture and native AirPlay until it's off again.
+- **Sleep timer** (Audio menu): 15/30/45/60/90 minutes or the end of the episode or movie (live TV: the end of
+  the programme), with the time left in the menu. The sound fades out over the last 10 seconds; movies pause,
+  live TV stops, and no next episode starts. Stopping playback cancels it; it's never remembered.
 - **Online metadata:** Cinemeta (no account) or TMDB (your API key) adds title logos, backdrops, cast, ratings,
   trailers and episode pictures; episode pictures can be shown, blurred until watched, or hidden.
 - **Keyboard & media keys:** single-key shortcuts in the player (Space, ←/→ seek, ↑/↓ volume, Page Up/Down channels, M, F, Esc…), all remappable in
@@ -132,6 +140,7 @@ devices from Xcode, with a free Apple ID or a paid developer account.
 | Engines | AVFoundation, libmpv (Homebrew) fallback | AVFoundation, libmpv ([MPVKit](https://github.com/mpvkit/MPVKit)) fallback, built in |
 | Picture in Picture | AVFoundation streams | AVFoundation streams (MKV and other mpv-only formats: no PiP) |
 | AirPlay | All formats (ffmpeg re-wraps the rest) | AVFoundation streams; others via Screen Mirroring |
+| Audio enhancements | All three on every stream with Homebrew's mpv (Audio menu in the control panel) | In the "…" menu. Dialogue Boost everywhere; Night Mode and Volume Levelling only for MP4/MOV in Apple's player (MPVKit's FFmpeg has no compressor or normaliser) |
 | Recordings | Yes (ffmpeg) | No (iOS apps can't run ffmpeg) |
 | Downloads | `~/Movies/Tuner Downloads` (choose in Settings) | Files › On My iPhone › Tuner › Downloads (not in iCloud backups) |
 | iCloud sync | `iCloud Drive/Tuner Sync` (or a folder you choose) | Choose the same folder once in the Files picker |
