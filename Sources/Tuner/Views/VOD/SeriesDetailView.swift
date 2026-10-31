@@ -459,36 +459,8 @@ struct SeriesDetailView: View {
 
     @ViewBuilder
     private var seasonDownloadControl: some View {
-        let list = seasonEpisodes
-        if let season = selectedSeason, !list.isEmpty {
-            let downloads = list.map { model.downloadsById[$0.id] }
-            let missing = zip(list, downloads).filter { $0.1 == nil || $0.1?.state == .failed }.map(\.0)
-            let saved = downloads.filter { $0?.state == .completed }.count
-            if missing.isEmpty {
-                Button {
-                    model.sidebarSelection = .downloads
-                } label: {
-                    Label(saved == list.count ? "Downloaded" : "Downloading \(saved) of \(list.count)",
-                          systemImage: saved == list.count ? "arrow.down.circle.fill" : "arrow.down.circle")
-                        .monospacedDigit()
-                }
-                .buttonStyle(.borderless)
-                .foregroundStyle(.secondary)
-                .help("Show in Downloads")
-            } else {
-                Button {
-                    seasonDownloadPrompt = SeasonDownloadPrompt(season: season, episodes: missing, others: list.count - missing.count)
-                } label: {
-                    // iPhone: "Download" (the row is the season's), so the count, the button and "…" fit one line.
-                    Label(missing.count == list.count ? (compact ? "Download" : "Download Season") : "Download \(missing.count) More",
-                          systemImage: "arrow.down.circle")
-                        .lineLimit(1)
-                }
-                .buttonStyle(.bordered)
-                .buttonBorderShape(.capsule)
-                .disabled(model.isOffline)
-                .help(model.isOffline ? "You're offline" : "Download every episode of \(VODFormat.seasonTitle(season)) to watch offline")
-            }
+        if let season = selectedSeason {
+            SeriesSeasonDownloadControl(season: season, list: seasonEpisodes, prompt: $seasonDownloadPrompt)
         }
     }
 
@@ -605,6 +577,49 @@ private enum SeriesEpisodesPhase: Equatable {
 }
 
 // MARK: - Episode card
+
+/// The season's Download button. A view of its own because it reads `downloadsById`, which changes every second while
+/// anything downloads: read in `SeriesDetailView.body`, it re-rendered the whole show page each second.
+private struct SeriesSeasonDownloadControl: View {
+    @Environment(AppModel.self) private var model
+    @Environment(\.tunerCompact) private var compact
+    let season: Int
+    let list: [Episode]
+    @Binding var prompt: SeasonDownloadPrompt?
+
+    var body: some View {
+        if !list.isEmpty {
+            let downloads = list.map { model.downloadsById[$0.id] }
+            let missing = zip(list, downloads).filter { $0.1 == nil || $0.1?.state == .failed }.map(\.0)
+            let saved = downloads.filter { $0?.state == .completed }.count
+            if missing.isEmpty {
+                Button {
+                    model.sidebarSelection = .downloads
+                } label: {
+                    Label(saved == list.count ? "Downloaded" : "Downloading \(saved) of \(list.count)",
+                          systemImage: saved == list.count ? "arrow.down.circle.fill" : "arrow.down.circle")
+                        .monospacedDigit()
+                }
+                .buttonStyle(.borderless)
+                .foregroundStyle(.secondary)
+                .help("Show in Downloads")
+            } else {
+                Button {
+                    prompt = SeasonDownloadPrompt(season: season, episodes: missing, others: list.count - missing.count)
+                } label: {
+                    // iPhone: "Download" (the row is the season's), so the count, the button and "…" fit one line.
+                    Label(missing.count == list.count ? (compact ? "Download" : "Download Season") : "Download \(missing.count) More",
+                          systemImage: "arrow.down.circle")
+                        .lineLimit(1)
+                }
+                .buttonStyle(.bordered)
+                .buttonBorderShape(.capsule)
+                .disabled(model.isOffline)
+                .help(model.isOffline ? "You're offline" : "Download every episode of \(VODFormat.seasonTitle(season)) to watch offline")
+            }
+        }
+    }
+}
 
 /// 16:9 picture with "E3 · Title", duration and a two-line synopsis; progress bar and watched checkmark.
 /// The picture follows Settings → Metadata → Episode pictures (show, blur unwatched, or hide).
