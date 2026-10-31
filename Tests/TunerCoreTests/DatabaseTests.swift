@@ -197,4 +197,23 @@ struct BulkWatchedTests {
         try await db.markWatched([], watched: true)
         #expect(try await db.progress(seriesId: "show").isEmpty)
     }
+
+    /// The v9 sort indexes only help while `vodOrder`'s expressions match theirs.
+    @Test func vodSortsReadThroughTheirIndexes() async throws {
+        let db = try AppDatabase.inMemory()
+        for table in ["movie", "series"] {
+            for (sort, index) in [(VODSort.added, "added"), (.name, "name"), (.rating, "rating")] {
+                let plan = try await db.writer.read { db in
+                    try Row.fetchAll(db, sql: """
+                        EXPLAIN QUERY PLAN SELECT m.* FROM \(table) m
+                        JOIN source s ON s.id = m.sourceId AND s.enabled = 1 AND s.includeVOD = 1
+                        LEFT JOIN categoryPref cp ON cp.categoryId = m.categoryId
+                        WHERE COALESCE(cp.isHidden, 0) = 0 ORDER BY \(AppDatabase.vodOrder(sort, alias: "m")) LIMIT 20
+                        """).map { $0["detail"] as String }
+                }
+                #expect(plan.contains { $0.contains("USING INDEX \(table)_order_\(index)") }, "\(table) \(sort): \(plan)")
+                #expect(!plan.contains { $0.contains("TEMP B-TREE") }, "\(table) \(sort): \(plan)")
+            }
+        }
+    }
 }
