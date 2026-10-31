@@ -216,9 +216,9 @@ final class SkipController {
     }
 
     /// Credits are skipped automatically only into a next episode that would autoplay anyway; a movie's credits
-    /// (and a finale's) only get the button.
+    /// (and a finale's) only get the button. Not with the sleep timer set to the end of the episode either.
     private var canAutoSkipCredits: Bool {
-        guard let model, let episode = model.currentEpisode, model.prefs.autoplayNextEpisode,
+        guard let model, slot?.stopsAtEndOfItem != true, let episode = model.currentEpisode, model.prefs.autoplayNextEpisode,
               model.upNextCancelledFor != episode.episode.id, let next = model.adjacentEpisode(1) else { return false }
         return !model.isOffline || model.isDownloaded(next.id)
     }
@@ -234,8 +234,9 @@ final class SkipController {
         let duration = slot.snapshot.duration
         prompt = nil
         if segment.kind == .credits {
-            // Episodes go on to the next one (as Up Next would); movies and finales jump to the end.
-            if model.currentEpisode != nil, model.adjacentEpisode(1) != nil,
+            // Episodes go on to the next one (as Up Next would); movies, finales and episodes the sleep timer stops
+            // at jump to the end.
+            if !slot.stopsAtEndOfItem, model.currentEpisode != nil, model.adjacentEpisode(1) != nil,
                !model.isOffline || model.adjacentEpisode(1).map({ model.isDownloaded($0.id) }) == true {
                 model.playAdjacentEpisode(1)
             } else if let duration {
