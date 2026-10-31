@@ -20,6 +20,7 @@ extension AppDatabase {
 
     public func deleteSource(id: String) async throws {
         try await writer.write { db in
+            try Self.handOverCloudSync(db, deletingSourceId: id)
             _ = try Source.deleteOne(db, key: id)
             try db.execute(sql: "DELETE FROM channelPref WHERE channelId LIKE ? ESCAPE '\\'", arguments: [Self.likePrefix(id)])
             try db.execute(sql: "DELETE FROM categoryPref WHERE categoryId LIKE ? ESCAPE '\\'", arguments: [Self.likePrefix(id)])

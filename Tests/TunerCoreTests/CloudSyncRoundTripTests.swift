@@ -191,6 +191,32 @@ struct CloudSyncRoundTripTests {
         #expect(try await b.sources().isEmpty)
     }
 
+    @Test func deletingTheSyncingCopyOfADuplicatedPlaylistStaysLocal() async throws {
+        // The same account added twice on A: the older copy is the one that syncs.
+        var older = xtream(id: "SA1")
+        older.createdAt = Date(timeIntervalSinceNow: -86_400)
+        try await a.save(older)
+        try await a.save(xtream(id: "SA2"))
+        try await b.save(xtream(id: "SB"))
+        try await a.setFavorite(channelId: "SA1_1", true)
+        try await a.saveProgress(progress("SA1_vod_3", source: "SA1", position: 600, at: at(1)))
+        _ = await engineA.sync(folder: folder, preferences: [:], now: at(10))
+        _ = await engineB.sync(folder: folder, preferences: [:], now: at(11))
+        #expect(try await b.progress(mediaId: "SB_vod_3")?.position == 600)
+
+        // Removing the older copy hands syncing to the other one, which has no favourites or progress of its own:
+        // that isn't the user removing them, so nothing is deleted on B.
+        try await a.deleteSource(id: "SA1")
+        _ = await engineA.sync(folder: folder, preferences: [:], now: at(20))
+        _ = await engineB.sync(folder: folder, preferences: [:], now: at(21))
+        let favorite = try await b.writer.read { try Bool.fetchOne($0, sql: "SELECT isFavorite FROM channelPref WHERE channelId = 'SB_1'") }
+        #expect(favorite == true)
+        #expect(try await b.progress(mediaId: "SB_vod_3")?.position == 600)
+        // The remaining copy on A picks the state up from B.
+        _ = await engineA.sync(folder: folder, preferences: [:], now: at(22))
+        #expect(try await a.progress(mediaId: "SA2_vod_3")?.position == 600)
+    }
+
     @Test func preferencesWhitelistAndPinnedIds() async throws {
         try await a.save(xtream(id: "SA"))
         try await a.save(Source(id: "MA", name: "Only on A", kind: .m3u, url: Self.m3uURL))
