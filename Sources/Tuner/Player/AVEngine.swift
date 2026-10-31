@@ -590,7 +590,9 @@ final class AVEngine: NSObject, PlaybackEngine {
             failure = Failure(message: "Timed out", httpStatus: nil)
         }
         if let error {
-            Self.log.error("Playback failed: \(String(describing: error), privacy: .public)")
+            // Domains and codes only: the errors' user info carries the stream URL (with Xtream credentials).
+            let codes = Self.errorChain(error).map { "\($0.domain) \($0.code)" }.joined(separator: " ← ")
+            Self.log.error("Playback failed: \(codes, privacy: .public) (\(failure.message, privacy: .public))")
         } else {
             Self.log.error("Playback failed: \(failure.message, privacy: .public)")
         }
