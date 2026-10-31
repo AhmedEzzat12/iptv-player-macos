@@ -421,10 +421,10 @@ extension AppDatabase {
 
     // MARK: - Ledger
 
-    /// Before a playlist is deleted: when it's the syncing copy of one added twice, the other copy takes over its
-    /// fingerprint. Its records are forgotten (not published as deletions), so the other devices keep their state
+    /// Before a playlist is deleted (or its server or username changes): when it's the syncing copy of one added twice,
+    /// the other copy takes over its fingerprint. Its records are forgotten (not published as deletions), so the other devices keep their state
     /// and the remaining copy picks it up, as if the playlist had been removed and added again.
-    static func handOverCloudSync(_ db: Database, deletingSourceId id: String) throws {
+    static func handOverCloudSync(_ db: Database, leavingSourceId id: String) throws {
         let sources = try Source.fetchAll(db)
         let map = CloudSyncSourceMap(sources: sources)
         guard let fp = map.fingerprintBySourceId[id],

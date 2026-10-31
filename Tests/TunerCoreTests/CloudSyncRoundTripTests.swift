@@ -217,6 +217,25 @@ struct CloudSyncRoundTripTests {
         #expect(try await a.progress(mediaId: "SA2_vod_3")?.position == 600)
     }
 
+    @Test func editingTheSyncingCopyOfADuplicatedPlaylistStaysLocal() async throws {
+        var older = xtream(id: "SA1")
+        older.createdAt = Date(timeIntervalSinceNow: -86_400)
+        try await a.save(older)
+        try await a.save(xtream(id: "SA2"))
+        try await b.save(xtream(id: "SB"))
+        try await a.setFavorite(channelId: "SA1_1", true)
+        _ = await engineA.sync(folder: folder, preferences: [:], now: at(10))
+        _ = await engineB.sync(folder: folder, preferences: [:], now: at(11))
+
+        // Another server for the older copy: it becomes a playlist of its own and the other copy takes over.
+        older.url = "http://other.example.com:8080"
+        try await a.save(older)
+        _ = await engineA.sync(folder: folder, preferences: [:], now: at(20))
+        _ = await engineB.sync(folder: folder, preferences: [:], now: at(21))
+        let favorite = try await b.writer.read { try Bool.fetchOne($0, sql: "SELECT isFavorite FROM channelPref WHERE channelId = 'SB_1'") }
+        #expect(favorite == true)
+    }
+
     @Test func preferencesWhitelistAndPinnedIds() async throws {
         try await a.save(xtream(id: "SA"))
         try await a.save(Source(id: "MA", name: "Only on A", kind: .m3u, url: Self.m3uURL))
