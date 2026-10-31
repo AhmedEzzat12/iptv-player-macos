@@ -119,19 +119,28 @@ extension AppDatabase {
     /// Skips the write when the provider sent what's stored: opening a show asks the provider every time, and a
     /// rewrite of the same rows would still count as a library change (every open page reloads).
     public func replaceEpisodes(seriesId: String, episodes: [Episode]) async throws {
-        guard !episodes.isEmpty else { return } // never wipe on an empty/failed response
+        try await replaceEpisodes([seriesId: episodes])
+    }
+
+    /// `replaceEpisodes(seriesId:episodes:)` for many shows in one transaction (an M3U playlist lists its shows'
+    /// episodes inline: one transaction per show made a resync of thousands of shows take seconds).
+    public func replaceEpisodes(_ bySeries: [String: [Episode]]) async throws {
+        let bySeries = bySeries.filter { !$0.value.isEmpty } // never wipe on an empty/failed response
+        guard !bySeries.isEmpty else { return }
         try await writer.write { db in
-            let stored = try Episode.fetchAll(db, sql: "SELECT * FROM episode WHERE seriesId = ?", arguments: [seriesId])
-            let fresh = Dictionary(episodes.map { ($0.id, $0) }, uniquingKeysWith: { _, last in last }) // as INSERT OR REPLACE
-            if fresh == Dictionary(stored.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a }) { return }
-            try db.execute(sql: "DELETE FROM episode WHERE seriesId = ?", arguments: [seriesId])
             let stmt = try db.makeStatement(sql: """
                 INSERT OR REPLACE INTO episode (id, seriesId, sourceId, season, number, title, plot, imageURL, durationSeconds,
                     providerId, containerExtension, streamURL, airDate) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """)
-            for e in episodes {
-                try stmt.execute(arguments: [e.id, e.seriesId, e.sourceId, e.season, e.number, e.title, e.plot, e.imageURL,
-                                             e.durationSeconds, e.providerId, e.containerExtension, e.streamURL, e.airDate])
+            for (seriesId, episodes) in bySeries.sorted(by: { $0.key < $1.key }) {
+                let stored = try Episode.fetchAll(db, sql: "SELECT * FROM episode WHERE seriesId = ?", arguments: [seriesId])
+                let fresh = Dictionary(episodes.map { ($0.id, $0) }, uniquingKeysWith: { _, last in last }) // as INSERT OR REPLACE
+                if fresh == Dictionary(stored.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a }) { continue }
+                try db.execute(sql: "DELETE FROM episode WHERE seriesId = ?", arguments: [seriesId])
+                for e in episodes {
+                    try stmt.execute(arguments: [e.id, e.seriesId, e.sourceId, e.season, e.number, e.title, e.plot, e.imageURL,
+                                                 e.durationSeconds, e.providerId, e.containerExtension, e.streamURL, e.airDate])
+                }
             }
         }
     }

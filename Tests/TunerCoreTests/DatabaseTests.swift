@@ -167,6 +167,22 @@ struct VODDetailTests {
         #expect(try await changes(db) { try await db.replaceEpisodes(seriesId: series.id, episodes: Array(episodes.prefix(2))) } > 0)
         #expect(try await db.episodes(seriesId: series.id).count == 2)
     }
+
+    /// An M3U resync writes every show's inline episodes in one transaction; an empty list leaves a show alone.
+    @Test func episodesOfManyShowsAreReplacedTogether() async throws {
+        let db = try AppDatabase.inMemory()
+        try await db.save(Source(id: "x", name: "X", kind: .m3u, url: "http://x"))
+        func episodes(_ show: String, _ count: Int, title: String = "E") -> [Episode] {
+            (1...count).map { Episode(id: "\(show)_\($0)", seriesId: show, sourceId: "x", season: 1, number: $0, title: "\(title)\($0)", providerId: "\($0)") }
+        }
+        try await db.replaceEpisodes(["a": episodes("a", 3), "b": episodes("b", 2)])
+        #expect(try await changes(db) { try await db.replaceEpisodes(["a": episodes("a", 3), "b": episodes("b", 2), "c": []]) } == 0)
+        try await db.replaceEpisodes(["a": episodes("a", 1), "b": episodes("b", 2, title: "New "), "c": []])
+        #expect(try await db.episodes(seriesId: "a").map(\.title) == ["E1"])
+        #expect(try await db.episodes(seriesId: "b").map(\.title) == ["New 1", "New 2"])
+        try await db.replaceEpisodes(["a": []])
+        #expect(try await db.episodes(seriesId: "a").count == 1)
+    }
 }
 
 @Suite("Database categories")

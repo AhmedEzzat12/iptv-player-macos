@@ -65,7 +65,7 @@ struct PerfBenchmark {
         defer { try? FileManager.default.removeItem(at: dir) }
         // Launch: opening an up-to-date library (what AppModel waits for before the first screen).
         try await Self.time("launch.open (migrated)", runs: 3) { try AppDatabase.onDisk(directory: dir).writer.path }
-        let rss0 = Self.residentMB(), heap0 = Self.heapMB()
+        let rss0 = Self.residentMB()
 
         // Home: loadLibrary (four shelves side by side, as the view does).
         try await Self.time("home.library") {
@@ -113,19 +113,19 @@ struct PerfBenchmark {
         // Movies / TV Shows browser.
         let movieCategories = try await Self.time("browse.categories(movie)") { try await db.categories(kind: .movie) }
         try await Self.time("browse.categories(series)") { try await db.categories(kind: .series) }
-        try await Self.time("classifier.classify(movie categories, uncached)") {
+        await Self.time("classifier.classify(movie categories, uncached)") {
             movieCategories.map { CategoryClassifier.classify($0.name).group }.count
         }
-        try await Self.time("classifier.normalized(movie categories)") {
+        await Self.time("classifier.normalized(movie categories)") {
             movieCategories.map { CategoryClassifier.normalized($0.name) }.count
         }
-        try await Self.time("classifier.split(movie categories)") {
+        await Self.time("classifier.split(movie categories)") {
             movieCategories.map { CategoryClassifier.split($0.name).latin.count }.count
         }
-        try await Self.time("classifier.years(movie categories)") {
+        await Self.time("classifier.years(movie categories)") {
             movieCategories.map { CategoryClassifier.yearsMentioned(in: $0.name).count }.count
         }
-        try await Self.time("browse.categoryGroups(movie)") {
+        await Self.time("browse.categoryGroups(movie)") {
             movieCategories.map { CategoryClassifier.facet(for: $0.name).group }.count
         }
         for sort in VODSort.allCases {
@@ -151,7 +151,7 @@ struct PerfBenchmark {
         print("PERF rss after browse: \(Self.residentMB()) MB")
         // Search.
         for q in ["the", "love", "zzqx", "arabic comedy 2020", "top rated action movies", "4k"] {
-            let understood = try await Self.time("search.understand '\(q)'") { await db.understandSearch(q) }
+            let understood = await Self.time("search.understand '\(q)'") { await db.understandSearch(q) }
             try await Self.time("search.vod '\(q)'") {
                 if understood.hasFilters {
                     async let m = db.movies(understood: understood)
@@ -202,7 +202,7 @@ struct PerfBenchmark {
         try await Self.time("topTen.candidates(movies)") {
             try await db.topTenCandidates(kind: .movie, words: words, imdbIds: [], tmdbIds: [], hideAdult: true).count
         }
-        try await Self.time("topTen.match(movies)") {
+        await Self.time("topTen.match(movies)") {
             await service.match(titles.map { ChartEntry(title: $0) }, kind: .movie, hideAdult: true, usage: [:]).count
         }
 
@@ -212,9 +212,9 @@ struct PerfBenchmark {
         try await Self.time("recommender.corpus", runs: 2) { try await db.recommendationCorpus().count }
         print("PERF rss after corpus: \(Self.residentMB()) MB")
         let recommender = Recommender(db: db)
-        try await Self.time("recommender.becauseYouWatched (build)", runs: 1) { await recommender.becauseYouWatched(libraryRevision: 1, hideAdult: true).count }
-        try await Self.time("recommender.becauseYouWatched (warm)") { await recommender.becauseYouWatched(libraryRevision: 1, hideAdult: true).count }
-        print("PERF memory: resident \(rss0) → \(Self.residentMB()) MB, heap \(heap0) → \(Self.heapMB()) MB with the recommendation index")
+        await Self.time("recommender.becauseYouWatched (build)", runs: 1) { await recommender.becauseYouWatched(libraryRevision: 1, hideAdult: true).count }
+        await Self.time("recommender.becauseYouWatched (warm)") { await recommender.becauseYouWatched(libraryRevision: 1, hideAdult: true).count }
+        print("PERF memory: resident \(rss0) → \(Self.residentMB()) MB after building the recommendation index")
         if let index = await recommender.currentIndex(libraryRevision: 1) {
             print("PERF memory: index \(index.count) titles, \(index.termCount) terms, ~\(index.approximateVectorBytes / 1_048_576) MB vectors")
         }
@@ -264,5 +264,19 @@ struct PerfBenchmark {
             let episodes = try await db.episodes(seriesId: seriesId)
             try await Self.time("show.replaceEpisodes (unchanged, \(episodes.count))") { try await db.replaceEpisodes(seriesId: seriesId, episodes: episodes) }
         }
+        // An M3U playlist's inline episodes (synthetic: 3,000 shows × 10 episodes), one transaction per show vs one.
+        func m3uEpisodes(_ tag: String) -> [String: [Episode]] {
+            Dictionary(uniqueKeysWithValues: (0..<3_000).map { s in
+                ("\(sourceId)_m3u\(tag)_\(s)", (1...10).map { e in
+                    Episode(id: "\(sourceId)_m3u\(tag)_\(s)_\(e)", seriesId: "\(sourceId)_m3u\(tag)_\(s)", sourceId: sourceId, season: 1,
+                            number: e, title: "Episode \(e)", providerId: "\(s)_\(e)", streamURL: "http://example.invalid/\(s)/\(e).mp4")
+                })
+            })
+        }
+        let perShow = m3uEpisodes("a"), batched = m3uEpisodes("b")
+        try await Self.time("sync.m3uEpisodes per show (3000×10)", runs: 2) {
+            for (id, list) in perShow { try await db.replaceEpisodes(seriesId: id, episodes: list) }
+        }
+        try await Self.time("sync.m3uEpisodes one transaction (3000×10)", runs: 2) { try await db.replaceEpisodes(batched) }
     }
 }

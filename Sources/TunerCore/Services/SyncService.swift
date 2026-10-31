@@ -173,8 +173,7 @@ public actor SyncService {
                 try await db.replaceVOD(sourceId: source.id, movieCategories: playlist.movieCategories, movies: playlist.movies,
                                         seriesCategories: playlist.seriesCategories, series: playlist.series)
                 // M3U series come with their episodes inline.
-                let grouped = Dictionary(grouping: playlist.episodes, by: \.seriesId)
-                for (seriesId, episodes) in grouped { try await db.replaceEpisodes(seriesId: seriesId, episodes: episodes) }
+                try await db.replaceEpisodes(Dictionary(grouping: playlist.episodes, by: \.seriesId))
             }
             let channelCount = playlist.channels.count
             let movieCount = playlist.movies.count
