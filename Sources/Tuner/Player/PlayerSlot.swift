@@ -465,6 +465,9 @@ final class PlayerSlot: Identifiable {
                 self.applyAudioEnhancements()
                 self.engine?.setAspect(self.aspect)
                 self.engine?.load(stream, startAt: self.pendingStartAt)
+                // Paused while the stream was being resolved (the sleep timer, a key, the remote): engines start
+                // playing on load, so pass the pause on, or it would play behind a "paused" player.
+                if self.userPaused { self.engine?.setPaused(true) }
                 if self.rate != 1 { self.engine?.setRate(self.rate) }
                 self.startPolling()
             } catch {

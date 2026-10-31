@@ -421,6 +421,20 @@ extension AppDatabase {
 
     // MARK: - Ledger
 
+    /// Before a playlist is deleted (or its server or username changes): when it's the syncing copy of one added twice,
+    /// the other copy takes over its fingerprint. Its records are forgotten (not published as deletions), so the other devices keep their state
+    /// and the remaining copy picks it up, as if the playlist had been removed and added again.
+    static func handOverCloudSync(_ db: Database, leavingSourceId id: String) throws {
+        let sources = try Source.fetchAll(db)
+        let map = CloudSyncSourceMap(sources: sources)
+        guard let fp = map.fingerprintBySourceId[id],
+              sources.contains(where: { $0.id != id && SourceFingerprint.of($0) == fp }) else { return }
+        let keys = try String.fetchAll(db, sql: "SELECT key FROM syncLedger").filter { CloudSyncKey.fingerprint(of: $0) == fp }
+        for key in keys {
+            try db.execute(sql: "DELETE FROM syncLedger WHERE key = ?", arguments: [key])
+        }
+    }
+
     static func fetchLedger(_ db: Database) throws -> [String: CloudSyncLedgerEntry] {
         let decoder = JSONDecoder()
         var out: [String: CloudSyncLedgerEntry] = [:]

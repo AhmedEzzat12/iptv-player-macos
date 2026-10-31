@@ -277,7 +277,9 @@ user is asked again). Off by default (Settings → Sync).
   with `source.needsPassword` (migration `v7-sourceNeedsPassword`): provider sync skips it and Settings → Playlists
   shows "Needs password"; saving the editor with the password turns it on. Others (Stalker, plain M3U) are created
   on and refreshed. A playlist removed on one device stays on the others (its deletion is published but never
-  applied); its records simply stop syncing from that device. Editing a playlist's server or username changes its
+  applied); its records simply stop syncing from that device. When it was the syncing copy of a playlist added twice,
+  its records are dropped from the ledger as it's deleted (or its server or username changes), so the other copy takes over without publishing
+  deletions. Editing a playlist's server or username changes its
   fingerprint, so the other devices get it as a new playlist.
 - **When** (`CloudSyncController`, app target): after the library loads, when the app becomes active, every 2 minutes
   while it is, 3 s after user-state or preference changes (60 s after watch-progress saves, which happen every few

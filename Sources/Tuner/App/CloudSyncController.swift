@@ -213,8 +213,11 @@ final class CloudSyncController {
         }
         let report = await engine.sync(folder: folder, preferences: model.prefs.cloudSyncValues())
         endAccess()
-        // Superseded by a newer pass: that one reports.
-        guard !Task.isCancelled else { return }
+        // Nothing was changed; the newer pass reports.
+        guard !report.cancelled else { return }
+        // Applied even when a newer pass was scheduled meanwhile (that cancels this task, and the rows this pass
+        // wrote trigger it): the ledger already counts these preferences as applied, so dropping them here would
+        // publish the old values back on the next pass, and new playlists would never be loaded.
 
         if report.appliedCount > 0 || !report.preferences.isEmpty { quietUntil = Date().addingTimeInterval(2) }
         if !report.preferences.isEmpty {

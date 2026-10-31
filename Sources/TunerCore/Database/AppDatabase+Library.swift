@@ -15,11 +15,18 @@ extension AppDatabase {
     }
 
     public func save(_ source: Source) async throws {
-        try await writer.write { db in try source.save(db) }
+        try await writer.write { db in
+            // A new server or username is another playlist for sync (see `handOverCloudSync`).
+            if let old = try Source.fetchOne(db, key: source.id), SourceFingerprint.of(old) != SourceFingerprint.of(source) {
+                try Self.handOverCloudSync(db, leavingSourceId: source.id)
+            }
+            try source.save(db)
+        }
     }
 
     public func deleteSource(id: String) async throws {
         try await writer.write { db in
+            try Self.handOverCloudSync(db, leavingSourceId: id)
             _ = try Source.deleteOne(db, key: id)
             try db.execute(sql: "DELETE FROM channelPref WHERE channelId LIKE ? ESCAPE '\\'", arguments: [Self.likePrefix(id)])
             try db.execute(sql: "DELETE FROM categoryPref WHERE categoryId LIKE ? ESCAPE '\\'", arguments: [Self.likePrefix(id)])
