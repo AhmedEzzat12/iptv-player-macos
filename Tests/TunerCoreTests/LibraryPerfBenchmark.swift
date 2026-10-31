@@ -79,6 +79,18 @@ struct PerfBenchmark {
         // Movies / TV Shows browser.
         let movieCategories = try await Self.time("browse.categories(movie)") { try await db.categories(kind: .movie) }
         try await Self.time("browse.categories(series)") { try await db.categories(kind: .series) }
+        try await Self.time("classifier.classify(movie categories, uncached)") {
+            movieCategories.map { CategoryClassifier.classify($0.name).group }.count
+        }
+        try await Self.time("classifier.normalized(movie categories)") {
+            movieCategories.map { CategoryClassifier.normalized($0.name) }.count
+        }
+        try await Self.time("classifier.split(movie categories)") {
+            movieCategories.map { CategoryClassifier.split($0.name).latin.count }.count
+        }
+        try await Self.time("classifier.years(movie categories)") {
+            movieCategories.map { CategoryClassifier.yearsMentioned(in: $0.name).count }.count
+        }
         try await Self.time("browse.categoryGroups(movie)") {
             movieCategories.map { CategoryClassifier.facet(for: $0.name).group }.count
         }

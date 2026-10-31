@@ -20,6 +20,13 @@ struct CategoryGroupingTests {
         #expect(group("مرشحون لجوائز الأوسكار 2023") == .featured)
     }
 
+    @Test func cachedFacetsMatchFreshOnes() {
+        for name in ["Arabic Movies - عربي 2024", "Netflix - أفلام نت فليكس", "Kids", ""] {
+            #expect(CategoryClassifier.facet(for: name) == CategoryClassifier.classify(name))
+            #expect(CategoryClassifier.facet(for: name) == CategoryClassifier.classify(name)) // from the cache
+        }
+    }
+
     @Test func platforms() {
         #expect(group("Netflix - أفلام نت فليكس") == .platforms)
         #expect(group("Shahid vip - أفلام منصة شاهد") == .platforms)

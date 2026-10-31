@@ -1,4 +1,5 @@
 import Foundation
+import Synchronization
 
 /// Groups a provider's categories (often 50–200 of them, named like "Arabic Movies - عربي 2024" or
 /// "Bein Sport [ FHD ] | [ … ]") into a handful of browsable groups, and cleans their names.
@@ -106,7 +107,23 @@ public struct CategoryFacet: Equatable, Sendable {
 }
 
 public enum CategoryClassifier {
+    /// Facets by name. Classifying costs ~0.1 ms a name (Arabic folding and keyword scans), and browse pages ask for
+    /// the same few hundred names on every render (chips, group menus, titles) and natural searches on every query.
+    private static let facets = Mutex<[String: CategoryFacet]>([:])
+    private static let cacheLimit = 5_000
+
     public static func facet(for name: String) -> CategoryFacet {
+        if let cached = facets.withLock({ $0[name] }) { return cached }
+        let facet = classify(name)
+        facets.withLock { cache in
+            if cache.count >= cacheLimit { cache.removeAll(keepingCapacity: true) }
+            cache[name] = facet
+        }
+        return facet
+    }
+
+    /// `facet(for:)` without the cache.
+    static func classify(_ name: String) -> CategoryFacet {
         let parts = split(name)
         let years = yearsMentioned(in: name)
         var facet = CategoryFacet(
