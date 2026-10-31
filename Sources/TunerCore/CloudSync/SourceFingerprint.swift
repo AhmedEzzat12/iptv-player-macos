@@ -34,7 +34,7 @@ public enum SourceFingerprint {
         comps.password = nil
         comps.host = comps.host?.lowercased()
         if (scheme == "http" && comps.port == 80) || (scheme == "https" && comps.port == 443) { comps.port = nil }
-        var path = comps.percentEncodedPath
+        var path = stripPathCredentials(comps.percentEncodedPath).path
         while path.hasSuffix("/") { path.removeLast() }
         comps.percentEncodedPath = path
         let items = (comps.queryItems ?? []).filter { !isSecretParameter($0.name) }
@@ -47,7 +47,7 @@ public enum SourceFingerprint {
     /// Query parameter names that carry a secret (`password`, `pass`, `token`, `api_key`…).
     public static func isSecretParameter(_ name: String) -> Bool {
         let n = name.lowercased()
-        if ["pwd", "pw", "key", "apikey", "sig", "signature"].contains(n) { return true }
+        if ["p", "pwd", "pw", "key", "apikey", "sig", "signature"].contains(n) { return true }
         return ["pass", "token", "secret", "auth", "api_key", "apikey"].contains { n.contains($0) }
     }
 
@@ -61,6 +61,11 @@ public enum SourceFingerprint {
             comps.password = nil
             removed = true
         }
+        let stripped = stripPathCredentials(comps.percentEncodedPath)
+        if stripped.removed {
+            comps.percentEncodedPath = stripped.path
+            removed = true
+        }
         if let items = comps.queryItems {
             let kept = items.filter { !isSecretParameter($0.name) }
             if kept.count != items.count {
@@ -70,6 +75,31 @@ public enum SourceFingerprint {
         }
         guard removed else { return (trimmed, false) }
         return (comps.string ?? trimmed, true)
+    }
+
+    /// Path words after which IPTV panels put the account's username and password
+    /// (`/playlist/USER/PASS/m3u_plus`, `/live/USER/PASS/123.ts`, `/m3u/USER/PASS`).
+    static let credentialPathKeywords: Set<String> = ["playlist", "live", "movie", "series", "m3u", "m3u8", "get", "xmltv", "timeshift", "panel"]
+
+    /// The path with the two segments that follow a credential keyword replaced by `USER` / `PASSWORD`, and whether
+    /// any were. Conservative: only when two non-empty segments follow the keyword.
+    static func stripPathCredentials(_ path: String) -> (path: String, removed: Bool) {
+        var segments = path.split(separator: "/", omittingEmptySubsequences: false).map(String.init)
+        var removed = false
+        var i = 0
+        while i < segments.count {
+            if credentialPathKeywords.contains(segments[i].lowercased()), i + 2 < segments.count,
+               !segments[i + 1].isEmpty, !segments[i + 2].isEmpty,
+               segments[i + 1] != "USER" || segments[i + 2] != "PASSWORD" {
+                segments[i + 1] = "USER"
+                segments[i + 2] = "PASSWORD"
+                removed = true
+                i += 3
+            } else {
+                i += 1
+            }
+        }
+        return (segments.joined(separator: "/"), removed)
     }
 
     /// Whether `raw` carries a secret (it is then left out of synced lists such as backup URLs and extra guides).

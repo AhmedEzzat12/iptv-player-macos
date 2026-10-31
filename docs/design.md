@@ -270,7 +270,9 @@ user is asked again). Off by default (Settings → Sync).
   (`CloudSyncPreferences.keys`: recent searches, pinned categories — ids translated, and a change keeps pins of
   playlists this device doesn't have — category names, adult filter, episode pictures, autoplay/Up Next, resume,
   metadata on/language, accent, the AI toggles and Top 10), and `source`: a playlist's settings with the URL's
-  secrets removed and no password (URLs with secrets are left out of the backup/guide lists). Never synced: downloads,
+  secrets removed and no password: user info, secret query parameters (`password`, `pass`, `p`, `token`, `key`…) and
+  the two path segments after `playlist`/`live`/`movie`/`series`/`m3u`/`get`… (`/playlist/USER/PASS/m3u_plus`)
+  (URLs with secrets are left out of the backup/guide lists). Never synced: downloads,
   recordings, reminders, guide data, metadata caches, the library itself, and device-specific preferences (engine,
   buffers, paths, user agents, TMDB key, shortcuts, volume, last channel).
 - **Playlists:** one that arrives without its secret (Xtream, or an M3U link whose token was removed) is created off

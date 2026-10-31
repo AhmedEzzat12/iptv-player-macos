@@ -31,6 +31,22 @@ struct CloudSyncFingerprintTests {
         #expect(SourceFingerprint.of(kind: .m3u, url: pub.url, username: nil, mac: nil) == fp1)
     }
 
+    @Test func credentialsInTheLinkPathAreStripped() {
+        let pub = SourceFingerprint.publicURL("http://panel.example:8080/playlist/alice/s3cret/m3u_plus?output=ts")
+        #expect(pub.removedSecret)
+        #expect(!pub.url.contains("alice") && !pub.url.contains("s3cret"))
+        #expect(pub.url == "http://panel.example:8080/playlist/USER/PASSWORD/m3u_plus?output=ts")
+        // Same account, same fingerprint, and the password never in what's hashed.
+        let a = SourceFingerprint.of(kind: .m3u, url: "http://panel.example:8080/playlist/alice/s3cret/m3u_plus", username: nil, mac: nil)
+        let b = SourceFingerprint.of(kind: .m3u, url: "http://panel.example:8080/playlist/alice/other/m3u_plus", username: nil, mac: nil)
+        #expect(a == b)
+        #expect(!SourceFingerprint.normalizedURL("http://panel.example/live/alice/s3cret/1.ts").contains("s3cret"))
+        // `p=` is a password; ordinary paths stay as they are.
+        #expect(SourceFingerprint.publicURL("http://example.com/get?u=alice&p=s3cret").url.contains("s3cret") == false)
+        #expect(SourceFingerprint.publicURL("http://example.com/lists/sports.m3u") == ("http://example.com/lists/sports.m3u", false))
+        #expect(SourceFingerprint.publicURL("http://example.com/playlist.m3u") == ("http://example.com/playlist.m3u", false))
+    }
+
     @Test func normalisation() {
         #expect(SourceFingerprint.normalizedURL(" HTTP://Example.COM:80/list/ ") == "http://example.com/list")
         #expect(SourceFingerprint.normalizedURL("https://example.com:443/a//") == "https://example.com/a")
