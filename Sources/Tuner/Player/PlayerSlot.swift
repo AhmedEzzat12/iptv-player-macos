@@ -91,6 +91,9 @@ final class PlayerSlot: Identifiable {
     @ObservationIgnored private(set) var engine: PlaybackEngine?
     @ObservationIgnored private var engineKind: EngineKind?
     @ObservationIgnored private var triedKinds: Set<EngineKind> = []
+    /// AVFoundation failed and mpv was tried instead: remembered (`EngineMemory`) only once mpv actually plays it,
+    /// so a stop, a slow network or a stream neither engine opens doesn't send the title to mpv for a month.
+    @ObservationIgnored private var engineMemoryPending: PlaybackItem?
     @ObservationIgnored private var pendingStartAt: Double?
     @ObservationIgnored private var pollTimer: Timer?
     @ObservationIgnored private var ticks = 0
@@ -409,6 +412,7 @@ final class PlayerSlot: Identifiable {
         }
         if let ch = item.channel, item.isLive { failoverTried.insert(ch.id) }
         triedKinds = []
+        engineMemoryPending = nil
         userPaused = false
         engineLoaded = false
         snapshot = EngineSnapshot()
@@ -553,6 +557,10 @@ final class PlayerSlot: Identifiable {
                 }
             }
             if phase == .loading || phase == .buffering { phase = .playing }
+            if engineKind == .mpv, let pending = engineMemoryPending, pending.id == item?.id {
+                EngineMemory.remember(pending)
+                engineMemoryPending = nil
+            }
             lastProgressAt = Date()
             refreshTracks()
             onLoaded?()
@@ -613,6 +621,9 @@ final class PlayerSlot: Identifiable {
     private func engineFailed(_ message: String) {
         guard let item, !failureHandled else { return }
         failureHandled = true
+        #if DEBUG
+        NSLog("TunerDebug: %@ failed (%@)", engineName, message)
+        #endif
         // Silence the failed engine before anything else so it can't emit more events or keep a connection open.
         engine?.stop()
         // Try the other engine once (AVFoundation can't open raw TS/MKV; mpv may choke on odd HLS) —
@@ -624,7 +635,8 @@ final class PlayerSlot: Identifiable {
             let otherAvailable = other == .av || EngineFactory.mpvAvailable
             if otherAvailable, !triedKinds.contains(other), services.prefs.engine == .automatic || airPlaySwitchPending {
                 // Remember it, so the next start (even after a relaunch) skips AVFoundation for this title/show.
-                if current == .av, other == .mpv, !airPlaySwitchPending { EngineMemory.remember(item) }
+                // A load timeout can just be a slow server: only real errors are remembered.
+                if current == .av, other == .mpv, !airPlaySwitchPending, message != "Timed out" { engineMemoryPending = item }
                 engineLoaded = false
                 load(item, preferring: other)
                 return
