@@ -36,9 +36,36 @@ struct PerfBenchmark {
         return last!
     }
 
+    /// Resident memory of the test process, in MB.
+    static func residentMB() -> Int {
+        var info = mach_task_basic_info()
+        var count = mach_msg_type_number_t(MemoryLayout<mach_task_basic_info>.size / MemoryLayout<natural_t>.size)
+        let result = withUnsafeMutablePointer(to: &info) {
+            $0.withMemoryRebound(to: integer_t.self, capacity: Int(count)) { task_info(mach_task_self_, task_flavor_t(MACH_TASK_BASIC_INFO), $0, &count) }
+        }
+        return result == KERN_SUCCESS ? Int(info.resident_size / 1_048_576) : -1
+    }
+
+    /// Heap bytes in use (live allocations), in MB.
+    static func heapMB() -> Int {
+        var zones: UnsafeMutablePointer<vm_address_t>?
+        var count: UInt32 = 0
+        guard malloc_get_all_zones(mach_task_self_, nil, &zones, &count) == KERN_SUCCESS, let zones else { return -1 }
+        var total = 0
+        for i in 0..<Int(count) {
+            var stats = malloc_statistics_t()
+            malloc_zone_statistics(UnsafeMutablePointer<malloc_zone_t>(bitPattern: UInt(zones[i])), &stats)
+            total += stats.size_in_use
+        }
+        return total / 1_048_576
+    }
+
     @Test func readPaths() async throws {
-        let (db, dir) = try await Self.time("open + migrate", runs: 1) { try Self.openCopy() }
+        let (db, dir) = try await Self.time("copy + open + migrate", runs: 1) { try Self.openCopy() }
         defer { try? FileManager.default.removeItem(at: dir) }
+        // Launch: opening an up-to-date library (what AppModel waits for before the first screen).
+        try await Self.time("launch.open (migrated)", runs: 3) { try AppDatabase.onDisk(directory: dir).writer.path }
+        let rss0 = Self.residentMB(), heap0 = Self.heapMB()
 
         // Home: loadLibrary (four shelves side by side, as the view does).
         try await Self.time("home.library") {
@@ -75,7 +102,14 @@ struct PerfBenchmark {
             }
             return n
         }
+        try await Self.time("home.fallbackArtwork (batched)") {
+            _ = try await db.cachedMetadata(mediaIds: artworkIds.map(\.0))
+            async let shows = db.series(ids: Array(Set(artworkIds.filter(\.1).map(\.0))))
+            async let movies = db.movies(ids: Array(Set(artworkIds.filter { !$0.1 }.map(\.0))))
+            return try await shows.count + movies.count
+        }
 
+        print("PERF rss after home: \(Self.residentMB()) MB")
         // Movies / TV Shows browser.
         let movieCategories = try await Self.time("browse.categories(movie)") { try await db.categories(kind: .movie) }
         try await Self.time("browse.categories(series)") { try await db.categories(kind: .series) }
@@ -114,6 +148,7 @@ struct PerfBenchmark {
             return try await (f.count, c.count)
         }
 
+        print("PERF rss after browse: \(Self.residentMB()) MB")
         // Search.
         for q in ["the", "love", "zzqx", "arabic comedy 2020", "top rated action movies", "4k"] {
             let understood = try await Self.time("search.understand '\(q)'") { await db.understandSearch(q) }
@@ -130,10 +165,14 @@ struct PerfBenchmark {
             try await Self.time("search.channels '\(q)'") { try await db.channels(scope: .all, search: q, sort: .provider, limit: 60) }
         }
 
+        print("PERF rss after search: \(Self.residentMB()) MB")
         // Live TV.
         for sort in ChannelSort.allCases {
             let list = try await Self.time("live.channels(all, \(sort.rawValue))") { try await db.channels(scope: .all, sort: sort) }
             if sort == .provider { print("PERF live: \(list.count) channels") }
+        }
+        try await Self.time("live.rows(all) without decoding") {
+            try await db.writer.read { db in try Row.fetchAll(db, sql: AppDatabase.channelSelect + " ORDER BY s.sortIndex, c.sourceId, c.providerOrder").count }
         }
         let liveCategories = try await Self.time("live.categories") { try await db.categories(kind: .live) }
         if let biggest = liveCategories.max(by: { $0.itemCount < $1.itemCount }) {
@@ -143,6 +182,7 @@ struct PerfBenchmark {
         try await Self.time("live.channels(recent)") { try await db.channels(scope: .recent) }
         try await Self.time("live.channels(search 'sport')") { try await db.channels(scope: .all, search: "sport") }
 
+        print("PERF rss after live: \(Self.residentMB()) MB")
         // Show page.
         if let seriesId = try await db.writer.read({ db in
             try String.fetchOne(db, sql: "SELECT seriesId FROM episode GROUP BY seriesId ORDER BY COUNT(*) DESC LIMIT 1")
@@ -158,16 +198,32 @@ struct PerfBenchmark {
         // Top 10 matching (ten chart titles from the library itself, so the name search has work to do).
         let titles = try await db.writer.read { db in try String.fetchAll(db, sql: "SELECT name FROM movie ORDER BY rating DESC LIMIT 10") }
         let service = TopTenService(db: db)
+        let words = titles.compactMap { TopTenMatcher.searchWord($0, kind: .movie) }
+        try await Self.time("topTen.candidates(movies)") {
+            try await db.topTenCandidates(kind: .movie, words: words, imdbIds: [], tmdbIds: [], hideAdult: true).count
+        }
         try await Self.time("topTen.match(movies)") {
             await service.match(titles.map { ChartEntry(title: $0) }, kind: .movie, hideAdult: true, usage: [:]).count
         }
 
+        print("PERF rss after topTen: \(Self.residentMB()) MB")
         // Recommendations: signature (every Home load), first build, then a warm call.
         try await Self.time("recommender.signature") { try await db.recommendationSignature() }
         try await Self.time("recommender.corpus", runs: 2) { try await db.recommendationCorpus().count }
+        print("PERF rss after corpus: \(Self.residentMB()) MB")
         let recommender = Recommender(db: db)
         try await Self.time("recommender.becauseYouWatched (build)", runs: 1) { await recommender.becauseYouWatched(libraryRevision: 1, hideAdult: true).count }
         try await Self.time("recommender.becauseYouWatched (warm)") { await recommender.becauseYouWatched(libraryRevision: 1, hideAdult: true).count }
+        print("PERF memory: resident \(rss0) → \(Self.residentMB()) MB, heap \(heap0) → \(Self.heapMB()) MB with the recommendation index")
+        if let index = await recommender.currentIndex(libraryRevision: 1) {
+            print("PERF memory: index \(index.count) titles, \(index.termCount) terms, ~\(index.approximateVectorBytes / 1_048_576) MB vectors")
+        }
+        let heap1 = Self.heapMB()
+        let allMovies = try await db.writer.read { db in try Movie.fetchAll(db, sql: "SELECT * FROM movie") }
+        withExtendedLifetime(allMovies) { print("PERF memory: all \(allMovies.count) movies as records: heap +\(Self.heapMB() - heap1) MB") }
+        let heap2 = Self.heapMB()
+        let allChannels = try await db.channels(scope: .all)
+        withExtendedLifetime(allChannels) { print("PERF memory: all \(allChannels.count) channels as records: heap +\(Self.heapMB() - heap2) MB") }
 
         // Cloud sync: one pass with nothing remote (first, then steady state).
         try await Self.time("cloudSync.pass", runs: 3) {

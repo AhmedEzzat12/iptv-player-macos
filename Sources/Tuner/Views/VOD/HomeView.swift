@@ -361,12 +361,18 @@ private struct HomeContent: View {
             }
         }
         let metadata = await model.metadata.cachedMetadata(mediaIds: ids.map(\.id))
+        // The library records in two reads (not one per card).
+        let showIds = Array(Set(ids.filter(\.isSeries).map(\.id))), movieIds = Array(Set(ids.filter { !$0.isSeries }.map(\.id)))
+        async let showsQuery = db.series(ids: showIds)
+        async let moviesQuery = db.movies(ids: movieIds)
+        let shows = Dictionary(((try? await showsQuery) ?? []).map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+        let movies = Dictionary(((try? await moviesQuery) ?? []).map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
         var result: [String: [String]] = [:]
         for (id, isSeries) in ids where result[id] == nil {
             var urls: [String?] = [metadata[id]?.backdropURL]
-            if isSeries, let s = try? await db.series(id: id) {
+            if isSeries, let s = shows[id] {
                 urls += [s.backdropURL, s.coverURL]
-            } else if !isSeries, let m = try? await db.movie(id: id) {
+            } else if !isSeries, let m = movies[id] {
                 urls += [m.backdropURL, m.posterURL]
             }
             urls.append(metadata[id]?.posterURL)
