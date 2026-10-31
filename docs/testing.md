@@ -232,6 +232,20 @@ ffprobe -v error -show_entries format=format_name http://127.0.0.1:8765/stream/2
 mpv http://127.0.0.1:8765/stream/4.ts
 ```
 
+## 10. Timing the library queries
+
+The test kit's catalog is small; query speed needs a real-sized library. `PerfBenchmark` (TunerCore tests) times what
+Home, the browse pages, Search, Live TV, the show page, Top 10, the recommender, a sync pass and resync writes run, and
+prints resident memory per phase. It copies the file it's given to a temporary folder first (migrations and writes
+never touch the original) and prints only timings and counts:
+
+```sh
+PERF_DB=/path/to/copy/tuner.sqlite scripts/test.sh -c release -Xswiftc -enable-testing --filter PerfBenchmark
+```
+
+Use a copy of a library, never the maintainer's live `~/Library/Application Support/Tuner/tuner.sqlite`, and never
+commit one (it holds provider data). Debug builds are several times slower; compare release runs only.
+
 ## Limitations
 
 - No Stalker/MAG portal emulation, and no HTTPS.

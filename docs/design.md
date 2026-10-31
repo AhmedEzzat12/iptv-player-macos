@@ -403,6 +403,32 @@ and the original research: `ios-handover.md`, `ios-port-research.md`.
 | Not on iOS | Recording (needs the ffmpeg process), the ffmpeg AirPlay bridge, Sparkle, the shortcut editor, choosing a downloads folder, PiP for mpv content | Platform limits; the owner declined mpv PiP |
 | Downloads | Documents/Downloads (visible in Files), excluded from iCloud backup | Re-downloadable, large |
 
+## Performance
+
+Measured with `PerfBenchmark` (release build, a real 12k-channel / 41k-movie / 15k-show library; see
+`docs/testing.md`). Every library read the UI runs is now under ~15 ms except the full Live TV list (12k channels,
+~40 ms, half of it decoding rows) and Top 10 matching (~45 ms per kind, name LIKE scans); both run off the main actor.
+
+- **Sort indexes** (migration `v9-vodSortIndexes`): movie/series indexes on the exact expressions `vodOrder` sorts by
+  (recently added, name, rating). Home's shelves and the browse grids read a page in order instead of sorting the
+  whole table (~12 ms → <1 ms; name-sorted page 11 26 → 2 ms). Costs ~60% more on a VOD resync's replace (56k rows
+  ~0.6 → ~1 s, in the background). A test checks the query plans still use them; keep `vodOrder` and the indexes in
+  step. Year and provider-order sorts have no index (~12 ms).
+- **Category facets are cached** by name (`CategoryClassifier.facet`, bounded). Classifying costs ~0.14 ms a name and
+  the browse pages asked for every visible category on each render (~12 ms per render on the main actor, twice).
+- **No-op writes are skipped** where a page asks the provider again on every visit: unchanged episodes
+  (`replaceEpisodes`) and details (`updateMovieDetails`/`updateSeriesDetails`) aren't rewritten, so reopening a
+  title doesn't bump `libraryRevision` (which reloads every open page). An M3U playlist's inline episodes are written
+  in one transaction.
+- **Batched lookups** instead of one query per item: Home's fallback artwork and the Top 10 rows.
+- **Observation**: a view that reads a fast-changing `AppModel` property (`downloadsById` changes every second while
+  anything downloads) should be its own small view, so the page around it isn't re-evaluated (the show page's
+  season Download button).
+- Searches stay `LIKE '%word%'` scans (1–15 ms on 56k titles); FTS isn't worth an extra index to keep in sync.
+- Memory: Live TV holds the whole channel list (~11 MB for 12k channels); VOD pages hold 200–2,000 titles. Building
+  the recommendation index (Settings › AI, off by default) reads every title (~280 ms) and raises the resident size by
+  ~250 MB at its peak; the index itself is ~11 MB of vectors.
+
 ## Improvements over ynotv
 
 Per-channel `#EXTVLCOPT` user-agent/referrer, URL-encoded credentials, commas in titles, M3U VOD grouping,

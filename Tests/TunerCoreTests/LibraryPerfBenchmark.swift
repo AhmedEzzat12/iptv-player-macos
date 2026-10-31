@@ -171,6 +171,9 @@ struct PerfBenchmark {
             let list = try await Self.time("live.channels(all, \(sort.rawValue))") { try await db.channels(scope: .all, sort: sort) }
             if sort == .provider { print("PERF live: \(list.count) channels") }
         }
+        // What the Live TV page does on the main actor with a reloaded list (LiveGuideStore.setChannels, zapList).
+        let listA = try await db.channels(scope: .all), listB = try await db.channels(scope: .all)
+        await Self.time("live.compare reloaded list (main actor)") { listA == listB }
         try await Self.time("live.rows(all) without decoding") {
             try await db.writer.read { db in try Row.fetchAll(db, sql: AppDatabase.channelSelect + " ORDER BY s.sortIndex, c.sourceId, c.providerOrder").count }
         }
