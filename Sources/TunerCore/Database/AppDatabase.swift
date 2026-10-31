@@ -422,6 +422,19 @@ public final class AppDatabase: Sendable {
                 t.primaryKey(["seriesId", "episodeId", "confirmed"])
             }
         }
+
+        // Sort orders of Home's shelves, the Movies/TV Shows grids and name-sorted searches (`vodOrder`), so a page
+        // of 20–200 titles is read in order instead of sorting the whole table (41k movies: ~11 ms → <1 ms). The
+        // expressions must stay identical to `vodOrder`'s for SQLite to use them.
+        m.registerMigration("v9-vodSortIndexes") { db in
+            for table in ["movie", "series"] {
+                try db.execute(sql: """
+                    CREATE INDEX \(table)_order_added ON \(table)(addedAt IS NULL, addedAt DESC, providerOrder);
+                    CREATE INDEX \(table)_order_name ON \(table)(name COLLATE NOCASE);
+                    CREATE INDEX \(table)_order_rating ON \(table)(rating IS NULL, rating DESC, name COLLATE NOCASE);
+                    """)
+            }
+        }
         return m
     }
 }

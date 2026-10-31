@@ -123,44 +123,63 @@ extension AppDatabase {
         }
     }
 
+    /// Skips the write when the provider sent what's stored: opening a show asks the provider every time, and a
+    /// rewrite of the same rows would still count as a library change (every open page reloads).
     public func replaceEpisodes(seriesId: String, episodes: [Episode]) async throws {
-        guard !episodes.isEmpty else { return } // never wipe on an empty/failed response
+        try await replaceEpisodes([seriesId: episodes])
+    }
+
+    /// `replaceEpisodes(seriesId:episodes:)` for many shows in one transaction (an M3U playlist lists its shows'
+    /// episodes inline: one transaction per show made a resync of thousands of shows take seconds).
+    public func replaceEpisodes(_ bySeries: [String: [Episode]]) async throws {
+        let bySeries = bySeries.filter { !$0.value.isEmpty } // never wipe on an empty/failed response
+        guard !bySeries.isEmpty else { return }
         try await writer.write { db in
-            try db.execute(sql: "DELETE FROM episode WHERE seriesId = ?", arguments: [seriesId])
             let stmt = try db.makeStatement(sql: """
                 INSERT OR REPLACE INTO episode (id, seriesId, sourceId, season, number, title, plot, imageURL, durationSeconds,
                     providerId, containerExtension, streamURL, airDate) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """)
-            for e in episodes {
-                try stmt.execute(arguments: [e.id, e.seriesId, e.sourceId, e.season, e.number, e.title, e.plot, e.imageURL,
-                                             e.durationSeconds, e.providerId, e.containerExtension, e.streamURL, e.airDate])
+            for (seriesId, episodes) in bySeries.sorted(by: { $0.key < $1.key }) {
+                let stored = try Episode.fetchAll(db, sql: "SELECT * FROM episode WHERE seriesId = ?", arguments: [seriesId])
+                let fresh = Dictionary(episodes.map { ($0.id, $0) }, uniquingKeysWith: { _, last in last }) // as INSERT OR REPLACE
+                if fresh == Dictionary(stored.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a }) { continue }
+                try db.execute(sql: "DELETE FROM episode WHERE seriesId = ?", arguments: [seriesId])
+                for e in episodes {
+                    try stmt.execute(arguments: [e.id, e.seriesId, e.sourceId, e.season, e.number, e.title, e.plot, e.imageURL,
+                                                 e.durationSeconds, e.providerId, e.containerExtension, e.streamURL, e.airDate])
+                }
             }
         }
     }
 
-    /// Persists lazily fetched details (plot, cast…) so the detail view is instant next time.
+    /// Persists lazily fetched details (plot, cast…) so the detail view is instant next time. Rows already holding
+    /// these details aren't touched, so reopening a title isn't a library change.
     public func updateMovieDetails(id: String, _ d: VODDetails) async throws {
         try await writer.write { db in
-            try db.execute(sql: """
-                UPDATE movie SET plot = COALESCE(?, plot), "cast" = COALESCE(?, "cast"), director = COALESCE(?, director),
-                    genre = COALESCE(?, genre), releaseDate = COALESCE(?, releaseDate), rating = COALESCE(?, rating),
-                    durationSeconds = COALESCE(?, durationSeconds), backdropURL = COALESCE(?, backdropURL),
-                    trailer = COALESCE(?, trailer), containerExtension = COALESCE(?, containerExtension), tmdbId = COALESCE(?, tmdbId)
-                WHERE id = ?
-                """, arguments: [d.plot, d.cast, d.director, d.genre, d.releaseDate, d.rating, d.durationSeconds, d.backdropURL,
-                                 d.trailer, d.containerExtension, d.tmdbId, id])
+            try db.execute(sql: Self.detailsUpdate(table: "movie", columns: [
+                "plot", "cast", "director", "genre", "releaseDate", "rating", "durationSeconds", "backdropURL", "trailer",
+                "containerExtension", "tmdbId",
+            ]), arguments: [d.plot, d.cast, d.director, d.genre, d.releaseDate, d.rating, d.durationSeconds, d.backdropURL,
+                            d.trailer, d.containerExtension, d.tmdbId, id])
         }
     }
 
     public func updateSeriesDetails(id: String, _ d: VODDetails) async throws {
         try await writer.write { db in
-            try db.execute(sql: """
-                UPDATE series SET plot = COALESCE(?, plot), "cast" = COALESCE(?, "cast"), director = COALESCE(?, director),
-                    genre = COALESCE(?, genre), releaseDate = COALESCE(?, releaseDate), rating = COALESCE(?, rating),
-                    backdropURL = COALESCE(?, backdropURL), trailer = COALESCE(?, trailer)
-                WHERE id = ?
-                """, arguments: [d.plot, d.cast, d.director, d.genre, d.releaseDate, d.rating, d.backdropURL, d.trailer, id])
+            try db.execute(sql: Self.detailsUpdate(table: "series", columns: [
+                "plot", "cast", "director", "genre", "releaseDate", "rating", "backdropURL", "trailer",
+            ]), arguments: [d.plot, d.cast, d.director, d.genre, d.releaseDate, d.rating, d.backdropURL, d.trailer, id])
         }
+    }
+
+    /// `UPDATE <table> SET col = COALESCE(?n, col)… WHERE id = ?last` for rows where one of the values differs
+    /// (arguments: one per column, then the id).
+    static func detailsUpdate(table: String, columns: [String]) -> String {
+        let values = columns.enumerated().map { i, column in (column: "\"\(column)\"", value: "COALESCE(?\(i + 1), \"\(column)\")") }
+        return """
+            UPDATE \(table) SET \(values.map { "\($0.column) = \($0.value)" }.joined(separator: ", "))
+            WHERE id = ?\(columns.count + 1) AND (\(values.map { "\($0.column) IS NOT \($0.value)" }.joined(separator: " OR ")))
+            """
     }
 
     static func insertCategories(_ db: Database, _ categories: [Category]) throws {

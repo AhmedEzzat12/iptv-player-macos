@@ -129,6 +129,60 @@ struct VODDetailTests {
         #expect(try await db.movie(id: movie.id)?.cast == "Actor One, Actor Two")
         #expect(try await db.series(id: series.id)?.plot == "Plot")
     }
+
+    /// Rows changed by `body` (SQLite's change counter, which drives the library observation).
+    func changes(_ db: AppDatabase, _ body: () async throws -> Void) async throws -> Int {
+        let before = try await db.writer.write { $0.totalChangesCount }
+        try await body()
+        return try await db.writer.write { $0.totalChangesCount } - before
+    }
+
+    /// Reopening a title fetches the same details and episodes again: nothing is rewritten, so open pages don't reload.
+    @Test func unchangedDetailsAndEpisodesAreNotRewritten() async throws {
+        let db = try AppDatabase.inMemory()
+        try await db.save(Source(id: "x", name: "X", kind: .xtream, url: "http://x"))
+        let movie = Movie(id: "x_vod_1", sourceId: "x", categoryId: nil, name: "M", providerId: "1", providerOrder: 0)
+        let series = Series(id: "x_series_1", sourceId: "x", categoryId: nil, name: "S", providerId: "1", providerOrder: 0)
+        try await db.replaceVOD(sourceId: "x", movieCategories: [], movies: [movie], seriesCategories: [], series: [series])
+        var d = VODDetails()
+        d.plot = "Plot"
+        d.rating = 7.5
+        var episodes = (1...3).map { Episode(id: "x_ep_\($0)", seriesId: series.id, sourceId: "x", season: 1, number: $0, title: "E\($0)", providerId: "\($0)") }
+
+        #expect(try await changes(db) { try await db.updateMovieDetails(id: movie.id, d) } == 1)
+        #expect(try await changes(db) { try await db.updateSeriesDetails(id: series.id, d) } == 1)
+        #expect(try await changes(db) { try await db.replaceEpisodes(seriesId: series.id, episodes: episodes) } == 3)
+
+        #expect(try await changes(db) { try await db.updateMovieDetails(id: movie.id, d) } == 0)
+        #expect(try await changes(db) { try await db.updateSeriesDetails(id: series.id, VODDetails()) } == 0)
+        #expect(try await changes(db) { try await db.replaceEpisodes(seriesId: series.id, episodes: episodes) } == 0)
+        #expect(try await changes(db) { try await db.replaceEpisodes(seriesId: series.id, episodes: episodes + [episodes[0]]) } == 0)
+
+        d.plot = "New plot"
+        #expect(try await changes(db) { try await db.updateSeriesDetails(id: series.id, d) } == 1)
+        #expect(try await db.series(id: series.id)?.plot == "New plot")
+        episodes[1].title = "Renamed"
+        #expect(try await changes(db) { try await db.replaceEpisodes(seriesId: series.id, episodes: episodes) } > 0)
+        #expect(try await db.episodes(seriesId: series.id).map(\.title) == ["E1", "Renamed", "E3"])
+        #expect(try await changes(db) { try await db.replaceEpisodes(seriesId: series.id, episodes: Array(episodes.prefix(2))) } > 0)
+        #expect(try await db.episodes(seriesId: series.id).count == 2)
+    }
+
+    /// An M3U resync writes every show's inline episodes in one transaction; an empty list leaves a show alone.
+    @Test func episodesOfManyShowsAreReplacedTogether() async throws {
+        let db = try AppDatabase.inMemory()
+        try await db.save(Source(id: "x", name: "X", kind: .m3u, url: "http://x"))
+        func episodes(_ show: String, _ count: Int, title: String = "E") -> [Episode] {
+            (1...count).map { Episode(id: "\(show)_\($0)", seriesId: show, sourceId: "x", season: 1, number: $0, title: "\(title)\($0)", providerId: "\($0)") }
+        }
+        try await db.replaceEpisodes(["a": episodes("a", 3), "b": episodes("b", 2)])
+        #expect(try await changes(db) { try await db.replaceEpisodes(["a": episodes("a", 3), "b": episodes("b", 2), "c": []]) } == 0)
+        try await db.replaceEpisodes(["a": episodes("a", 1), "b": episodes("b", 2, title: "New "), "c": []])
+        #expect(try await db.episodes(seriesId: "a").map(\.title) == ["E1"])
+        #expect(try await db.episodes(seriesId: "b").map(\.title) == ["New 1", "New 2"])
+        try await db.replaceEpisodes(["a": []])
+        #expect(try await db.episodes(seriesId: "a").count == 1)
+    }
 }
 
 @Suite("Database categories")
@@ -196,5 +250,24 @@ struct BulkWatchedTests {
         let db = try AppDatabase.inMemory()
         try await db.markWatched([], watched: true)
         #expect(try await db.progress(seriesId: "show").isEmpty)
+    }
+
+    /// The v9 sort indexes only help while `vodOrder`'s expressions match theirs.
+    @Test func vodSortsReadThroughTheirIndexes() async throws {
+        let db = try AppDatabase.inMemory()
+        for table in ["movie", "series"] {
+            for (sort, index) in [(VODSort.added, "added"), (.name, "name"), (.rating, "rating")] {
+                let plan = try await db.writer.read { db in
+                    try Row.fetchAll(db, sql: """
+                        EXPLAIN QUERY PLAN SELECT m.* FROM \(table) m
+                        JOIN source s ON s.id = m.sourceId AND s.enabled = 1 AND s.includeVOD = 1
+                        LEFT JOIN categoryPref cp ON cp.categoryId = m.categoryId
+                        WHERE COALESCE(cp.isHidden, 0) = 0 ORDER BY \(AppDatabase.vodOrder(sort, alias: "m")) LIMIT 20
+                        """).map { $0["detail"] as String }
+                }
+                #expect(plan.contains { $0.contains("USING INDEX \(table)_order_\(index)") }, "\(table) \(sort): \(plan)")
+                #expect(!plan.contains { $0.contains("TEMP B-TREE") }, "\(table) \(sort): \(plan)")
+            }
+        }
     }
 }

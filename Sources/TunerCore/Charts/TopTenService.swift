@@ -109,13 +109,15 @@ public actor TopTenService {
                 if kind == .movie {
                     var items: [Movie] = []
                     var ranks: [Int] = []
-                    for m in matched { if let movie = try? await db.movie(id: m.id) { items.append(movie); ranks.append(m.rank) } }
+                    let found = Dictionary(((try? await db.movies(ids: matched.map(\.id))) ?? []).map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+                    for m in matched { if let movie = found[m.id] { items.append(movie); ranks.append(m.rank) } }
                     guard items.count >= TopTenMatcher.minimumMatches else { continue }
                     rows.movies = Row(source: source, week: chart.week, items: items, ranks: ranks)
                 } else {
                     var items: [Series] = []
                     var ranks: [Int] = []
-                    for m in matched { if let show = try? await db.series(id: m.id) { items.append(show); ranks.append(m.rank) } }
+                    let found = Dictionary(((try? await db.series(ids: matched.map(\.id))) ?? []).map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+                    for m in matched { if let show = found[m.id] { items.append(show); ranks.append(m.rank) } }
                     guard items.count >= TopTenMatcher.minimumMatches else { continue }
                     rows.series = Row(source: source, week: chart.week, items: items, ranks: ranks)
                 }
