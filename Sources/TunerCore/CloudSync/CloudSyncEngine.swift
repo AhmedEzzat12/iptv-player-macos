@@ -63,6 +63,7 @@ public actor CloudSyncEngine {
                                                 deviceId: device.id, now: now)
         } catch is CancellationError {
             // A newer pass took over (a change or Sync Now while this one ran): nothing went wrong.
+            report.cancelled = true
             return report
         } catch {
             Self.log.error("Sync pass failed: \(error.localizedDescription, privacy: .public)")

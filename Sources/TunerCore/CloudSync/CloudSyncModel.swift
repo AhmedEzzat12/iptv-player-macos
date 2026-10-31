@@ -250,6 +250,8 @@ public struct CloudSyncReport: Sendable {
     /// Playlists created from other devices that wait for their password.
     public var sourcesNeedingPassword = 0
     public var wroteFile = false
+    /// The pass stopped before changing anything because its task was cancelled (a newer pass takes over).
+    public var cancelled = false
 
     public init(finishedAt: Date, error: String? = nil) {
         self.finishedAt = finishedAt
