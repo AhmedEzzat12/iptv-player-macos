@@ -138,6 +138,23 @@ extension AppDatabase {
         try await writer.write { db in _ = try WatchProgress.deleteOne(db, key: mediaId) }
     }
 
+    public func rekeyProgress(from oldId: String, to newId: String) async throws {
+        try await writer.write { db in try Self.rekeyProgress(db, from: oldId, to: newId) }
+    }
+
+    /// Series ids in `watchProgress` whose episode isn't in `episode` yet (e.g. synced from another device before
+    /// the show page was opened here, or after the provider re-numbered episode ids).
+    public func seriesIdsMissingEpisodes(limit: Int = 20) async throws -> [String] {
+        try await writer.read { db in
+            try String.fetchAll(db, sql: """
+                SELECT seriesId FROM watchProgress
+                WHERE kind = 'episode' AND seriesId IS NOT NULL
+                  AND NOT EXISTS (SELECT 1 FROM episode WHERE episode.id = watchProgress.mediaId)
+                GROUP BY seriesId ORDER BY MAX(updatedAt) DESC LIMIT ?
+                """, arguments: [limit])
+        }
+    }
+
     /// Unfinished movies/episodes, most recent first (one entry per series).
     public func continueWatching(limit: Int = 20) async throws -> [WatchProgress] {
         try await writer.read { db in

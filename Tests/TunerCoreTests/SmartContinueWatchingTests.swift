@@ -283,6 +283,25 @@ struct SmartContinueWatchingDatabaseTests {
         // A show without cached episodes: its finished episode gives no card (and nothing else is asked for).
         try await save([finished(1, 1, show: "uncached", ago: 0).with(updatedAt: Date())])
         #expect(try await db.smartContinueWatching().isEmpty)
+        #expect(try await db.seriesIdsMissingEpisodes() == ["uncached"])
+    }
+
+    @Test func renumberedEpisodeIdsStillResolveNextEpisodeAndReconcileProgress() async throws {
+        // Progress was recorded against an old provider episode id ("old-s1e2"), while the episode table has "show-s1e2".
+        let stale = WatchProgress(
+            mediaId: "old-s1e2", kind: .episode, sourceId: "src", seriesId: "show", title: "The Show",
+            subtitle: "S1, E2 · Episode 2", position: 2400, duration: 2400, completed: true, updatedAt: Date()
+        )
+        try await save([stale])
+        #expect(try await db.seriesIdsMissingEpisodes() == ["show"])
+        let items = try await db.smartContinueWatching()
+        #expect(items.map(\.id) == ["show-s1e3"])
+
+        // Replacing episodes reconciles the stale progress row to the current episode id even when the episode list is unchanged.
+        try await db.replaceEpisodes(seriesId: "show", episodes: [ep(1, 1), ep(1, 2), ep(1, 3)])
+        #expect(try await db.progress(mediaId: "old-s1e2") == nil)
+        #expect(try await db.progress(mediaId: "show-s1e2")?.completed == true)
+        #expect(try await db.seriesIdsMissingEpisodes().isEmpty)
     }
 }
 

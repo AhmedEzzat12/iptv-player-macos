@@ -183,6 +183,29 @@ struct VODDetailTests {
         try await db.replaceEpisodes(["a": []])
         #expect(try await db.episodes(seriesId: "a").count == 1)
     }
+
+    @Test func replacingEpisodesReconcilesWatchProgressWhenEpisodeIdsChange() async throws {
+        let db = try AppDatabase.inMemory()
+        try await db.save(Source(id: "x", name: "X", kind: .xtream, url: "http://x"))
+        let old = [
+            Episode(id: "x_ep_10", seriesId: "s", sourceId: "x", season: 1, number: 1, title: "Pilot", providerId: "10"),
+            Episode(id: "x_ep_11", seriesId: "s", sourceId: "x", season: 1, number: 2, title: "Second", providerId: "11"),
+        ]
+        try await db.replaceEpisodes(seriesId: "s", episodes: old)
+        try await db.saveProgress(WatchProgress(
+            mediaId: "x_ep_11", kind: .episode, sourceId: "x", seriesId: "s", title: "Show",
+            subtitle: "S1, E2 · Second", position: 900, duration: 2400
+        ))
+
+        let reuploaded = [
+            Episode(id: "x_ep_20", seriesId: "s", sourceId: "x", season: 1, number: 1, title: "Pilot", providerId: "20"),
+            Episode(id: "x_ep_21", seriesId: "s", sourceId: "x", season: 1, number: 2, title: "Second", providerId: "21"),
+        ]
+        try await db.replaceEpisodes(seriesId: "s", episodes: reuploaded)
+        #expect(try await db.progress(mediaId: "x_ep_11") == nil)
+        #expect(try await db.progress(mediaId: "x_ep_21")?.position == 900)
+        #expect(try await db.continueWatching().map(\.mediaId) == ["x_ep_21"])
+    }
 }
 
 @Suite("Database categories")

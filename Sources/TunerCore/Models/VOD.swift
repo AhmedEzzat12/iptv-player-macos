@@ -154,6 +154,27 @@ public struct WatchProgress: Codable, Sendable, Hashable, Identifiable {
 
     public var fraction: Double { duration > 0 ? min(1, max(0, position / duration)) : 0 }
 
+    /// Season and episode number parsed from `subtitle` (`"S2, E4 · Title"` or `"Special 3"`).
+    public var episodePosition: (season: Int, number: Int)? {
+        guard let subtitle else { return nil }
+        if subtitle.hasPrefix("S") {
+            let rest = subtitle.dropFirst()
+            guard let comma = rest.firstIndex(of: ","),
+                  let season = Int(rest[..<comma]) else { return nil }
+            let afterComma = rest[rest.index(after: comma)...].drop(while: { $0 == " " })
+            guard afterComma.hasPrefix("E") else { return nil }
+            let digits = afterComma.dropFirst().prefix(while: \.isNumber)
+            guard let number = Int(digits) else { return nil }
+            return (season, number)
+        }
+        if subtitle.hasPrefix("Special ") {
+            let digits = subtitle.dropFirst("Special ".count).prefix(while: \.isNumber)
+            guard let number = Int(digits) else { return nil }
+            return (0, number)
+        }
+        return nil
+    }
+
     /// Matches ynotv: ≥90% watched or within 5 s of the end counts as finished.
     public static func isComplete(position: Double, duration: Double) -> Bool {
         guard duration > 0 else { return false }

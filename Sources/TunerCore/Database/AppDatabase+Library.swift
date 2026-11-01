@@ -135,6 +135,10 @@ extension AppDatabase {
         let bySeries = bySeries.filter { !$0.value.isEmpty } // never wipe on an empty/failed response
         guard !bySeries.isEmpty else { return }
         try await writer.write { db in
+            let progressBySeries = Dictionary(
+                grouping: try WatchProgress.fetchAll(db, sql: "SELECT * FROM watchProgress WHERE kind = 'episode' AND seriesId IS NOT NULL"),
+                by: { $0.seriesId! }
+            )
             let stmt = try db.makeStatement(sql: """
                 INSERT OR REPLACE INTO episode (id, seriesId, sourceId, season, number, title, plot, imageURL, durationSeconds,
                     providerId, containerExtension, streamURL, airDate) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -142,6 +146,9 @@ extension AppDatabase {
             for (seriesId, episodes) in bySeries.sorted(by: { $0.key < $1.key }) {
                 let stored = try Episode.fetchAll(db, sql: "SELECT * FROM episode WHERE seriesId = ?", arguments: [seriesId])
                 let fresh = Dictionary(episodes.map { ($0.id, $0) }, uniquingKeysWith: { _, last in last }) // as INSERT OR REPLACE
+                if let records = progressBySeries[seriesId] {
+                    try Self.reconcileEpisodeProgress(db, records: records, stored: stored, fresh: fresh, episodes: episodes)
+                }
                 if fresh == Dictionary(stored.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a }) { continue }
                 try db.execute(sql: "DELETE FROM episode WHERE seriesId = ?", arguments: [seriesId])
                 for e in episodes {
@@ -150,6 +157,35 @@ extension AppDatabase {
                 }
             }
         }
+    }
+
+    /// Keeps episode watch progress attached to the right episode when a provider re-uploads or re-numbers stream ids.
+    static func reconcileEpisodeProgress(
+        _ db: Database,
+        records: [WatchProgress],
+        stored: [Episode],
+        fresh: [String: Episode],
+        episodes: [Episode]
+    ) throws {
+        let stale = records.filter { fresh[$0.mediaId] == nil }
+        guard !stale.isEmpty else { return }
+        let storedById = Dictionary(stored.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+        for record in stale {
+            let pos = storedById[record.mediaId].map { (season: $0.season, number: $0.number) } ?? record.episodePosition
+            guard let pos,
+                  let match = episodes.first(where: { $0.season == pos.season && $0.number == pos.number }) else { continue }
+            try rekeyProgress(db, from: record.mediaId, to: match.id)
+        }
+    }
+
+    static func rekeyProgress(_ db: Database, from oldId: String, to newId: String) throws {
+        guard oldId != newId, var record = try WatchProgress.fetchOne(db, key: oldId) else { return }
+        _ = try WatchProgress.deleteOne(db, key: oldId)
+        if let existing = try WatchProgress.fetchOne(db, key: newId), existing.updatedAt >= record.updatedAt {
+            return
+        }
+        record.mediaId = newId
+        try record.save(db)
     }
 
     /// Persists lazily fetched details (plot, cast…) so the detail view is instant next time. Rows already holding

@@ -79,9 +79,12 @@ public enum SmartContinueWatching {
             case .next(let finished):
                 let list = seriesId.flatMap { episodes[$0] } ?? []
                 guard let last = latestInOrder(finished, episodes: list),
-                      let next = EpisodeNavigation.neighbor(of: last.mediaId, in: list, offset: 1) else { continue }
+                      let currentId = resolveEpisodeId(of: last, in: list),
+                      let next = EpisodeNavigation.neighbor(of: currentId, in: list, offset: 1) else { continue }
                 let activity = last.updatedAt
-                let existing = records.first { $0.mediaId == next.id }
+                let existing = records.first {
+                    $0.mediaId == next.id || ($0.episodePosition.map { $0 == (next.season, next.number) } ?? false)
+                }
                 if existing?.completed == true { continue }
                 if let existing, existing.position > resumeThreshold {
                     // Started before, then an earlier episode was rewatched: carry on where it was left.
@@ -155,13 +158,22 @@ public enum SmartContinueWatching {
     static func latestInOrder(_ finished: [WatchProgress], episodes: [Episode]) -> WatchProgress? {
         guard finished.count > 1 else { return finished.first }
         let order = Dictionary(episodes.map { ($0.id, ($0.season == 0 ? -1 : $0.season, $0.number)) }, uniquingKeysWith: { a, _ in a })
+        func key(_ p: WatchProgress) -> (Int, Int)? {
+            order[p.mediaId] ?? p.episodePosition.map { ($0.season == 0 ? -1 : $0.season, $0.number) }
+        }
         return finished.max { a, b in
-            switch (order[a.mediaId], order[b.mediaId]) {
+            switch (key(a), key(b)) {
             case let (x?, y?): x < y
             case (nil, _?): true
             default: false
             }
         }
+    }
+
+    static func resolveEpisodeId(of progress: WatchProgress, in episodes: [Episode]) -> String? {
+        if episodes.contains(where: { $0.id == progress.mediaId }) { return progress.mediaId }
+        guard let pos = progress.episodePosition else { return nil }
+        return episodes.first { $0.season == pos.season && $0.number == pos.number }?.id
     }
 }
 

@@ -244,18 +244,26 @@ struct VODUpNext {
     static func find(episodes: [Episode], progress: [String: WatchProgress]) -> VODUpNext? {
         let sorted = episodes.sorted { ($0.season, $0.number) < ($1.season, $1.number) }
         guard let first = sorted.first else { return nil }
+        func record(for e: Episode) -> WatchProgress? {
+            if let p = progress[e.id] { return p }
+            return progress.values.first { $0.episodePosition.map { $0 == (e.season, e.number) } ?? false }
+        }
         func isResumable(_ e: Episode) -> Bool {
-            guard let p = progress[e.id] else { return false }
+            guard let p = record(for: e) else { return false }
             return !p.completed && p.position > 10
         }
-        let ids = Set(sorted.map(\.id))
-        guard let latest = progress.values.filter({ ids.contains($0.mediaId) }).max(by: { $0.updatedAt < $1.updatedAt }),
-              let index = sorted.firstIndex(where: { $0.id == latest.mediaId })
+        func index(of p: WatchProgress) -> Int? {
+            if let i = sorted.firstIndex(where: { $0.id == p.mediaId }) { return i }
+            guard let pos = p.episodePosition else { return nil }
+            return sorted.firstIndex { $0.season == pos.season && $0.number == pos.number }
+        }
+        guard let latest = progress.values.filter({ index(of: $0) != nil }).max(by: { $0.updatedAt < $1.updatedAt }),
+              let index = index(of: latest)
         else { return VODUpNext(episode: first, resume: false) }
 
         let current = sorted[index]
         if !latest.completed { return VODUpNext(episode: current, resume: isResumable(current)) }
-        if let next = sorted[(index + 1)...].first(where: { progress[$0.id]?.completed != true }) {
+        if let next = sorted[(index + 1)...].first(where: { record(for: $0)?.completed != true }) {
             return VODUpNext(episode: next, resume: isResumable(next))
         }
         return VODUpNext(episode: first, resume: false)

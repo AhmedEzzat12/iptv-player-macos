@@ -409,6 +409,20 @@ private struct HomeContent: View {
         p.movieProgress = Dictionary(resumed.map { ($0.mediaId, $0.fraction) }, uniquingKeysWith: { a, _ in a })
         if p != personal { personal = p }
         loaded = true
+        await warmMissingEpisodes()
+    }
+
+    /// Fetches episodes for watched shows whose episode rows aren't in the library yet (e.g. synced from another
+    /// device, or after a provider re-upload), so Continue Watching and Up Next work without opening the show first.
+    private func warmMissingEpisodes() async {
+        guard !model.isOffline, let ids = try? await model.db.seriesIdsMissingEpisodes(), !ids.isEmpty else { return }
+        for id in ids {
+            guard !Task.isCancelled else { return }
+            if let at = model.detailsFetchedAt[id], Date().timeIntervalSince(at) < 15 * 60 { continue }
+            guard let series = try? await model.db.series(id: id) else { continue }
+            model.detailsFetchedAt[id] = Date()
+            _ = try? await model.sync.episodes(for: series)
+        }
     }
 
     /// Favourite channels (else recently watched) with what's on now; refreshed every minute.

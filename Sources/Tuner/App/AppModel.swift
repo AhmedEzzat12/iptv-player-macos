@@ -438,12 +438,38 @@ final class AppModel {
         case .movie:
             if let m = try? await db.movie(id: progress.mediaId) { await play(movie: m) }
         case .episode:
-            if let e = try? await db.episode(id: progress.mediaId), let sid = progress.seriesId, let s = try? await db.series(id: sid) {
+            if let (e, s) = await resolveEpisode(for: progress) {
                 await play(episode: e, in: s)
             }
         case .channel:
             break
         }
+    }
+
+    /// Finds the episode and show for a Continue Watching entry, fetching the show's episodes from the provider or
+    /// matching by season and episode number when `progress.mediaId` isn't in the episode table yet.
+    private func resolveEpisode(for progress: WatchProgress) async -> (Episode, Series)? {
+        if let e = try? await db.episode(id: progress.mediaId),
+           let s = try? await db.series(id: progress.seriesId ?? e.seriesId) {
+            return (e, s)
+        }
+        guard let sid = progress.seriesId, let series = try? await db.series(id: sid) else { return nil }
+        let pos = progress.episodePosition
+        let cached = (try? await db.episodes(seriesId: sid)) ?? []
+        if let pos, let e = cached.first(where: { $0.season == pos.season && $0.number == pos.number }) {
+            try? await db.rekeyProgress(from: progress.mediaId, to: e.id)
+            return (e, series)
+        }
+        guard !isOffline, let fresh = try? await sync.episodes(for: series), !fresh.isEmpty else { return nil }
+        detailsFetchedAt[sid] = Date()
+        if let e = fresh.first(where: { $0.id == progress.mediaId }) {
+            return (e, series)
+        }
+        if let pos, let e = fresh.first(where: { $0.season == pos.season && $0.number == pos.number }) {
+            try? await db.rekeyProgress(from: progress.mediaId, to: e.id)
+            return (e, series)
+        }
+        return nil
     }
 
     /// Plays a Continue Watching card: resumes a resume point, starts a next episode from the beginning (as Up Next does).
@@ -536,7 +562,9 @@ final class AppModel {
 
     private func episodes(of series: Series) async -> [Episode] {
         if let context = episodeContext, context.series.id == series.id { return context.episodes }
-        return (try? await db.episodes(seriesId: series.id)) ?? []
+        let cached = (try? await db.episodes(seriesId: series.id)) ?? []
+        if !cached.isEmpty || isOffline { return cached }
+        return (try? await sync.episodes(for: series)) ?? []
     }
 
     private func loadEpisodeContext(for item: PlaybackItem?) {
@@ -549,7 +577,7 @@ final class AppModel {
         if episodeContext?.series.id == series.id { return }
         episodeContext = nil
         Task {
-            let episodes = (try? await db.episodes(seriesId: series.id)) ?? []
+            let episodes = await self.episodes(of: series)
             guard case .episode(_, let current)? = player.main.item, current.id == series.id else { return }
             episodeContext = EpisodeContext(series: series, episodes: episodes)
             // Warm the ratings (and, the first time ever, IMDb's data sets) so the episode list opens with them.
