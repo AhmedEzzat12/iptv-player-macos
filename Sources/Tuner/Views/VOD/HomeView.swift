@@ -116,6 +116,8 @@ private struct HomeContent: View {
         .homeTopTenRows($topTen)
         .task(id: model.libraryRevision) { await loadLibrary() }
         .vodRecommendationRows($recommendations)
+        // Episode lists for watched shows that don't have them yet: on library changes, not on every progress save.
+        .task(id: model.libraryRevision) { await warmMissingEpisodes() }
         .task(id: HomePersonalKey(user: model.userRevision, library: model.libraryRevision)) {
             await loadPersonal()
         }
@@ -154,7 +156,7 @@ private struct HomeContent: View {
                 title: progress.title,
                 subtitle: progress.subtitle,
                 caption: VODFormat.timeLeft(progress),
-                imageURLs: [progress.posterURL] + (personal.artwork[progress.seriesId ?? progress.mediaId] ?? []),
+                imageURLs: personal.artwork[progress.mediaId] ?? [progress.posterURL],
                 symbol: progress.kind == .movie ? "film" : "tv",
                 progress: progress.fraction
             )
@@ -196,7 +198,7 @@ private struct HomeContent: View {
                 title: progress.title,
                 subtitle: "\(VODFormat.episodeCode(episode)) · Next Episode",
                 caption: episode.title.nilIfEmpty,
-                imageURLs: [episode.imageURL, progress.posterURL] + (personal.artwork[episode.seriesId] ?? []),
+                imageURLs: personal.artwork[progress.mediaId] ?? [episode.imageURL, progress.posterURL],
                 symbol: "tv"
             )
         }
@@ -350,33 +352,66 @@ private struct HomeContent: View {
         }
     }
 
-    /// Backup pictures for Continue Watching / Up Next cards, from cached online metadata and the library records.
-    private func fallbackArtwork(for items: [ContinueWatchingItem]) async -> [String: [String]] {
+    /// Pictures for each Continue Watching / Up Next card, keyed by the card (episode or movie id), in the order to
+    /// try: the episode's still (online metadata, then the provider's), the show's or movie's backdrop (online, then
+    /// the provider's), then posters. Provider image servers often answer with empty files, so the online artwork
+    /// comes first. With `online`, metadata that isn't cached yet is looked up (Settings › Metadata decides whether
+    /// that may use the network); otherwise only what's cached is used.
+    private func cardArtwork(for items: [ContinueWatchingItem], online: Bool) async -> [String: [String]] {
         let db = model.db
-        var ids: [(id: String, isSeries: Bool)] = []
-        for item in items {
+        let titleIds = Array(Set(items.map { item -> String in
             switch item {
-            case .resume(let p): ids.append(p.seriesId.map { ($0, true) } ?? (p.mediaId, false))
-            case .nextEpisode(let e, _): ids.append((e.seriesId, true))
+            case .resume(let p): p.seriesId ?? p.mediaId
+            case .nextEpisode(let e, _): e.seriesId
             }
-        }
-        let metadata = await model.metadata.cachedMetadata(mediaIds: ids.map(\.id))
+        }))
         // The library records in two reads (not one per card).
-        let showIds = Array(Set(ids.filter(\.isSeries).map(\.id))), movieIds = Array(Set(ids.filter { !$0.isSeries }.map(\.id)))
+        let showIds = titleIds.filter { id in items.contains { $0.progress.seriesId == id } }
+        let movieIds = titleIds.filter { !showIds.contains($0) }
         async let showsQuery = db.series(ids: showIds)
         async let moviesQuery = db.movies(ids: movieIds)
         let shows = Dictionary(((try? await showsQuery) ?? []).map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
         let movies = Dictionary(((try? await moviesQuery) ?? []).map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
-        var result: [String: [String]] = [:]
-        for (id, isSeries) in ids where result[id] == nil {
-            var urls: [String?] = [metadata[id]?.backdropURL]
-            if isSeries, let s = shows[id] {
-                urls += [s.backdropURL, s.coverURL]
-            } else if !isSeries, let m = movies[id] {
-                urls += [m.backdropURL, m.posterURL]
+        var metadata = await model.metadata.cachedMetadata(mediaIds: titleIds)
+        if online {
+            for id in titleIds where metadata[id] == nil {
+                guard !Task.isCancelled else { break }
+                let found: MediaMetadata? = if let s = shows[id] {
+                    await model.metadata.metadata(for: s)
+                } else if let m = movies[id] {
+                    await model.metadata.metadata(for: m)
+                } else {
+                    nil
+                }
+                if let found { metadata[id] = found }
             }
-            urls.append(metadata[id]?.posterURL)
-            result[id] = urls.compactMap { $0?.nilIfEmpty }
+        }
+        var result: [String: [String]] = [:]
+        for item in items {
+            var urls: [String?] = []
+            switch item {
+            case .resume(let p):
+                let titleId = p.seriesId ?? p.mediaId
+                let info = metadata[titleId]
+                if p.kind == .episode {
+                    if let pos = p.episodePosition, let still = info?.episode(season: pos.season, number: pos.number) {
+                        urls += [still.stillURL, still.fallbackStillURL]
+                    }
+                    urls.append((try? await db.episode(id: p.mediaId))?.imageURL)
+                    urls += [info?.backdropURL, shows[titleId]?.backdropURL, p.posterURL, shows[titleId]?.coverURL]
+                } else {
+                    urls += [info?.backdropURL, movies[titleId]?.backdropURL, p.posterURL, movies[titleId]?.posterURL]
+                }
+                urls.append(info?.posterURL)
+            case .nextEpisode(let e, let p):
+                let info = metadata[e.seriesId]
+                if let still = info?.episode(season: e.season, number: e.number) {
+                    urls += [still.stillURL, still.fallbackStillURL]
+                }
+                urls += [e.imageURL, info?.backdropURL, shows[e.seriesId]?.backdropURL, p.posterURL,
+                         shows[e.seriesId]?.coverURL, info?.posterURL]
+            }
+            result[item.id] = urls.compactMap { $0?.nilIfEmpty }
         }
         return result
     }
@@ -399,7 +434,7 @@ private struct HomeContent: View {
         var p = HomePersonal()
         p.continueWatching = cw
         p.upNext = upNext
-        p.artwork = await fallbackArtwork(for: cw + upNext)
+        p.artwork = await cardArtwork(for: cw + upNext, online: false)
         p.favorites = Array((fm.map(VODItem.movie) + fs.map(VODItem.series)).prefix(40))
         p.favoriteIds = Set(fm.map(\.id) + fs.map(\.id))
         let resumed = cw.compactMap { item -> WatchProgress? in
@@ -409,7 +444,10 @@ private struct HomeContent: View {
         p.movieProgress = Dictionary(resumed.map { ($0.mediaId, $0.fraction) }, uniquingKeysWith: { a, _ in a })
         if p != personal { personal = p }
         loaded = true
-        await warmMissingEpisodes()
+        // Then fill in online artwork for titles whose metadata isn't cached yet (cached afterwards, so cheap).
+        let artwork = await cardArtwork(for: cw + upNext, online: true)
+        guard !Task.isCancelled, artwork != personal.artwork else { return }
+        personal.artwork = artwork
     }
 
     /// Fetches episodes for watched shows whose episode rows aren't in the library yet (e.g. synced from another
@@ -418,7 +456,8 @@ private struct HomeContent: View {
         guard !model.isOffline, let ids = try? await model.db.seriesIdsMissingEpisodes(), !ids.isEmpty else { return }
         for id in ids {
             guard !Task.isCancelled else { return }
-            if let at = model.detailsFetchedAt[id], Date().timeIntervalSince(at) < 15 * 60 { continue }
+            // Background work: a show the provider no longer lists stays "missing", so don't ask again for hours.
+            if let at = model.detailsFetchedAt[id], Date().timeIntervalSince(at) < 6 * 3600 { continue }
             guard let series = try? await model.db.series(id: id) else { continue }
             model.detailsFetchedAt[id] = Date()
             _ = try? await model.sync.episodes(for: series)

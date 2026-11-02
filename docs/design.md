@@ -225,6 +225,14 @@ yearless chart title matching library items from different years is skipped. Dup
 playlist; hidden (and, when hidden, adult) categories are left out. A row uses the first source with ≥ 3 matches and
 shows up to 10, each with its chart rank (`ChartEntry.rank`: Netflix's `weekly_rank` in a country list, a show at its best season; otherwise its position in the list), gaps kept. Off: the service is never called.
 
+### Continue Watching / Up Next pictures
+
+Provider image servers often answer 200 with an empty file (or 404) for episode stills and show posters. Home's
+cards therefore try, in order: the episode's still from online metadata (TMDB/Cinemeta, `stillURL` then
+`fallbackStillURL`), the provider's still, the online backdrop, the provider's backdrop, then posters
+(`HomeContent.cardArtwork`). Cached metadata is used at once; titles without it are looked up afterwards (Settings
+› Metadata decides whether that may use the network), so the second pass is cheap once cached.
+
 ### Artwork loading
 
 `RemoteImage` loads through `ArtworkLoader` rather than `AsyncImage` + `URLCache`: decoded images stay in an

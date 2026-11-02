@@ -460,7 +460,13 @@ final class AppModel {
             try? await db.rekeyProgress(from: progress.mediaId, to: e.id)
             return (e, series)
         }
-        guard !isOffline, let fresh = try? await sync.episodes(for: series), !fresh.isEmpty else { return nil }
+        guard !isOffline else { return nil }
+        // This asks the provider and can take a moment: say so, so the tap doesn't look ignored.
+        notify(Banner(symbol: "tv", title: "Loading \(series.name)…", message: "Getting the episode list from your provider."))
+        guard let fresh = try? await sync.episodes(for: series), !fresh.isEmpty else {
+            notify(Banner(symbol: "tv", title: "Couldn't load \(series.name)", message: "The provider didn't return its episodes.", isError: true))
+            return nil
+        }
         detailsFetchedAt[sid] = Date()
         if let e = fresh.first(where: { $0.id == progress.mediaId }) {
             return (e, series)
