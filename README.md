@@ -103,6 +103,8 @@ Blender Foundation open movies (CC BY). No provider content is shown.</sub>
   again on iPhone/iPad, puts the cursor in the field.
 - **Back to the top:** clicking the open section in the sidebar again (Home, Movies, TV Shows, …), its ⌘ shortcut,
   or tapping its tab again on iPhone/iPad closes a movie or show page open in it.
+- **Screen stays on** while something plays, whichever engine plays it; pausing lets the Mac's display sleep and
+  the iPhone lock as usual.
 - **Recordings (Mac):** record now or schedule from the guide (ffmpeg stream copy).
 - **On-device AI features** (Settings → AI, each off until you turn it on; nothing about your library or what
   you watch leaves the device):

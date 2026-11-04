@@ -51,7 +51,9 @@ final class PlayerSlot: Identifiable {
 
     private(set) var item: PlaybackItem?
     private(set) var stream: PlayableStream?
-    private(set) var phase: Phase = .idle
+    private(set) var phase: Phase = .idle {
+        didSet { if phase != oldValue { ScreenAwake.update(slot: id, phase: phase) } }
+    }
     private(set) var snapshot = EngineSnapshot()
     /// Transient status ("Switching to backup…", "Reconnecting 2/10…").
     private(set) var statusMessage: String?

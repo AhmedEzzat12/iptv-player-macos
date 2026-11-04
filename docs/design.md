@@ -387,6 +387,9 @@ Data flow: views call `AppModel` actions and read `model.db` in `.task(id:)` blo
 - Player: one persistent video view that moves between **full window** (sidebar collapses, TV-app glass
   controls that auto-hide), the guide **preview**, and a **mini player** while browsing — never recreated.
   (Multiview was removed on 2026-10-06 at the owner's request.)
+- `ScreenAwake` keeps the display on while the player is loading, playing or buffering (an IOKit
+  display-sleep assertion on the Mac, `isIdleTimerDisabled` on iOS). AVFoundation does this by itself, mpv doesn't,
+  so without it the iPhone dimmed and locked during mpv playback.
 - Settings window (⌘,): Playlists (+ global guide feeds), Playback, Guide & Library, Recording, Appearance,
   Shortcuts, About. First run: Welcome screen with source cards.
 
