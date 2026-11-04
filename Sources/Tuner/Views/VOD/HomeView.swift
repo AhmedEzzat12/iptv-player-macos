@@ -15,6 +15,7 @@ struct HomeView: View {
                 HomeContent { path.append($0) }
                     .vodDestinations()
             }
+            .onChange(of: model.sectionRootRequests[.home]) { path.removeAll() }
         }
     }
 }

@@ -101,6 +101,8 @@ Blender Foundation open movies (CC BY). No provider content is shown.</sub>
 - **Search:** channels, what's on TV, movies and shows across all playlists; recent searches are kept (the ones you
   pressed Return on, opened or played) and shown while the field is empty. ⌘F on the Mac, or tapping the Search tab
   again on iPhone/iPad, puts the cursor in the field.
+- **Back to the top:** clicking the open section in the sidebar again (Home, Movies, TV Shows, …), its ⌘ shortcut,
+  or tapping its tab again on iPhone/iPad closes a movie or show page open in it.
 - **Recordings (Mac):** record now or schedule from the guide (ffmpeg stream copy).
 - **On-device AI features** (Settings → AI, each off until you turn it on; nothing about your library or what
   you watch leaves the device):

@@ -13,6 +13,7 @@ struct SearchView: View {
         }
         // Back to the field from a movie or show page opened from the results.
         .onChange(of: model.searchFocusRequest) { path.removeAll() }
+        .onChange(of: model.sectionRootRequests[.search]) { path.removeAll() }
         .onChange(of: path.count) { old, new in
             // Opening a movie or show from the results.
             if new > old { model.prefs.rememberSearch(model.searchQuery) }

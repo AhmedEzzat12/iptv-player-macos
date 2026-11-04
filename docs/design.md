@@ -374,7 +374,11 @@ Data flow: views call `AppModel` actions and read `model.db` in `.task(id:)` blo
 ## UX — Apple TV app style (user requirement: "fully native, experience like the Apple TV app")
 
 - Native `NavigationSplitView` sidebar: Search · Home · Live TV · Movies · TV Shows · Recordings, then
-  "Channels" (Favorites, Recently Watched, custom groups).
+  "Channels" (Favorites, Recently Watched, custom groups). Each section keeps its own `NavigationStack` path;
+  choosing the open section again bumps `AppModel.sectionRootRequests[section]`, which empties that path (back to
+  its top page). The sidebar `List` doesn't report a click on the already-selected row, so each row carries a
+  full-width tap gesture (`reselects`) that fires before the selection changes; on iPhone/iPad the `TabView`
+  selection setter sees the repeated tap. ⌘1–6 always open the section at its top page.
 - Home: rotating hero artwork + shelves (Continue Watching, On Now, Recently Added, Top Rated, Favorites).
 - Movies / TV Shows: category chips + poster grid; detail pages with backdrop hero, capsule Play/Resume, seasons
   and episode cards with progress; autoplay of the next episode.

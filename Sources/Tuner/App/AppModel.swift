@@ -57,6 +57,9 @@ final class AppModel {
     @ObservationIgnored var detailsFetchedAt: [String: Date] = [:]
     /// Bumped to put the cursor in Search's field (⌘F, or tapping the Search tab again on iPhone/iPad).
     private(set) var searchFocusRequest = 0
+    /// Bumped per section to take it back to its top page, closing a movie or show page open in it (its sidebar row
+    /// or tab chosen again, or the Go menu).
+    private(set) var sectionRootRequests: [SidebarItem: Int] = [:]
     var sourceEditor: SourceEditorRequest?
     /// Source editors on screen; iCloud sync waits while one is open.
     @ObservationIgnored var openSourceEditors = 0
@@ -613,6 +616,12 @@ final class AppModel {
     func enterFullWindow() {
         guard player.hasMedia else { return }
         player.isFullWindow = true
+    }
+
+    /// Opens a section at its top page.
+    func showSection(_ item: SidebarItem) {
+        sidebarSelection = item
+        sectionRootRequests[item, default: 0] += 1
     }
 
     /// Opens Search with the cursor in its field.

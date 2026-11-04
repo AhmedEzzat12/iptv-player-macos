@@ -321,12 +321,12 @@ final class KeyboardShortcuts {
         case .recordNow:
             guard live, let channel = main.item?.channel else { return false }
             model.recordNow(channel)
-        case .home: model.sidebarSelection = .home
-        case .liveTV: model.sidebarSelection = .liveTV
-        case .movies: model.sidebarSelection = .movies
-        case .series: model.sidebarSelection = .series
+        case .home: model.showSection(.home)
+        case .liveTV: model.showSection(.liveTV)
+        case .movies: model.showSection(.movies)
+        case .series: model.showSection(.series)
         case .search: model.focusSearch()
-        case .recordings: model.sidebarSelection = .recordings
+        case .recordings: model.showSection(.recordings)
         case .help: model.showShortcutHelp.toggle()
         }
         return true
@@ -348,12 +348,12 @@ struct TunerCommands: Commands {
                 .keyboardShortcut("r", modifiers: [.command])
         }
         CommandMenu("Go") {
-            Button("Home") { model.sidebarSelection = .home }.keyboardShortcut("1", modifiers: .command)
-            Button("Live TV") { model.sidebarSelection = .liveTV }.keyboardShortcut("2", modifiers: .command)
-            Button("Movies") { model.sidebarSelection = .movies }.keyboardShortcut("3", modifiers: .command)
-            Button("TV Shows") { model.sidebarSelection = .series }.keyboardShortcut("4", modifiers: .command)
-            Button("Recordings") { model.sidebarSelection = .recordings }.keyboardShortcut("5", modifiers: .command)
-            Button("Downloads") { model.sidebarSelection = .downloads }.keyboardShortcut("6", modifiers: .command)
+            Button("Home") { model.showSection(.home) }.keyboardShortcut("1", modifiers: .command)
+            Button("Live TV") { model.showSection(.liveTV) }.keyboardShortcut("2", modifiers: .command)
+            Button("Movies") { model.showSection(.movies) }.keyboardShortcut("3", modifiers: .command)
+            Button("TV Shows") { model.showSection(.series) }.keyboardShortcut("4", modifiers: .command)
+            Button("Recordings") { model.showSection(.recordings) }.keyboardShortcut("5", modifiers: .command)
+            Button("Downloads") { model.showSection(.downloads) }.keyboardShortcut("6", modifiers: .command)
             Button("Search") { model.focusSearch() }.keyboardShortcut("f", modifiers: .command)
         }
         CommandMenu("Playback") {

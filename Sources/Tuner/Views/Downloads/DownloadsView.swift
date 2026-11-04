@@ -10,6 +10,7 @@ import TunerCore
 /// with their episodes in order. Every row shows its state (progress, speed, queued, paused, failed) and its actions;
 /// completed ones play from this Mac, also offline. Movie and show pages open in place.
 struct DownloadsView: View {
+    @Environment(AppModel.self) private var model
     @ViewState private var path: [VODRoute] = []
 
     var body: some View {
@@ -17,6 +18,7 @@ struct DownloadsView: View {
             DownloadsContent { path.append($0) }
                 .vodDestinations()
         }
+        .onChange(of: model.sectionRootRequests[.downloads]) { path.removeAll() }
     }
 }
 

@@ -118,6 +118,9 @@ struct MobileRootView: View {
             // keyboard closed so the results and tab bar stay visible).
             if item == .search, model.sidebarSelection == .search {
                 model.focusSearch()
+            } else if item == model.sidebarSelection {
+                // Tapping the open tab again goes back to its top page (closes a movie or show page).
+                model.showSection(item)
             } else {
                 model.sidebarSelection = item
             }

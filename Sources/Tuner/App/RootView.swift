@@ -80,6 +80,29 @@ struct DetailRoot: View {
 
 // MARK: - Sidebar
 
+private extension View {
+    /// Clicking the row of the section that's already open takes it back to its top page (closes a movie or show
+    /// page). The List doesn't report a click on the selected row, so a tap across the row's full width catches it;
+    /// the tap ends before the selection changes, so a click that switches sections doesn't count.
+    func reselects(_ item: SidebarItem) -> some View {
+        modifier(SidebarReselect(item: item))
+    }
+}
+
+private struct SidebarReselect: ViewModifier {
+    @Environment(AppModel.self) private var model
+    let item: SidebarItem
+
+    func body(content: Content) -> some View {
+        content
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+            .simultaneousGesture(TapGesture().onEnded {
+                if model.sidebarSelection == item { model.showSection(item) }
+            })
+    }
+}
+
 struct SidebarView: View {
     @Environment(AppModel.self) private var model
     @ViewState private var newGroupName = ""
@@ -90,14 +113,15 @@ struct SidebarView: View {
     var body: some View {
         @Bindable var model = model
         List(selection: $model.sidebarSelection) {
-            Label("Search", systemImage: "magnifyingglass").tag(SidebarItem.search)
-            Label("Home", systemImage: "house").tag(SidebarItem.home)
-            Label("Live TV", systemImage: "dot.radiowaves.left.and.right").tag(SidebarItem.liveTV)
-            Label("Movies", systemImage: "film").tag(SidebarItem.movies)
-            Label("TV Shows", systemImage: "tv").tag(SidebarItem.series)
-            Label("Recordings", systemImage: "record.circle").tag(SidebarItem.recordings)
+            Label("Search", systemImage: "magnifyingglass").reselects(.search).tag(SidebarItem.search)
+            Label("Home", systemImage: "house").reselects(.home).tag(SidebarItem.home)
+            Label("Live TV", systemImage: "dot.radiowaves.left.and.right").reselects(.liveTV).tag(SidebarItem.liveTV)
+            Label("Movies", systemImage: "film").reselects(.movies).tag(SidebarItem.movies)
+            Label("TV Shows", systemImage: "tv").reselects(.series).tag(SidebarItem.series)
+            Label("Recordings", systemImage: "record.circle").reselects(.recordings).tag(SidebarItem.recordings)
             // The tag has to be the outermost modifier: after .badge the List can't see it and the row won't select.
             Label("Downloads", systemImage: "arrow.down.circle")
+                .reselects(.downloads)
                 .badge(model.activeDownloadCount)
                 .tag(SidebarItem.downloads)
 
