@@ -102,10 +102,6 @@ final class MPVEngine: PlaybackEngine {
         option("terminal", "no")
         option("config", "no")
         option("ytdl", "no")
-        #if TUNER_APP_STORE
-        // MPVKit's Mac build includes LuaJIT; Tuner uses none of mpv's scripts.
-        option("load-scripts", "no")
-        #endif
         option("audio-client-name", Distribution.appName)
         option("cache", "yes")
         option("demuxer-max-bytes", "\(max(prefs.bufferMegabytes, 1))MiB")
@@ -120,6 +116,18 @@ final class MPVEngine: PlaybackEngine {
         // Never let the advanced box replace the embedded video output or make the core quit when idle.
         option("vo", "libmpv")
         option("idle", "yes")
+        #if TUNER_APP_STORE
+        // No Lua scripts at all in the Mac App Store app (set after the advanced box, so it can't turn one back on).
+        // MPVKit's Mac build includes LuaJIT, and under the hardened runtime (no JIT entitlement) the code it compiles
+        // sits in an unsigned page: macOS kills the app the moment it runs (TestFlight 1.9.3 (127) crashed on every
+        // play). load-scripts only covers script folders; the built-in scripts have their own switches.
+        option("load-scripts", "no")
+        option("scripts", "")
+        for script in ["osc", "ytdl", "load-stats-overlay", "load-console", "load-osd-console", "load-auto-profiles",
+                       "load-select", "load-positioning", "load-commands", "load-context-menu"] {
+            option(script, "no")
+        }
+        #endif
 
         let result = mpv_initialize(handle)
         guard result >= 0 else {

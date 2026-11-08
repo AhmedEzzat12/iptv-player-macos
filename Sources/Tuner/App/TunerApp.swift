@@ -37,6 +37,7 @@ struct TunerApp: App {
                 .environment(model)
                 .frame(minWidth: 980, minHeight: 620)
                 .onAppear { appDelegate.model = model }
+                }
         }
         .defaultSize(width: 1360, height: 860)
         .windowToolbarStyle(.unified(showsTitle: false))
