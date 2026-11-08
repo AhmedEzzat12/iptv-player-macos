@@ -23,7 +23,10 @@ struct SettingsDownloadsPane: View {
                 LabeledContent {
                     HStack(spacing: 8) {
                         Button("Show in Finder") { DownloadActions.revealFolder(model: model) }
-                        Button("Choose…", action: chooseFolder)
+                        // The Mac App Store app may only write to ~/Movies, so its folder is fixed.
+                        if !Distribution.isMacAppStore {
+                            Button("Choose…", action: chooseFolder)
+                        }
                     }
                 } label: {
                     Label {

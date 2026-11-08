@@ -253,7 +253,7 @@ final class CloudSyncController {
             try? FileManager.default.createDirectory(at: debugFolder, withIntermediateDirectories: true)
             return .success((debugFolder, {}))
         }
-        #if os(macOS)
+        #if os(macOS) && !TUNER_APP_STORE
         let url = macFolder
         if defaults.string(forKey: Self.folderPathKey) == nil {
             // The default folder in iCloud Drive: created when iCloud Drive is on.
@@ -269,13 +269,13 @@ final class CloudSyncController {
             return .failure(FolderError(message: "Choose the sync folder in iCloud Drive."))
         }
         var stale = false
-        guard let url = try? URL(resolvingBookmarkData: data, options: [], relativeTo: nil, bookmarkDataIsStale: &stale) else {
+        guard let url = try? URL(resolvingBookmarkData: data, options: Self.bookmarkResolution, relativeTo: nil, bookmarkDataIsStale: &stale) else {
             needsFolder = true
             return .failure(FolderError(message: "The sync folder can't be found any more. Choose it again."))
         }
         let accessing = url.startAccessingSecurityScopedResource()
         if stale {
-            if let fresh = try? url.bookmarkData(options: [], includingResourceValuesForKeys: nil, relativeTo: nil) {
+            if let fresh = try? url.bookmarkData(options: Self.bookmarkCreation, includingResourceValuesForKeys: nil, relativeTo: nil) {
                 defaults.set(fresh, forKey: Self.folderBookmarkKey)
             } else {
                 if accessing { url.stopAccessingSecurityScopedResource() }
@@ -288,7 +288,7 @@ final class CloudSyncController {
         #endif
     }
 
-    #if os(macOS)
+    #if os(macOS) && !TUNER_APP_STORE
     /// `~/Library/Mobile Documents/com~apple~CloudDocs/Tuner Sync` unless the user chose another folder. A scratch
     /// library (TUNER_DATA_DIR) keeps its default inside the scratch folder, so test copies never touch iCloud Drive.
     var macFolder: URL {
@@ -310,12 +310,22 @@ final class CloudSyncController {
         folderChanged()
     }
     #else
-    /// A folder picked with the Files picker: kept as a bookmark and opened again for every pass.
+    /// A sandboxed Mac app keeps access to a picked folder across launches only through a security-scoped bookmark.
+    #if os(macOS)
+    private static let bookmarkCreation: URL.BookmarkCreationOptions = [.withSecurityScope]
+    private static let bookmarkResolution: URL.BookmarkResolutionOptions = [.withSecurityScope]
+    #else
+    private static let bookmarkCreation: URL.BookmarkCreationOptions = []
+    private static let bookmarkResolution: URL.BookmarkResolutionOptions = []
+    #endif
+
+    /// A folder picked with the Files picker (the Mac App Store app: the open panel): kept as a bookmark and opened
+    /// again for every pass.
     func chooseFolder(_ url: URL) {
         let accessing = url.startAccessingSecurityScopedResource()
         defer { if accessing { url.stopAccessingSecurityScopedResource() } }
         do {
-            let data = try url.bookmarkData(options: [], includingResourceValuesForKeys: nil, relativeTo: nil)
+            let data = try url.bookmarkData(options: Self.bookmarkCreation, includingResourceValuesForKeys: nil, relativeTo: nil)
             defaults.set(data, forKey: Self.folderBookmarkKey)
             needsFolder = false
             folderChanged()
@@ -338,7 +348,7 @@ final class CloudSyncController {
             folderDescription = debugFolder.path
             return
         }
-        #if os(macOS)
+        #if os(macOS) && !TUNER_APP_STORE
         folderDescription = macFolder.path
         #else
         guard let data = defaults.data(forKey: Self.folderBookmarkKey) else {
@@ -347,7 +357,7 @@ final class CloudSyncController {
             return
         }
         var stale = false
-        let url = try? URL(resolvingBookmarkData: data, options: [], relativeTo: nil, bookmarkDataIsStale: &stale)
+        let url = try? URL(resolvingBookmarkData: data, options: Self.bookmarkResolution, relativeTo: nil, bookmarkDataIsStale: &stale)
         folderDescription = url?.lastPathComponent
         needsFolder = url == nil
         #endif

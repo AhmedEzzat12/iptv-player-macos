@@ -444,7 +444,7 @@ private struct PlayerInfoRow: View {
             .buttonStyle(PlayerGlassButtonStyle(size: size))
             .help(isFavorite ? "Remove from Favorites" : "Add to Favorites")
 
-            #if os(macOS)
+            #if os(macOS) && !TUNER_APP_STORE
             Button {
                 if let recording { model.cancelRecording(recording) } else { model.recordNow(channel) }
             } label: {

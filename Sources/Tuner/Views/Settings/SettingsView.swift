@@ -24,8 +24,10 @@ struct SettingsView: View {
             Tab("Metadata", systemImage: "text.below.photo", value: SettingsTab.metadata) {
                 SettingsMetadataPane().settingsPaneFrame(height: 680)
             }
-            Tab("Recording", systemImage: "record.circle", value: SettingsTab.recording) {
-                SettingsRecordingPane().settingsPaneFrame(height: 440)
+            if Distribution.supportsRecording {
+                Tab("Recording", systemImage: "record.circle", value: SettingsTab.recording) {
+                    SettingsRecordingPane().settingsPaneFrame(height: 440)
+                }
             }
             Tab("Downloads", systemImage: "arrow.down.circle", value: SettingsTab.downloads) {
                 SettingsDownloadsPane().settingsPaneFrame(height: 560)

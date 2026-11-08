@@ -528,11 +528,13 @@ private struct LiveGuideProgramCell: View {
                     Label("Play from Start", systemImage: "backward.end")
                 }
             }
-            Divider()
-            if model.isRecording(channel) {
-                Button {} label: { Label("Recording", systemImage: "record.circle.fill") }.disabled(true)
-            } else {
-                Button { model.recordNow(channel) } label: { Label("Record Now", systemImage: "record.circle") }
+            if Distribution.supportsRecording {
+                Divider()
+                if model.isRecording(channel) {
+                    Button {} label: { Label("Recording", systemImage: "record.circle.fill") }.disabled(true)
+                } else {
+                    Button { model.recordNow(channel) } label: { Label("Record Now", systemImage: "record.circle") }
+                }
             }
         case .past:
             if catchup {
@@ -702,13 +704,15 @@ private struct LiveGuideProgramDetails: View {
                     }
                     .buttonStyle(.bordered)
                 }
-                Button {
-                    model.recordNow(channel)
-                } label: {
-                    Label("Record", systemImage: "record.circle")
+                if Distribution.supportsRecording {
+                    Button {
+                        model.recordNow(channel)
+                    } label: {
+                        Label("Record", systemImage: "record.circle")
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(model.isRecording(channel))
                 }
-                .buttonStyle(.bordered)
-                .disabled(model.isRecording(channel))
             }
             .controlSize(.large)
         case .past:
@@ -782,10 +786,12 @@ struct LiveGuideChannelMenu: View {
         Button { model.setHidden(channel, hidden: true) } label: {
             Label("Hide Channel", systemImage: "eye.slash")
         }
-        Divider()
-        Button { model.recordNow(channel) } label: {
-            Label("Record Now", systemImage: "record.circle")
+        if Distribution.supportsRecording {
+            Divider()
+            Button { model.recordNow(channel) } label: {
+                Label("Record Now", systemImage: "record.circle")
+            }
+            .disabled(model.isRecording(channel))
         }
-        .disabled(model.isRecording(channel))
     }
 }

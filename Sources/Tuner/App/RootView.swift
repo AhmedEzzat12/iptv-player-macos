@@ -118,7 +118,9 @@ struct SidebarView: View {
             Label("Live TV", systemImage: "dot.radiowaves.left.and.right").reselects(.liveTV).tag(SidebarItem.liveTV)
             Label("Movies", systemImage: "film").reselects(.movies).tag(SidebarItem.movies)
             Label("TV Shows", systemImage: "tv").reselects(.series).tag(SidebarItem.series)
-            Label("Recordings", systemImage: "record.circle").reselects(.recordings).tag(SidebarItem.recordings)
+            if Distribution.supportsRecording {
+                Label("Recordings", systemImage: "record.circle").reselects(.recordings).tag(SidebarItem.recordings)
+            }
             // The tag has to be the outermost modifier: after .badge the List can't see it and the row won't select.
             Label("Downloads", systemImage: "arrow.down.circle")
                 .reselects(.downloads)

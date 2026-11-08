@@ -1,7 +1,8 @@
 import SwiftUI
 
-/// Third-party software shown in Settings → About, with its licence. The iPhone/iPad app bundles libmpv and FFmpeg
-/// (MPVKit's LGPL build) and the libraries they use; the Mac app loads the user's own libmpv and ffmpeg at runtime.
+/// Third-party software shown in Settings → About, with its licence. The iPhone/iPad and Mac App Store apps link
+/// libmpv and FFmpeg (MPVKit's LGPL build) and the libraries they use into the app; the GitHub Mac app loads the
+/// user's own libmpv and ffmpeg at runtime.
 struct Acknowledgement: Identifiable {
     let name: String
     let role: String
@@ -18,7 +19,7 @@ struct Acknowledgement: Identifiable {
 
     static let sourceURL = URL(string: "https://github.com/AhmedEzzat12/iptv-player-macos")!
 
-    #if os(macOS)
+    #if os(macOS) && !TUNER_APP_STORE
     static let all: [Acknowledgement] = [
         .init("mpv / libmpv", "Video playback (installed separately)", "LGPL 2.1+ / GPL", "https://mpv.io"),
         .init("FFmpeg", "Recording (installed separately)", "LGPL 2.1+ / GPL", "https://ffmpeg.org"),
@@ -28,7 +29,15 @@ struct Acknowledgement: Identifiable {
     ]
     static let footer = "Tuner's own code is source-available under the PolyForm Noncommercial License 1.0.0."
     #else
-    static let all: [Acknowledgement] = [
+    static var all: [Acknowledgement] {
+        #if os(macOS)
+        bundled + [.init("LuaJIT", "Scripting (unused)", "MIT", "https://luajit.org")]
+        #else
+        bundled
+        #endif
+    }
+
+    private static let bundled: [Acknowledgement] = [
         .init("mpv", "Video playback", "LGPL 2.1+", "https://github.com/mpv-player/mpv"),
         .init("FFmpeg", "Decoding and streaming", "LGPL 2.1+", "https://ffmpeg.org/legal.html"),
         .init("MPVKit", "mpv and FFmpeg for Apple platforms", "LGPL 2.1+", "https://github.com/mpvkit/MPVKit"),
@@ -52,7 +61,7 @@ struct Acknowledgement: Identifiable {
         .init("GRDB.swift", "SQLite toolkit", "MIT", "https://github.com/groue/GRDB.swift"),
         .init("ynotv", "The IPTV player that inspired Tuner", "Website", "https://github.com/tbeezy/ynotv"),
     ]
-    static let footer = "The LGPL libraries are used unmodified. Tuner's own code is source-available under the PolyForm Noncommercial License 1.0.0, so you can rebuild the app with your own versions of them from the source code."
+    static let footer = "The LGPL libraries are used unmodified and linked into the app. Tuner's own code is source-available under the PolyForm Noncommercial License 1.0.0, so you can rebuild the app with your own versions of them from the source code."
     #endif
 
     /// The LGPL 2.1 text bundled with the iPhone/iPad app.

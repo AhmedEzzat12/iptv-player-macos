@@ -1,5 +1,9 @@
 import AppKit
+#if TUNER_APP_STORE
+import Libmpv
+#else
 import CMPV
+#endif
 import OpenGL.GL3
 import QuartzCore
 

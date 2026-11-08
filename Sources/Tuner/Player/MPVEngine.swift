@@ -3,7 +3,7 @@ import AppKit
 #else
 import UIKit
 #endif
-#if os(macOS)
+#if os(macOS) && !TUNER_APP_STORE
 import CMPV
 #else
 import Libmpv
@@ -102,6 +102,10 @@ final class MPVEngine: PlaybackEngine {
         option("terminal", "no")
         option("config", "no")
         option("ytdl", "no")
+        #if TUNER_APP_STORE
+        // MPVKit's Mac build includes LuaJIT; Tuner uses none of mpv's scripts.
+        option("load-scripts", "no")
+        #endif
         option("audio-client-name", "Tuner")
         option("cache", "yes")
         option("demuxer-max-bytes", "\(max(prefs.bufferMegabytes, 1))MiB")

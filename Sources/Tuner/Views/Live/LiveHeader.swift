@@ -199,13 +199,15 @@ struct LiveGuideHeader: View {
             .buttonStyle(GlassButtonStyle(circle: true))
             .help(favorite ? "Remove from Favorites" : "Add to Favorites")
 
-            Button { model.recordNow(channel) } label: {
-                Image(systemName: recording ? "record.circle.fill" : "record.circle")
-                    .foregroundStyle(recording ? Color.red : Color.white)
+            if Distribution.supportsRecording {
+                Button { model.recordNow(channel) } label: {
+                    Image(systemName: recording ? "record.circle.fill" : "record.circle")
+                        .foregroundStyle(recording ? Color.red : Color.white)
+                }
+                .buttonStyle(GlassButtonStyle(circle: true))
+                .disabled(recording)
+                .help(recording ? "Recording" : "Record Now")
             }
-            .buttonStyle(GlassButtonStyle(circle: true))
-            .disabled(recording)
-            .help(recording ? "Recording" : "Record Now")
 
             Menu {
                 LiveGuideChannelMenu(channel: channel, store: store, includePlayback: false)

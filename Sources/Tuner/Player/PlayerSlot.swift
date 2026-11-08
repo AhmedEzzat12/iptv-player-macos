@@ -288,7 +288,7 @@ final class PlayerSlot: Identifiable {
     }
 
     /// A stream that isn't AirPlay-ready can still be re-wrapped on this Mac (needs ffmpeg).
-    var canBridgeForAirPlay: Bool { stream != nil && RecordingService.ffmpegPath() != nil }
+    var canBridgeForAirPlay: Bool { Distribution.runsFFmpeg && stream != nil && RecordingService.ffmpegPath() != nil }
 
     private func endBridge() {
         guard isBridged || bridgeStorage?.isRunning == true else { return }
@@ -372,6 +372,9 @@ final class PlayerSlot: Identifiable {
             }
             let ext = stream?.url.pathExtension.uppercased() ?? ""
             let format = ext.isEmpty ? "This stream's format" : "This \(ext) stream"
+            if Distribution.isMacAppStore {
+                return .unsupported("\(format) can't be sent with AirPlay. Use Screen Mirroring instead; audio still follows the Mac's sound output.")
+            }
             return .unsupported("\(format) needs converting for AirPlay, which requires ffmpeg (brew install ffmpeg). Audio still follows the Mac's sound output.")
         }
         airPlaySwitchPending = true

@@ -226,7 +226,13 @@ final class Preferences {
             return scratch.appendingPathComponent("Downloads", isDirectory: true).path
         }
         #if os(macOS)
+        #if TUNER_APP_STORE
+        // Sandboxed: the real ~/Movies (the Movies entitlement allows it), not the container's link to it.
+        let home = getpwuid(getuid())?.pointee.pw_dir.map { String(cString: $0) } ?? NSHomeDirectory()
+        let moviesDir = URL(fileURLWithPath: home, isDirectory: true).appendingPathComponent("Movies", isDirectory: true)
+        #else
         let moviesDir = FileManager.default.urls(for: .moviesDirectory, in: .userDomainMask)[0]
+        #endif
         return moviesDir.appendingPathComponent("Tuner Downloads", isDirectory: true).path
         #else
         // Files app: On My iPhone › Tuner › Downloads.

@@ -18,6 +18,7 @@ struct SettingsPlaybackPane: View {
                 Picker("Playback engine", selection: $prefs.engine) {
                     ForEach(EngineChoice.allCases) { Text($0.title).tag($0) }
                 }
+                if !Distribution.isMacAppStore {
                 SettingsToolStatusRow(
                     found: model.mpvAvailable,
                     foundTitle: "mpv is installed",
@@ -26,6 +27,7 @@ struct SettingsPlaybackPane: View {
                     missingDetail: "Install mpv for MPEG-TS/MKV support:",
                     command: "brew install mpv"
                 )
+                }
                 Toggle(isOn: $prefs.hardwareDecoding) {
                     Text("Hardware decoding")
                     Text("Decode video on the GPU. Turn off if you see green frames or artifacts.")

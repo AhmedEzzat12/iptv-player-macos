@@ -319,14 +319,16 @@ final class KeyboardShortcuts {
             model.notify(Banner(symbol: channel.isFavorite ? "star.slash" : "star.fill",
                                 title: channel.isFavorite ? "Removed from Favorites" : "Added to Favorites", message: channel.displayName))
         case .recordNow:
-            guard live, let channel = main.item?.channel else { return false }
+            guard live, Distribution.supportsRecording, let channel = main.item?.channel else { return false }
             model.recordNow(channel)
         case .home: model.showSection(.home)
         case .liveTV: model.showSection(.liveTV)
         case .movies: model.showSection(.movies)
         case .series: model.showSection(.series)
         case .search: model.focusSearch()
-        case .recordings: model.showSection(.recordings)
+        case .recordings:
+            guard Distribution.supportsRecording else { return false }
+            model.showSection(.recordings)
         case .help: model.showShortcutHelp.toggle()
         }
         return true
@@ -352,7 +354,9 @@ struct TunerCommands: Commands {
             Button("Live TV") { model.showSection(.liveTV) }.keyboardShortcut("2", modifiers: .command)
             Button("Movies") { model.showSection(.movies) }.keyboardShortcut("3", modifiers: .command)
             Button("TV Shows") { model.showSection(.series) }.keyboardShortcut("4", modifiers: .command)
-            Button("Recordings") { model.showSection(.recordings) }.keyboardShortcut("5", modifiers: .command)
+            if Distribution.supportsRecording {
+                Button("Recordings") { model.showSection(.recordings) }.keyboardShortcut("5", modifiers: .command)
+            }
             Button("Downloads") { model.showSection(.downloads) }.keyboardShortcut("6", modifiers: .command)
             Button("Search") { model.focusSearch() }.keyboardShortcut("f", modifiers: .command)
         }

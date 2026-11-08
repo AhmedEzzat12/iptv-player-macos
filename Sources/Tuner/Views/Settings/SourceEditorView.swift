@@ -466,10 +466,11 @@ struct SourceEditorView: View {
         panel.message = "Choose an M3U playlist file."
         panel.allowedContentTypes = [UTType.m3uPlaylist, UTType(filenameExtension: "m3u8"), UTType.plainText].compactMap { $0 }
         let handler: (NSApplication.ModalResponse) -> Void = { response in
-            guard response == .OK, let url = panel.url else { return }
+            guard response == .OK, let picked = panel.url else { return }
+            let url = Distribution.playlistFileURL(for: picked)
             draft.url = url.absoluteString
             if draft.name.trimmingCharacters(in: .whitespaces).isEmpty {
-                draft.name = url.deletingPathExtension().lastPathComponent
+                draft.name = picked.deletingPathExtension().lastPathComponent
             }
         }
         if let window = NSApp.keyWindow {

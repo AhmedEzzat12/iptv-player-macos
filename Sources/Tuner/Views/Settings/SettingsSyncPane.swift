@@ -8,7 +8,7 @@ import UniformTypeIdentifiers
 /// Settings → Sync: iCloud Drive sync of watch progress, favourites, groups and settings between the user's devices.
 struct SettingsSyncPane: View {
     @Environment(AppModel.self) private var model
-    #if os(iOS)
+    #if os(iOS) || TUNER_APP_STORE
     @ViewState private var pickingFolder = false
     #endif
 
@@ -58,7 +58,7 @@ struct SettingsSyncPane: View {
             }
         }
         .formStyle(.grouped)
-        #if os(iOS)
+        #if os(iOS) || TUNER_APP_STORE
         .fileImporter(isPresented: $pickingFolder, allowedContentTypes: [.folder]) { result in
             if case .success(let url) = result { sync.chooseFolder(url) }
         }
@@ -94,7 +94,7 @@ struct SettingsSyncPane: View {
                     Text(debug.path).lineLimit(1).truncationMode(.middle).textSelection(.enabled)
                 }
             } else {
-                #if os(macOS)
+                #if os(macOS) && !TUNER_APP_STORE
                 LabeledContent {
                     HStack(spacing: 8) {
                         if !sync.usesDefaultFolder {
@@ -125,7 +125,7 @@ struct SettingsSyncPane: View {
             if sync.debugFolder != nil {
                 SettingsFooter("Set by TUNER_SYNC_DIR for testing.")
             } else {
-                #if os(macOS)
+                #if os(macOS) && !TUNER_APP_STORE
                 SettingsFooter("By default, a “Tuner Sync” folder in iCloud Drive. Use the same folder on every device.")
                 #else
                 SettingsFooter("In the picker, open iCloud Drive, create a folder named “Tuner Sync” (or open the one your Mac made) and choose it. Use the same folder on every device.")
@@ -134,7 +134,7 @@ struct SettingsSyncPane: View {
         }
     }
 
-    #if os(macOS)
+    #if os(macOS) && !TUNER_APP_STORE
     private func chooseMacFolder() {
         let panel = NSOpenPanel()
         panel.title = "Choose Sync Folder"
