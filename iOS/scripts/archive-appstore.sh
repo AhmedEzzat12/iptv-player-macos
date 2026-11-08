@@ -37,9 +37,10 @@ fi
 
 # Xcode writes MPVKit into the repo's Package.resolved (the Mac build doesn't use it): put it back afterwards.
 RESOLVED_BACKUP="$(mktemp)"
-EXPORT_OPTIONS="$(mktemp).plist"
+EXPORT_DIR="$(mktemp -d)"
+EXPORT_OPTIONS="$EXPORT_DIR/ExportOptions.plist"
 cp ../Package.resolved "$RESOLVED_BACKUP"
-trap 'cp "$RESOLVED_BACKUP" ../Package.resolved; rm -f "$RESOLVED_BACKUP" "$EXPORT_OPTIONS"' EXIT
+trap 'cp "$RESOLVED_BACKUP" ../Package.resolved; rm -rf "$RESOLVED_BACKUP" "$EXPORT_DIR"' EXIT
 
 xcodegen generate --quiet
 rm -rf "$ARCHIVE" "$OUT/export"

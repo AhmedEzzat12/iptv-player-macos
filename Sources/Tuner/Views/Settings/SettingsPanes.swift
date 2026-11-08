@@ -423,7 +423,7 @@ struct SettingsAboutPane: View {
                 .padding(.vertical, 12)
             }
 
-            #if os(macOS)
+            #if os(macOS) && !TUNER_APP_STORE
             Section("Updates") {
                 if updater.isEnabled {
                     Toggle("Check for updates automatically", isOn: $updater.automaticallyChecks)

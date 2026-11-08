@@ -31,6 +31,11 @@ enum ShortcutAction: String, CaseIterable, Identifiable, Codable {
         var id: String { rawValue }
     }
 
+    /// The actions this app can perform: recording ones only where recording exists (`Distribution`).
+    static var available: [ShortcutAction] {
+        allCases.filter { Distribution.supportsRecording || ($0 != .recordNow && $0 != .recordings) }
+    }
+
     var group: Group {
         switch self {
         case .togglePlay, .mute, .seekBack, .seekForward, .volumeUp, .volumeDown, .cycleAudio, .cycleSubtitles,
@@ -229,7 +234,7 @@ final class KeyboardShortcuts {
 
     /// Legacy flat list (current defaults) for older views.
     static var reference: [(String, String)] {
-        ShortcutAction.allCases.filter { !$0.defaultKey.isEmpty }.map { (ShortcutKey.label($0.defaultKey), $0.title) }
+        ShortcutAction.available.filter { !$0.defaultKey.isEmpty }.map { (ShortcutKey.label($0.defaultKey), $0.title) }
     }
 
     private struct Key: Sendable {
@@ -422,7 +427,7 @@ struct ShortcutHelpView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     ForEach(ShortcutAction.Group.allCases) { group in
-                        let actions = ShortcutAction.allCases.filter { $0.group == group && !model.prefs.key(for: $0).isEmpty }
+                        let actions = ShortcutAction.available.filter { $0.group == group && !model.prefs.key(for: $0).isEmpty }
                         if !actions.isEmpty {
                             VStack(alignment: .leading, spacing: 6) {
                                 Text(group.rawValue).font(.headline).foregroundStyle(.secondary)

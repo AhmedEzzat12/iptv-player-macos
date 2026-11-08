@@ -295,6 +295,50 @@ Never against the real feed or your own keychain. Use a throwaway key and a loca
   `xcrun devicectl device capture screenshot --device <udid> --destination shot.png`. Picture in Picture, background
   audio, AirPlay and hardware decoding can only be checked on a device.
 - The simulator's display lags several seconds behind input: take a second screenshot before deciding a tap failed.
+## Testing the Mac App Store app (Antenna)
+
+The store build is the `TunerMac` scheme in `iOS/project.yml` (sandboxed, `TUNER_APP_STORE`, mpv linked in). Test it
+as a scratch copy with its own bundle ID, so its sandbox container is separate from everything else.
+
+```sh
+cd iOS && xcodegen generate
+xcodebuild -project TunerIOS.xcodeproj -scheme TunerMac -configuration Release -destination 'generic/platform=macOS' \
+  -derivedDataPath ../.build/xcode-mac CODE_SIGNING_ALLOWED=NO build
+cd .. && git checkout Package.resolved          # Xcode adds MPVKit to it
+cp -R .build/xcode-mac/Build/Products/Release/Antenna.app <scratch>/
+plutil -replace CFBundleIdentifier -string app.tuner.player.scratch <scratch>/Antenna.app/Contents/Info.plist
+for f in <scratch>/Antenna.app/Contents/Frameworks/*.framework; do codesign --force -s - "$f"; done
+codesign --force -s - --entitlements AppStore/Mac/Tuner.entitlements <scratch>/Antenna.app
+codesign -d --entitlements - <scratch>/Antenna.app | grep app-sandbox    # must print a line
+```
+
+- **Never launch it if the last command prints nothing.** Without the sandbox it opens the real
+  `~/Library/Application Support/Tuner/` library. (`AppStore/Mac/Tuner.entitlements` is written by XcodeGen from
+  `project.yml`; if it's an empty `<dict/>`, regenerate.)
+- Launch `<scratch>/Antenna.app/Contents/MacOS/Antenna`. Its library lands in
+  `~/Library/Containers/app.tuner.player.scratch/`. Add the test kit's M3U from the Welcome screen and play
+  `Matroska Nights` (mpv) and an HLS channel (AVFoundation).
+- Check: no Recordings in the sidebar, Settings or shortcut help (`/`); no Updates section in About; About lists the
+  bundled libraries; Settings → Sync asks for a folder. Sandbox denials:
+  `/usr/bin/log show --last 5m --predicate 'sender == "Sandbox" AND eventMessage CONTAINS "Antenna"'`
+  (`system-info vfs.disk-space` denials come from system frameworks and are harmless).
+- Don't test downloads there: the Movies entitlement writes to the real `~/Movies/Antenna Downloads`.
+- Afterwards: quit it by PID, `rm -rf ~/Library/Containers/app.tuner.player.scratch` (macOS keeps a protected
+  metadata file; that's fine) and `defaults delete app.tuner.player.scratch`.
+
+## Re-selecting a section
+
+Open a movie or show page, then click the same section in the sidebar (Mac; also ⌘1–6) or tap the open tab again
+(iPhone/iPad, including Downloads opened from the iPhone top bar): the section goes back to its top page. A click
+that switches sections must not do anything extra.
+
+## Screen stays on
+
+`ScreenAwake` logs each change: `/usr/bin/log show --last 5m --info --predicate 'category == "ScreenAwake"'` (Mac),
+or `xcrun simctl spawn booted log show … --info` for the simulator. Play an mpv title (the MKV) and expect
+`Keep the screen on: true`, then pause or let it end and expect `false`. On the Mac, `pmset -g assertions` lists
+"… is playing video" while it's on.
+
 ## Testing iCloud sync
 
 Sync only needs a folder both copies can read and write, so tests use a plain scratch folder instead of iCloud Drive

@@ -34,24 +34,43 @@ enum Distribution {
 }
 
 extension Distribution {
-    /// Where to read an M3U file the user picked from. The Mac App Store app may read a picked file only until it
-    /// quits, so it copies the file into its library folder, where playlist refreshes can read it later; the other
-    /// apps use the file where it is.
+    /// Where to read an M3U file the user picked from. The Mac App Store app may read a picked file only while it
+    /// keeps a security-scoped bookmark to it, so it saves one (restored at launch by `restorePlaylistFileAccess`);
+    /// the file is still read where it is, so refreshes see the user's edits. The other apps need nothing.
     static func playlistFileURL(for picked: URL) -> URL {
         #if TUNER_APP_STORE
-        let folder = TunerApp.dataDirectory.appendingPathComponent("Playlist Files", isDirectory: true)
-        let copy = folder.appendingPathComponent("\(UUID().uuidString.prefix(8))-\(picked.lastPathComponent)")
-        let accessing = picked.startAccessingSecurityScopedResource()
-        defer { if accessing { picked.stopAccessingSecurityScopedResource() } }
-        do {
-            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-            try FileManager.default.copyItem(at: picked, to: copy)
-            return copy
-        } catch {
-            return picked
+        // Access stays open for this run; the bookmark brings it back after a relaunch.
+        _ = picked.startAccessingSecurityScopedResource()
+        if let data = try? picked.bookmarkData(options: [.withSecurityScope, .securityScopeAllowOnlyReadAccess],
+                                               includingResourceValuesForKeys: nil, relativeTo: nil) {
+            var bookmarks = UserDefaults.standard.dictionary(forKey: playlistBookmarksKey) as? [String: Data] ?? [:]
+            bookmarks[picked.path] = data
+            UserDefaults.standard.set(bookmarks, forKey: playlistBookmarksKey)
         }
-        #else
-        picked
+        #endif
+        return picked
+    }
+
+    /// Mac App Store app, at launch: reopens access to the playlist files picked earlier and forgets files that are
+    /// gone. A no-op elsewhere.
+    static func restorePlaylistFileAccess() {
+        #if TUNER_APP_STORE
+        let stored = UserDefaults.standard.dictionary(forKey: playlistBookmarksKey) as? [String: Data] ?? [:]
+        var kept: [String: Data] = [:]
+        for (path, data) in stored {
+            var stale = false
+            guard let url = try? URL(resolvingBookmarkData: data, options: .withSecurityScope, relativeTo: nil,
+                                     bookmarkDataIsStale: &stale),
+                  url.startAccessingSecurityScopedResource() else { continue }
+            let fresh = stale ? try? url.bookmarkData(options: [.withSecurityScope, .securityScopeAllowOnlyReadAccess],
+                                                       includingResourceValuesForKeys: nil, relativeTo: nil) : nil
+            kept[path] = fresh ?? data
+        }
+        if kept.count != stored.count || kept != stored {
+            UserDefaults.standard.set(kept, forKey: playlistBookmarksKey)
+        }
         #endif
     }
+
+    private static let playlistBookmarksKey = "playlistFileBookmarks"
 }

@@ -88,6 +88,8 @@ struct LicenseTextSheet: View {
                 ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
             }
         }
+        #if os(macOS)
         .frame(minWidth: 520, minHeight: 480)
+        #endif
     }
 }

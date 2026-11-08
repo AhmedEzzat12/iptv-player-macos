@@ -16,7 +16,7 @@ struct SettingsShortcutsEditor: View {
         Form {
             ForEach(ShortcutAction.Group.allCases) { group in
                 Section(group.rawValue) {
-                    ForEach(ShortcutAction.allCases.filter { $0.group == group }) { action in
+                    ForEach(ShortcutAction.available.filter { $0.group == group }) { action in
                         row(action)
                     }
                 }

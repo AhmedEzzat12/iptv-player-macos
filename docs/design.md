@@ -482,7 +482,7 @@ empty-guide detection with guidance.
   sandboxed. `Distribution` (Support/Distribution.swift) says which build is running. The store build links MPVKit
   (Mac slices, with LuaJIT; `load-scripts=no`) and replaces the CMPV loader and Sparkle with stand-ins
   (`AppStore/Mac/Sources`). It hides recording and the AirPlay converter (they run ffmpeg as a program), fixes the
-  downloads folder to `~/Movies/Antenna Downloads` (Movies entitlement), copies opened playlist files into the library,
+  downloads folder to `~/Movies/Antenna Downloads` (Movies entitlement), keeps access to opened playlist files through security-scoped bookmarks (`Distribution.playlistFileURL`),
   and keeps the iCloud sync folder as a security-scoped bookmark, as on iPhone. Shares `app.tuner.player` with the
   iPhone/iPad app (Universal Purchase); the GitHub build stays `app.tuner.macos`.
 - XcodeGen writes entitlements from `project.yml` (`entitlements.properties`); a file listed without properties is

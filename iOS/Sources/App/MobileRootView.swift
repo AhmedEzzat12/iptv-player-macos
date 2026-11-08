@@ -20,21 +20,21 @@ struct MobileRootView: View {
             Tab("Home", systemImage: "house", value: SidebarItem.home) {
                 // The hero's artwork runs up under the status bar, as in the TV app.
                 // (Only once there's a library: the Welcome screen keeps clear of the status bar.)
-                section { HomeView().ignoresSafeArea(edges: model.hasSources ? .top : []) }
+                section(.home) { HomeView().ignoresSafeArea(edges: model.hasSources ? .top : []) }
             }
             Tab("Live TV", systemImage: "dot.radiowaves.left.and.right", value: SidebarItem.liveTV) {
-                section { LiveTVView() }
+                section(.liveTV) { LiveTVView() }
             }
             Tab("Movies", systemImage: "film", value: SidebarItem.movies) {
-                section { MoviesView() }
+                section(.movies) { MoviesView() }
             }
             Tab("TV Shows", systemImage: "tv", value: SidebarItem.series) {
-                section { SeriesView() }
+                section(.series) { SeriesView() }
             }
             // iPad only; on iPhone, Downloads is a button in the top bar (a sixth tab would turn into "More").
             if !phoneLayout {
                 Tab("Downloads", systemImage: "arrow.down.circle", value: SidebarItem.downloads) {
-                    section { DownloadsView() }
+                    section(.downloads) { DownloadsView() }
                 }
                 .badge(model.activeDownloadCount)
             }
@@ -79,7 +79,7 @@ struct MobileRootView: View {
     }
 
     /// A tab's root: its own navigation stack, with Settings in the top bar.
-    private func section<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
+    private func section<Content: View>(_ item: SidebarItem, @ViewBuilder _ content: () -> Content) -> some View {
         NavigationStack {
             content()
                 .navigationBarTitleDisplayMode(.inline)
@@ -89,7 +89,9 @@ struct MobileRootView: View {
                     if phoneLayout {
                         ToolbarItem(placement: .topBarTrailing) {
                             NavigationLink {
-                                DownloadsView().navigationBarTitleDisplayMode(.inline)
+                                DownloadsView()
+                                    .navigationBarTitleDisplayMode(.inline)
+                                    .modifier(ClosesOnSectionRoot(item: item))
                             } label: {
                                 Image(systemName: model.activeDownloadCount > 0 ? "arrow.down.circle.fill" : "arrow.down.circle")
                             }
@@ -137,5 +139,17 @@ private struct TabStyleForWidth: ViewModifier {
         } else {
             content.tabViewStyle(.sidebarAdaptable)
         }
+    }
+}
+
+/// A page pushed on a tab's own stack (Downloads from the top bar) closes when that tab is tapped again; the
+/// section's inner stack handles its own pages (`AppModel.sectionRootRequests`).
+private struct ClosesOnSectionRoot: ViewModifier {
+    @Environment(AppModel.self) private var model
+    @Environment(\.dismiss) private var dismiss
+    let item: SidebarItem
+
+    func body(content: Content) -> some View {
+        content.onChange(of: model.sectionRootRequests[item]) { dismiss() }
     }
 }

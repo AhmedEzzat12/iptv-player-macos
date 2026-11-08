@@ -17,6 +17,7 @@ struct TunerApp: App {
 
     init() {
         ImageCacheSetup.configure()
+        Distribution.restorePlaylistFileAccess()
         _ = UpdaterService.shared // starts Sparkle's scheduled checks (release builds only)
         let prefs = Preferences()
         let db: AppDatabase
