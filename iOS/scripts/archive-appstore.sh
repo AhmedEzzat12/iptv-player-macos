@@ -25,11 +25,11 @@ BUNDLE_ID="${TUNER_BUNDLE_ID:-app.tuner.player}"
 VERSION="$(tr -d '[:space:]' < ../VERSION)"
 BUILD="$(git rev-list --count HEAD)"
 if [[ "${PLATFORM:-ios}" == mac ]]; then
-  SCHEME=TunerMac; DEST="generic/platform=macOS"; OUT="../build/mac-store"; PRODUCT="Tuner.pkg"
+  SCHEME=TunerMac; DEST="generic/platform=macOS"; OUT="../build/mac-store"; PRODUCT="Antenna.pkg"
 else
   SCHEME=TunerIOS; DEST="generic/platform=iOS"; OUT="../build/ios"; PRODUCT="Tuner.ipa"
 fi
-ARCHIVE="$OUT/Tuner.xcarchive"
+ARCHIVE="$OUT/Antenna.xcarchive"
 AUTH=()
 if [[ -n "${ASC_KEY_ID:-}" ]]; then
   AUTH=(-authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID" -authenticationKeyPath "$ASC_KEY_PATH")

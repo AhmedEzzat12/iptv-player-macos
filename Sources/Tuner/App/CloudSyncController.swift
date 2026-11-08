@@ -280,7 +280,7 @@ final class CloudSyncController {
             } else {
                 if accessing { url.stopAccessingSecurityScopedResource() }
                 needsFolder = true
-                return .failure(FolderError(message: "Tuner lost access to the sync folder. Choose it again."))
+                return .failure(FolderError(message: "\(Distribution.appName) lost access to the sync folder. Choose it again."))
             }
         }
         needsFolder = false

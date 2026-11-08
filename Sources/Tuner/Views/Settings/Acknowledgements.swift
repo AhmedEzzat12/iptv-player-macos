@@ -27,7 +27,7 @@ struct Acknowledgement: Identifiable {
         .init("Sparkle", "Automatic updates", "MIT", "https://sparkle-project.org"),
         .init("ynotv", "The IPTV player that inspired Tuner", "Website", "https://github.com/tbeezy/ynotv"),
     ]
-    static let footer = "Tuner's own code is source-available under the PolyForm Noncommercial License 1.0.0."
+    static let footer = "\(Distribution.appName)'s own code is source-available under the PolyForm Noncommercial License 1.0.0."
     #else
     static var all: [Acknowledgement] {
         #if os(macOS)
@@ -61,7 +61,7 @@ struct Acknowledgement: Identifiable {
         .init("GRDB.swift", "SQLite toolkit", "MIT", "https://github.com/groue/GRDB.swift"),
         .init("ynotv", "The IPTV player that inspired Tuner", "Website", "https://github.com/tbeezy/ynotv"),
     ]
-    static let footer = "The LGPL libraries are used unmodified and linked into the app. Tuner's own code is source-available under the PolyForm Noncommercial License 1.0.0, so you can rebuild the app with your own versions of them from the source code."
+    static let footer = "The LGPL libraries are used unmodified and linked into the app. \(Distribution.appName)'s own code is source-available under the PolyForm Noncommercial License 1.0.0, so you can rebuild the app with your own versions of them from the source code."
     #endif
 
     /// The LGPL 2.1 text bundled with the iPhone/iPad app.

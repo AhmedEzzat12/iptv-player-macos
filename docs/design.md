@@ -482,8 +482,12 @@ empty-guide detection with guidance.
   sandboxed. `Distribution` (Support/Distribution.swift) says which build is running. The store build links MPVKit
   (Mac slices, with LuaJIT; `load-scripts=no`) and replaces the CMPV loader and Sparkle with stand-ins
   (`AppStore/Mac/Sources`). It hides recording and the AirPlay converter (they run ffmpeg as a program), fixes the
-  downloads folder to `~/Movies/Tuner Downloads` (Movies entitlement), copies opened playlist files into the library,
+  downloads folder to `~/Movies/Antenna Downloads` (Movies entitlement), copies opened playlist files into the library,
   and keeps the iCloud sync folder as a security-scoped bookmark, as on iPhone. Shares `app.tuner.player` with the
   iPhone/iPad app (Universal Purchase); the GitHub build stays `app.tuner.macos`.
 - XcodeGen writes entitlements from `project.yml` (`entitlements.properties`); a file listed without properties is
   overwritten with an empty dictionary, which silently drops the sandbox.
+- **Store name: Antenna.** "Tuner: IPTV Player" was taken on the App Store and two other IPTV apps launched as
+  "Tuner…" in October 2026, so the store apps (iPhone/iPad and Mac App Store) are called Antenna:
+  `Distribution.appName` in visible text, `CFBundleDisplayName` (and the Mac `PRODUCT_NAME`) in `iOS/project.yml`.
+  The code, repo, bundle IDs, data folders, log subsystem and the GitHub Mac app keep "Tuner".

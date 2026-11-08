@@ -84,7 +84,7 @@ struct SettingsPlaylistsPane: View {
             Button("Delete Playlist", role: .destructive) { model.deleteSource(source) }
             Button("Cancel", role: .cancel) {}
         } message: { _ in
-            Text("Its channels, movies, shows and guide are removed from Tuner. You can add it again at any time.")
+            Text("Its channels, movies, shows and guide are removed from \(Distribution.appName). You can add it again at any time.")
         }
         .alert(
             "Couldn't Export Playlist",

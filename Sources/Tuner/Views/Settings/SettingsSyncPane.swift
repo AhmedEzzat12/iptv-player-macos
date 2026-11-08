@@ -128,7 +128,7 @@ struct SettingsSyncPane: View {
                 #if os(macOS) && !TUNER_APP_STORE
                 SettingsFooter("By default, a “Tuner Sync” folder in iCloud Drive. Use the same folder on every device.")
                 #else
-                SettingsFooter("In the picker, open iCloud Drive, create a folder named “Tuner Sync” (or open the one your Mac made) and choose it. Use the same folder on every device.")
+                SettingsFooter("In the picker, open iCloud Drive, create a folder named “\(Distribution.appName) Sync” (or open the one your Mac made) and choose it. Use the same folder on every device.")
                 #endif
             }
         }

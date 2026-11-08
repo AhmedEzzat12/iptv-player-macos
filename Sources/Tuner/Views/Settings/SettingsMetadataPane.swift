@@ -88,7 +88,7 @@ struct SettingsMetadataPane: View {
             } header: {
                 Text("The Movie Database (TMDB)")
             } footer: {
-                SettingsFooter("Optional. With a key, Tuner prefers TMDB: cast photos, more artwork, and titles and plots in your language. This product uses the TMDB API but is not endorsed or certified by TMDB.")
+                SettingsFooter("Optional. With a key, \(Distribution.appName) prefers TMDB: cast photos, more artwork, and titles and plots in your language. This product uses the TMDB API but is not endorsed or certified by TMDB.")
             }
 
             Section {
@@ -125,7 +125,7 @@ struct SettingsMetadataPane: View {
                     Text("Details and artwork are kept on this \(DownloadFormat.deviceName) so pages open instantly. Clearing makes Tuner look everything up again.")
                 }
             } footer: {
-                SettingsFooter("Tuner looks up movies and shows by title (with the year or catalogue ID when known). Only that is sent to Cinemeta or TMDB, and a show's IMDb ID to TVmaze for episode pictures — never your playlists, account details or what you watch. Episode ratings come from IMDb's public data sets (about 64 MB, downloaded the first time you open a show and refreshed weekly). Artwork is downloaded from their image servers.")
+                SettingsFooter("\(Distribution.appName) looks up movies and shows by title (with the year or catalogue ID when known). Only that is sent to Cinemeta or TMDB, and a show's IMDb ID to TVmaze for episode pictures — never your playlists, account details or what you watch. Episode ratings come from IMDb's public data sets (about 64 MB, downloaded the first time you open a show and refreshed weekly). Artwork is downloaded from their image servers.")
             }
         }
         .formStyle(.grouped)

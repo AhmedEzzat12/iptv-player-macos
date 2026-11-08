@@ -315,7 +315,7 @@ struct SettingsAppearancePane: View {
                 }
                 Toggle(isOn: $prefs.followSystemAppearance) {
                     Text("Follow system appearance")
-                    Text("When off, Tuner always uses its dark appearance, like the TV app.")
+                    Text("When off, \(Distribution.appName) always uses its dark appearance, like the TV app.")
                 }
             }
         }
@@ -411,7 +411,7 @@ struct SettingsAboutPane: View {
                                                                 startPoint: .topLeading, endPoint: .bottomTrailing))
                         }
                         .shadow(color: .black.opacity(0.3), radius: 8, y: 4)
-                    Text("Tuner").font(.system(size: 26, weight: .bold))
+                    Text(Distribution.appName).font(.system(size: 26, weight: .bold))
                     Text(Self.versionString).font(.callout).foregroundStyle(.secondary).textSelection(.enabled)
                     Text(Self.tagline)
                         .font(.callout)
@@ -443,7 +443,7 @@ struct SettingsAboutPane: View {
             #endif
 
             Section {
-                Text("Tuner is a media player. It doesn't provide any channels, movies or shows: you add playlists from your own provider and are responsible for what they contain.")
+                Text("\(Distribution.appName) is a media player. It doesn't provide any channels, movies or shows: you add playlists from your own provider and are responsible for what they contain.")
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }
@@ -460,7 +460,7 @@ struct SettingsAboutPane: View {
                 if Acknowledgement.lgplText != nil {
                     Button("GNU LGPL 2.1 License Text") { showLicenseText = true }
                 }
-                Link("Tuner's source code", destination: Acknowledgement.sourceURL)
+                Link("Source code", destination: Acknowledgement.sourceURL)
             } header: {
                 Text("Acknowledgements")
             } footer: {

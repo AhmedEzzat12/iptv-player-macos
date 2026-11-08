@@ -31,7 +31,7 @@ struct TunerApp: App {
     }
 
     var body: some Scene {
-        WindowGroup("Tuner", id: "main") {
+        WindowGroup(Distribution.appName, id: "main") {
             RootView()
                 .environment(model)
                 .frame(minWidth: 980, minHeight: 620)

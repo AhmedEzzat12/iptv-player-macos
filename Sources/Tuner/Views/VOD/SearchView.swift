@@ -179,7 +179,7 @@ private struct SearchContent: View {
                 recentSearches
             } else {
                 ContentUnavailableView {
-                    Label("Search Tuner", systemImage: "magnifyingglass")
+                    Label("Search \(Distribution.appName)", systemImage: "magnifyingglass")
                 } description: {
                     Text("Find channels, what's on TV, movies and shows across all your playlists.")
                 }

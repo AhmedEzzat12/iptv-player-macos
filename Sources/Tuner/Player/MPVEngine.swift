@@ -106,7 +106,7 @@ final class MPVEngine: PlaybackEngine {
         // MPVKit's Mac build includes LuaJIT; Tuner uses none of mpv's scripts.
         option("load-scripts", "no")
         #endif
-        option("audio-client-name", "Tuner")
+        option("audio-client-name", Distribution.appName)
         option("cache", "yes")
         option("demuxer-max-bytes", "\(max(prefs.bufferMegabytes, 1))MiB")
         option("demuxer-max-back-bytes", "\(max(prefs.timeshiftMegabytes, 0))MiB")

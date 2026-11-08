@@ -46,7 +46,7 @@ struct WelcomeView: View {
                     .padding(.bottom, 28)
             }
 
-            Text("Tuner doesn't provide any channels — add a playlist from your provider.")
+            Text("\(Distribution.appName) doesn't provide any channels — add a playlist from your provider.")
                 .font(.footnote)
                 .foregroundStyle(.tertiary)
                 .multilineTextAlignment(.center)
@@ -82,7 +82,7 @@ struct WelcomeView: View {
                 .symbolRenderingMode(.hierarchical)
                 .shadow(color: model.prefs.accent.color.opacity(0.35), radius: 24)
                 .padding(.bottom, 6)
-            Text("Welcome to Tuner")
+            Text("Welcome to \(Distribution.appName)")
                 .font(.largeTitle.weight(.bold))
             Text("Live TV, movies and shows from your IPTV provider, all in one place.")
                 .font(.title3)

@@ -49,6 +49,8 @@ scripts/build-app.sh release    # build/Tuner.app (version from VERSION, build n
   -destination 'generic/platform=macOS' CODE_SIGNING_ALLOWED=NO build` (restore `Package.resolved` afterwards).
   Never launch a store build unless `codesign -d --entitlements -` shows `app-sandbox`: unsandboxed, it opens the
   maintainer's real library.
+- On the App Store (and on iPhone/iPad) the app is called **Antenna**: use `Distribution.appName` for the app's name in
+  any visible text, never a literal "Tuner". Code, repo, bundle IDs and data folders stay "Tuner".
 - The store apps go to the App Store (`docs/app-store/README.md`): keep them contentless (no built-in playlists,
   channels, logos or links to lists), use only LGPL/permissive dependencies there (MPVKit's `MPVKit` product, never
   `MPVKit-GPL`), list new bundled libraries in `Acknowledgements.swift`, declare new required-reason APIs in

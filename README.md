@@ -140,7 +140,8 @@ Blender Foundation open movies (CC BY). No provider content is shown.</sub>
 
 ## iPhone and iPad
 
-The same app runs on iPhone and iPad (iOS/iPadOS 26+). It's being prepared for the App Store, together with a
+The same app runs on iPhone and iPad (iOS/iPadOS 26+), where it's called **Antenna** (its App Store name; "Tuner" is
+taken there). It's being prepared for the App Store, together with a
 sandboxed Mac App Store version of the Mac app ([docs/app-store](docs/app-store/README.md): steps, listing text and
 review notes; the Mac App Store version has no recording or AirPlay converter). Until then you install it on your own
 devices from Xcode, with a free Apple ID or a paid developer account.
@@ -158,7 +159,7 @@ devices from Xcode, with a free Apple ID or a paid developer account.
 | AirPlay | All formats (ffmpeg re-wraps the rest) | AVFoundation streams; others via Screen Mirroring |
 | Audio enhancements | All three on every stream with Homebrew's mpv (Audio menu in the control panel) | In the "…" menu. Dialogue Boost everywhere; Night Mode and Volume Levelling only for MP4/MOV in Apple's player (MPVKit's FFmpeg has no compressor or normaliser) |
 | Recordings | Yes (ffmpeg) | No (iOS apps can't run ffmpeg) |
-| Downloads | `~/Movies/Tuner Downloads` (choose in Settings) | Files › On My iPhone › Tuner › Downloads (not in iCloud backups) |
+| Downloads | `~/Movies/Tuner Downloads` (choose in Settings) | Files › On My iPhone › Antenna › Downloads (not in iCloud backups) |
 | iCloud sync | `iCloud Drive/Tuner Sync` (or a folder you choose) | Choose the same folder once in the Files picker |
 | Updates | Automatic (Sparkle) | Reinstall from the checkout (below) |
 
@@ -306,7 +307,7 @@ and the build number of both is the commit count on `main`. A release is a tag `
 | `docs/` | Design, ynotv reference notes, testing guide |
 
 Data lives in `~/Library/Application Support/Tuner/` (SQLite; on iPhone/iPad in the app's own container). Recordings
-default to `~/Movies/Tuner Recordings`, downloads to `~/Movies/Tuner Downloads` (iPhone/iPad: Files › Tuner ›
+default to `~/Movies/Tuner Recordings`, downloads to `~/Movies/Tuner Downloads` (iPhone/iPad: Files › Antenna ›
 Downloads).
 
 Tuner is a media player only; it does not provide any channels or content, and users are responsible for the

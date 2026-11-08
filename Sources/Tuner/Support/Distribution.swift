@@ -9,6 +9,16 @@ enum Distribution {
     static let isMacAppStore = false
     #endif
 
+    /// The name users see. The App Store apps (iPhone, iPad, Mac) are "Antenna" (another IPTV app already has "Tuner"
+    /// on the App Store); the GitHub Mac app keeps "Tuner", and the code, repo and data folders stay "Tuner".
+    static var appName: String {
+        #if os(macOS) && !TUNER_APP_STORE
+        "Tuner"
+        #else
+        "Antenna"
+        #endif
+    }
+
     /// Recording and the AirPlay converter run ffmpeg as a separate program, which only the GitHub Mac app can
     /// (iOS apps can't start programs; sandboxed Mac App Store apps can't run Homebrew's).
     static var runsFFmpeg: Bool {

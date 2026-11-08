@@ -46,7 +46,7 @@ struct SettingsDownloadsPane: View {
                     Button("Show in Files") { DownloadActions.revealFolder(model: model) }
                 } label: {
                     Text("Saved in the Files app")
-                    Text("On My iPhone › Tuner › Downloads")
+                    Text("On My iPhone › \(Distribution.appName) › Downloads")
                 }
                 #endif
             }
@@ -81,7 +81,7 @@ struct SettingsDownloadsPane: View {
             Section {
                 Label {
                     Text("One at a time")
-                    Text("Downloads run one after another, in the order you add them, and continue after you quit and reopen Tuner.")
+                    Text("Downloads run one after another, in the order you add them, and continue after you quit and reopen \(Distribution.appName).")
                 } icon: {
                     Image(systemName: "list.number").foregroundStyle(.secondary)
                 }
@@ -133,7 +133,7 @@ struct SettingsDownloadsPane: View {
         panel.allowsMultipleSelection = false
         panel.canCreateDirectories = true
         panel.prompt = "Choose"
-        panel.message = "Choose where Tuner saves downloaded movies and episodes. Existing downloads stay where they are."
+        panel.message = "Choose where \(Distribution.appName) saves downloaded movies and episodes. Existing downloads stay where they are."
         panel.directoryURL = folderURL
         let handler: (NSApplication.ModalResponse) -> Void = { response in
             guard response == .OK, let url = panel.url else { return }

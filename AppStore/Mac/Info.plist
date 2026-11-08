@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Tuner</string>
+	<string>Antenna</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -32,7 +32,7 @@
 	<key>NSHumanReadableCopyright</key>
 	<string>© 2026 Ahmed Ezzat</string>
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>Tuner connects to IPTV servers and media on your local network.</string>
+	<string>Antenna connects to IPTV servers and media on your local network.</string>
 	<key>NSSupportsAutomaticGraphicsSwitching</key>
 	<true/>
 </dict>

@@ -35,7 +35,7 @@ enum ScreenAwake {
             var id = IOPMAssertionID(0)
             let result = IOPMAssertionCreateWithName(kIOPMAssertionTypePreventUserIdleDisplaySleep as CFString,
                                                      IOPMAssertionLevel(kIOPMAssertionLevelOn),
-                                                     "Tuner is playing video" as CFString, &id)
+                                                     "\(Distribution.appName) is playing video" as CFString, &id)
             if result == kIOReturnSuccess { assertion = id } else { log.error("Display sleep assertion failed: \(result)") }
         } else if !awake, let id = assertion {
             IOPMAssertionRelease(id)

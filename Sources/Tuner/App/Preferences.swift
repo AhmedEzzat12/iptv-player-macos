@@ -233,7 +233,7 @@ final class Preferences {
         #else
         let moviesDir = FileManager.default.urls(for: .moviesDirectory, in: .userDomainMask)[0]
         #endif
-        return moviesDir.appendingPathComponent("Tuner Downloads", isDirectory: true).path
+        return moviesDir.appendingPathComponent("\(Distribution.appName) Downloads", isDirectory: true).path
         #else
         // Files app: On My iPhone › Tuner › Downloads.
         let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]

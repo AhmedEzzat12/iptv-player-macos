@@ -1,4 +1,8 @@
-# Publishing Tuner on the App Store (iPhone, iPad and Mac)
+# Publishing on the App Store as Antenna (iPhone, iPad and Mac)
+
+On the App Store the app is called **Antenna** (two other IPTV apps already use "Tuner" there, and "Tuner: IPTV
+Player" is taken). The store builds show that name everywhere (`Distribution.appName`, `CFBundleDisplayName`); the
+code, repository, data folders and the GitHub Mac app stay "Tuner".
 
 What's already set up in the repo, what you do in App Store Connect, and the text to paste.
 
@@ -16,7 +20,7 @@ Mac app keeps `app.tuner.macos` and its own library, so the two Mac apps can be 
 
 **What the Mac App Store app leaves out** (the sandbox doesn't allow running Homebrew programs): recording and the
 AirPlay converter for MKV/TS (AirPlay still works for HLS/MP4; Screen Mirroring for the rest). mpv is built in, so
-nothing needs installing. Downloads go to `~/Movies/Tuner Downloads` (fixed), and iCloud sync uses a folder you pick
+nothing needs installing. Downloads go to `~/Movies/Antenna Downloads` (fixed), and iCloud sync uses a folder you pick
 once, as on iPhone.
 
 ## Already prepared
@@ -46,7 +50,7 @@ once, as on iPhone.
 2. **Signing.** In `iOS/Config/Local.xcconfig` set `DEVELOPMENT_TEAM` to your **paid** team ID (leave
    `TUNER_BUNDLE_ID` as it is: the archive script uses `app.tuner.player`). Sign in to that team in Xcode →
    Settings → Accounts.
-3. **App Store Connect → Apps → + → New App:** tick **iOS and macOS**, name (see below), primary language English,
+3. **App Store Connect → Apps → + → New App:** tick **iOS and macOS**, name `Antenna: IPTV Player`, primary language English,
    bundle ID `app.tuner.player`, SKU `tuner`, full access. (If you created it for iOS only, open the app and click
    **+** next to "macOS App" in the left column.)
 4. **Business → Agreements:** the Free Apps agreement is enough for now. Before charging: the Paid Apps agreement,
@@ -78,8 +82,8 @@ once, as on iPhone.
 
 ## Listing text
 
-**Name:** Tuner – IPTV Player (30 characters max; "Tuner" alone is probably taken. Don't use "Xtream" or "Stalker"
-in the name or keywords.)
+**Name:** Antenna: IPTV Player (30 characters max; checked free on 2026-11-08. Don't use "Xtream" or "Stalker" in
+the name or keywords.)
 
 **Subtitle:** Live TV, movies and shows
 
@@ -87,8 +91,8 @@ in the name or keywords.)
 
 **Description:**
 
-> Tuner is a beautiful, native player for the IPTV service you already have. Add your M3U playlist, Xtream Codes or
-> Stalker portal login, and Tuner turns it into an Apple TV–style home for live TV, movies and shows.
+> Antenna is a beautiful, native player for the IPTV service you already have. Add your M3U playlist, Xtream Codes or
+> Stalker portal login, and Antenna turns it into an Apple TV–style home for live TV, movies and shows.
 >
 > • Live TV with a program guide, now/next and catch-up
 > • Movies and shows with artwork, seasons, episodes and Continue Watching
@@ -99,7 +103,7 @@ in the name or keywords.)
 > • Optional iCloud sync with your Mac
 > • Private: no accounts, no tracking, no ads
 >
-> Tuner does not provide any content. You need a subscription or playlist from an IPTV provider, and you are
+> Antenna does not provide any content. You need a subscription or playlist from an IPTV provider, and you are
 > responsible for having the rights to what you play.
 
 (For the Mac listing, leave out Picture in Picture if you like; everything else applies.)
@@ -110,7 +114,7 @@ in the name or keywords.)
 
 ## App Review notes (paste into "Notes")
 
-> Tuner is a media player for IPTV services the user already subscribes to. It contains no channels, playlists or
+> Antenna is a media player for IPTV services the user already subscribes to. It contains no channels, playlists or
 > content of its own and doesn't link to any.
 >
 > To test, tap "M3U Playlist" on the first screen and add this playlist of legally distributable streams (Apple's HLS
