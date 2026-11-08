@@ -140,8 +140,9 @@ Blender Foundation open movies (CC BY). No provider content is shown.</sub>
 
 ## iPhone and iPad
 
-The same app runs on iPhone and iPad (iOS/iPadOS 26+). It isn't on the App Store: you install it on your own
-devices from Xcode, with a free Apple ID or a paid developer account.
+The same app runs on iPhone and iPad (iOS/iPadOS 26+). It's being prepared for the App Store
+([docs/app-store](docs/app-store/README.md): steps, listing text and review notes); until then you install it on your
+own devices from Xcode, with a free Apple ID or a paid developer account.
 
 **What's different on iPhone/iPad**
 
@@ -224,7 +225,7 @@ themselves — run the script again to update.
 
 ### "Tuner.app" Not Opened / "Apple could not verify…"
 
-The app is free and open source but not notarized by Apple (that needs a paid developer account), so macOS blocks
+The app is free (and its source is public) but not notarized by Apple (that needs a paid developer account), so macOS blocks
 copies downloaded in a browser. Any **one** of these fixes it, and you only need it once — updates installed by the
 app itself aren't blocked:
 
@@ -283,7 +284,8 @@ and the build number of both is the commit count on `main`. A release is a tag `
    GitHub release `v<version>` with `Tuner.zip` and the appcast. Installed Macs check
    `releases/latest/download/appcast.xml` daily and offer the update.
 3. Update your iPhone/iPad from the same commit: `git pull && iOS/scripts/install-device.sh` (the login agent, if
-   installed, installs whatever the checkout holds the next time it runs).
+   installed, installs whatever the checkout holds the next time it runs). For TestFlight and the App Store:
+   `UPLOAD=1 iOS/scripts/archive-appstore.sh` (see [docs/app-store](docs/app-store/README.md)).
 
 - The signing key lives in your login keychain. The first run creates it (Keychain may ask); Soonbar uses the same
   key. **Back it up once** — without it, installed copies can't verify future updates:
@@ -306,7 +308,11 @@ Data lives in `~/Library/Application Support/Tuner/` (SQLite; on iPhone/iPad in 
 default to `~/Movies/Tuner Recordings`, downloads to `~/Movies/Tuner Downloads` (iPhone/iPad: Files › Tuner ›
 Downloads).
 
-Tuner is a media player only; it does not provide any channels or content. Automatic updates use
-[Sparkle](https://github.com/sparkle-project/Sparkle) (MIT-style license). The iPhone/iPad app bundles libmpv and
-FFmpeg through [MPVKit](https://github.com/mpvkit/MPVKit) (GPL build; it's only installed on your own devices,
-never distributed).
+Tuner is a media player only; it does not provide any channels or content, and users are responsible for the
+playlists they add.
+
+**License:** Tuner's source is available under the [PolyForm Noncommercial License 1.0.0](LICENSE.md): you can read,
+build, change and share it for noncommercial purposes; selling it or a derivative isn't allowed. Automatic updates
+use [Sparkle](https://github.com/sparkle-project/Sparkle) (MIT). The Mac app loads the libmpv and ffmpeg you install
+with Homebrew. The iPhone/iPad app bundles libmpv and FFmpeg through [MPVKit](https://github.com/mpvkit/MPVKit)'s
+LGPL build, unmodified, as separate frameworks; Settings → About lists every bundled library and its licence.

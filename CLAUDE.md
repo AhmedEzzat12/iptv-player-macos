@@ -42,6 +42,11 @@ scripts/build-app.sh release    # build/Tuner.app (version from VERSION, build n
 - New features go to both apps unless the platform can't do them; list exceptions in README → iPhone and iPad.
 - Check both before committing: `scripts/test.sh`, `swift build --product Tuner`, `iOS/scripts/check-build.sh`.
 - Never commit `iOS/Config/Local.xcconfig` (the owner's team ID) or generated `*.xcodeproj`.
+- The iPhone/iPad app goes to the App Store (`docs/app-store/README.md`): keep it contentless (no built-in playlists,
+  channels, logos or links to lists), use only LGPL/permissive dependencies there (MPVKit's `MPVKit` product, never
+  `MPVKit-GPL`), list new bundled libraries in `Acknowledgements.swift`, declare new required-reason APIs in
+  `iOS/Resources/PrivacyInfo.xcprivacy`, and keep other services' names (Netflix…) out of the UI.
+- Tuner's own code is under PolyForm Noncommercial (`LICENSE.md`); the owner sells it, others may not.
 
 ## Testing the app end to end
 

@@ -26,6 +26,9 @@ targets:
     sources:
       - path: Sources
       - path: Resources/Assets.xcassets
+      - path: Resources/PrivacyInfo.xcprivacy
+      - path: Resources/Licenses
+        type: folder
       - path: ../Sources/Tuner
         group: Shared
         excludes:
@@ -41,7 +44,8 @@ targets:
       - package: Tuner
         product: TunerCore
       - package: MPVKit
-        product: MPVKit-GPL
+        # LGPL build: the GPL one can't be distributed through the App Store.
+        product: MPVKit
     info:
       path: Resources/Info.plist
       properties:
@@ -68,6 +72,8 @@ targets:
           NSAllowsArbitraryLoads: true
         NSLocalNetworkUsageDescription: Tuner connects to IPTV servers and media on your local network.
         UIFileSharingEnabled: true
+        # Only standard HTTPS (and hashing): exempt, so App Store Connect skips the export-compliance questions.
+        ITSAppUsesNonExemptEncryption: false
         LSSupportsOpeningDocumentsInPlace: true
     settings:
       base:

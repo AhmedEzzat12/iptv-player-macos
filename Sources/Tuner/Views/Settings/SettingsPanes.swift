@@ -392,6 +392,7 @@ struct SettingsShortcutsPane: View {
 
 struct SettingsAboutPane: View {
     @Bindable private var updater = UpdaterService.shared
+    @ViewState private var showLicenseText = false
 
     var body: some View {
         Form {
@@ -410,7 +411,7 @@ struct SettingsAboutPane: View {
                         .shadow(color: .black.opacity(0.3), radius: 8, y: 4)
                     Text("Tuner").font(.system(size: 26, weight: .bold))
                     Text(Self.versionString).font(.callout).foregroundStyle(.secondary).textSelection(.enabled)
-                    Text("Live TV, movies and shows from your IPTV playlists — with a program guide, catch-up, downloads and recording.")
+                    Text(Self.tagline)
                         .font(.callout)
                         .multilineTextAlignment(.center)
                         .foregroundStyle(.secondary)
@@ -420,6 +421,7 @@ struct SettingsAboutPane: View {
                 .padding(.vertical, 12)
             }
 
+            #if os(macOS)
             Section("Updates") {
                 if updater.isEnabled {
                     Toggle("Check for updates automatically", isOn: $updater.automaticallyChecks)
@@ -436,13 +438,31 @@ struct SettingsAboutPane: View {
                         .foregroundStyle(.secondary)
                 }
             }
+            #endif
 
-            Section("Acknowledgements") {
-                LabeledContent("mpv / libmpv", value: "Video playback")
-                LabeledContent("FFmpeg", value: "Recording")
-                LabeledContent("GRDB.swift", value: "SQLite toolkit")
-                LabeledContent("Sparkle", value: "Automatic updates")
-                LabeledContent("ynotv", value: "The IPTV player that inspired Tuner")
+            Section {
+                Text("Tuner is a media player. It doesn't provide any channels, movies or shows: you add playlists from your own provider and are responsible for what they contain.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
+
+            Section {
+                ForEach(Acknowledgement.all) { item in
+                    LabeledContent {
+                        Link(item.license, destination: item.url)
+                    } label: {
+                        Text(item.name)
+                        Text(item.role)
+                    }
+                }
+                if Acknowledgement.lgplText != nil {
+                    Button("GNU LGPL 2.1 License Text") { showLicenseText = true }
+                }
+                Link("Tuner's source code", destination: Acknowledgement.sourceURL)
+            } header: {
+                Text("Acknowledgements")
+            } footer: {
+                Text(Acknowledgement.footer)
             }
 
             Section {
@@ -450,12 +470,23 @@ struct SettingsAboutPane: View {
                     Button("Show Library Folder", action: Self.showLibraryFolder)
                 } label: {
                     Text("Library")
+                    #if os(macOS)
                     Text("Your playlists, guide and watch history are stored on this Mac.")
+                    #else
+                    Text("Your playlists, guide and watch history are stored on this device.")
+                    #endif
                 }
             }
         }
         .formStyle(.grouped)
+        .sheet(isPresented: $showLicenseText) { LicenseTextSheet(text: Acknowledgement.lgplText ?? "") }
     }
+
+    #if os(macOS)
+    private static let tagline = "Live TV, movies and shows from your IPTV playlists — with a program guide, catch-up, downloads and recording."
+    #else
+    private static let tagline = "Live TV, movies and shows from your IPTV playlists — with a program guide, catch-up and downloads."
+    #endif
 
     static var versionString: String {
         let info = Bundle.main.infoDictionary

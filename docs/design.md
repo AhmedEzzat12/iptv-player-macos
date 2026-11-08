@@ -462,3 +462,19 @@ empty-guide detection with guidance.
 - `scripts/testkit/` + `docs/testing.md` — local mock providers (M3U + XMLTV, Xtream panel, live TS/HLS, dead and
   flaky channels, multi-track VOD) used for end-to-end UI testing of the built app.
 - Verified on a real Xtream account: 11,950 channels / 41,080 movies / 15,030 series synced in 25 s.
+
+## App Store and licensing (2026-11-08)
+
+- The iPhone/iPad app is prepared for the App Store (`docs/app-store/README.md`). It ships contentless: the
+  iptv-org "Try Free Channels" shortcut was removed from both apps, and About states that users are responsible
+  for their playlists.
+- MPVKit's LGPL product replaced `MPVKit-GPL`: GPL code can't be distributed through the App Store. Everything Tuner
+  uses (playback, subtitles, the `pan`/`dialoguenhance`/`volume`/`equalizer`/`speechnorm`/`acompressor` filters) is
+  in the LGPL build; only SMB support is missing. The libraries ship as separate frameworks, unmodified, which with
+  the public source satisfies the LGPL's relinking terms. `Acknowledgements.swift` lists them in Settings → About,
+  with the LGPL 2.1 text bundled in `iOS/Resources/Licenses`.
+- Tuner's own code: PolyForm Noncommercial 1.0.0 (`LICENSE.md`), so the public repo can't be resold as a clone
+  while the owner can charge for the app later.
+- `iOS/Resources/PrivacyInfo.xcprivacy` declares no tracking and no collected data, with reasons for UserDefaults
+  (CA92.1), file timestamps (C617.1 caches, 3B52.1 the user-picked sync folder) and disk space (85F4.1, E174.1).
+- Top 10 labels don't name Netflix (guideline 5.2.1); the settings footer still says where the charts come from.
