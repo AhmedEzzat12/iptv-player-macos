@@ -14,7 +14,7 @@ There are three builds of the same code:
 | Mac App Store app | `PLATFORM=mac iOS/scripts/archive-appstore.sh` (scheme `TunerMac`) | Mac App Store |
 | GitHub Mac app | `scripts/release.sh` | GitHub Releases (Sparkle updates), as before |
 
-The two store apps share the bundle ID **`app.tuner.player`**, so they are one product in App Store Connect
+The two store apps share the bundle ID **`app.antenna.player`**, so they are one product in App Store Connect
 (**Universal Purchase**): one listing, and once you charge, one purchase unlocks iPhone, iPad and Mac. The GitHub
 Mac app keeps `app.tuner.macos` and its own library, so the two Mac apps can be installed side by side.
 
@@ -45,13 +45,13 @@ once, as on iPhone.
 ## Steps
 
 1. **Bundle ID.** developer.apple.com → Certificates, IDs & Profiles → Identifiers → **+** → App IDs → App →
-   Explicit Bundle ID `app.tuner.player`. No extra capabilities are needed (iCloud sync uses a folder the user picks,
+   Explicit Bundle ID `app.antenna.player`. No extra capabilities are needed (iCloud sync uses a folder the user picks,
    not CloudKit; the Mac sandbox needs no registered capabilities).
 2. **Signing.** In `iOS/Config/Local.xcconfig` set `DEVELOPMENT_TEAM` to your **paid** team ID (leave
-   `TUNER_BUNDLE_ID` as it is: the archive script uses `app.tuner.player`). Sign in to that team in Xcode →
+   `TUNER_BUNDLE_ID` as it is: the archive script uses `app.antenna.player`). Sign in to that team in Xcode →
    Settings → Accounts.
 3. **App Store Connect → Apps → + → New App:** tick **iOS and macOS**, name `Antenna: IPTV Player`, primary language English,
-   bundle ID `app.tuner.player`, SKU `tuner`, full access. (If you created it for iOS only, open the app and click
+   bundle ID `app.antenna.player`, SKU `tuner`, full access. (If you created it for iOS only, open the app and click
    **+** next to "macOS App" in the left column.)
 4. **Business → Agreements:** the Free Apps agreement is enough for now. Before charging: the Paid Apps agreement,
    banking and tax forms.

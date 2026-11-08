@@ -306,7 +306,7 @@ xcodebuild -project TunerIOS.xcodeproj -scheme TunerMac -configuration Release -
   -derivedDataPath ../.build/xcode-mac CODE_SIGNING_ALLOWED=NO build
 cd .. && git checkout Package.resolved          # Xcode adds MPVKit to it
 cp -R .build/xcode-mac/Build/Products/Release/Antenna.app <scratch>/
-plutil -replace CFBundleIdentifier -string app.tuner.player.scratch <scratch>/Antenna.app/Contents/Info.plist
+plutil -replace CFBundleIdentifier -string app.antenna.player.scratch <scratch>/Antenna.app/Contents/Info.plist
 for f in <scratch>/Antenna.app/Contents/Frameworks/*.framework; do codesign --force -s - "$f"; done
 codesign --force -s - --entitlements AppStore/Mac/Tuner.entitlements <scratch>/Antenna.app
 codesign -d --entitlements - <scratch>/Antenna.app | grep app-sandbox    # must print a line
@@ -316,15 +316,15 @@ codesign -d --entitlements - <scratch>/Antenna.app | grep app-sandbox    # must 
   `~/Library/Application Support/Tuner/` library. (`AppStore/Mac/Tuner.entitlements` is written by XcodeGen from
   `project.yml`; if it's an empty `<dict/>`, regenerate.)
 - Launch `<scratch>/Antenna.app/Contents/MacOS/Antenna`. Its library lands in
-  `~/Library/Containers/app.tuner.player.scratch/`. Add the test kit's M3U from the Welcome screen and play
+  `~/Library/Containers/app.antenna.player.scratch/`. Add the test kit's M3U from the Welcome screen and play
   `Matroska Nights` (mpv) and an HLS channel (AVFoundation).
 - Check: no Recordings in the sidebar, Settings or shortcut help (`/`); no Updates section in About; About lists the
   bundled libraries; Settings → Sync asks for a folder. Sandbox denials:
   `/usr/bin/log show --last 5m --predicate 'sender == "Sandbox" AND eventMessage CONTAINS "Antenna"'`
   (`system-info vfs.disk-space` denials come from system frameworks and are harmless).
 - Don't test downloads there: the Movies entitlement writes to the real `~/Movies/Antenna Downloads`.
-- Afterwards: quit it by PID, `rm -rf ~/Library/Containers/app.tuner.player.scratch` (macOS keeps a protected
-  metadata file; that's fine) and `defaults delete app.tuner.player.scratch`.
+- Afterwards: quit it by PID, `rm -rf ~/Library/Containers/app.antenna.player.scratch` (macOS keeps a protected
+  metadata file; that's fine) and `defaults delete app.antenna.player.scratch`.
 
 ## Re-selecting a section
 

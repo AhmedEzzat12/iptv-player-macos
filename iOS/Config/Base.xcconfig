@@ -4,5 +4,5 @@ MARKETING_VERSION = 1.1.0
 CURRENT_PROJECT_VERSION = 1
 // One ID for the iPhone/iPad and Mac App Store apps (Universal Purchase). Local.xcconfig overrides it for
 // personal installs.
-TUNER_BUNDLE_ID = app.tuner.player
+TUNER_BUNDLE_ID = app.antenna.player
 #include? "Local.xcconfig"
