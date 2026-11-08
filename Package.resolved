@@ -1,5 +1,5 @@
 {
-  "originHash" : "719af14d0da669831bb8450cf549dbaa10725d8b4fbe681da0aee91ed779112b",
+  "originHash" : "5d22b7cd82667255714ef37620625271c6df00f05f7fffe81ddf52e1c0636573",
   "pins" : [
     {
       "identity" : "grdb.swift",
@@ -8,15 +8,6 @@
       "state" : {
         "revision" : "b83108d10f42680d78f23fe4d4d80fc88dab3212",
         "version" : "7.11.1"
-      }
-    },
-    {
-      "identity" : "mpvkit",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/mpvkit/MPVKit",
-      "state" : {
-        "revision" : "288527dffbc6d3e63cce147fc7b520c64a791603",
-        "version" : "1.0.0"
       }
     },
     {
