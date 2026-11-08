@@ -138,11 +138,11 @@ struct VODRankedPosterCard: View {
 }
 
 enum TopTenText {
-    /// What the row follows: "Netflix · Egypt this week", "Popular now".
+    /// What the row follows: "This week in Egypt", "Popular now". (No service names: App Review guideline 5.2.1.)
     static func subtitle(_ source: ChartSource) -> String {
         switch source {
-        case .netflixCountry(let code): "Netflix · \(countryName(code)) this week"
-        case .netflixGlobal: "Netflix · Worldwide this week"
+        case .netflixCountry(let code): "This week in \(countryName(code))"
+        case .netflixGlobal: "This week worldwide"
         case .tmdbTrending: "Trending this week on TMDB"
         case .cinemetaPopular: "Popular now"
         }
@@ -152,7 +152,7 @@ enum TopTenText {
         Locale.current.localizedString(forRegionCode: code) ?? code
     }
 
-    /// Countries with a Netflix Top 10, by name.
+    /// Countries with a weekly chart, by name.
     static var countries: [(code: String, name: String)] {
         NetflixTop10.countryCodes.map { ($0, countryName($0)) }
             .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }

@@ -69,10 +69,6 @@ struct WelcomeView: View {
         Button(action: openFile) {
             Label("Open M3U File…", systemImage: "doc")
         }
-        Button(action: addFreeChannels) {
-            Label("Try Free Channels", systemImage: "sparkles.tv")
-        }
-        .help("Adds the free, public iptv-org playlist of US channels")
     }
 
     private var hero: some View {
@@ -114,9 +110,6 @@ struct WelcomeView: View {
         }
     }
 
-    private func addFreeChannels() {
-        model.addSource(Source(name: "Free TV (iptv-org)", kind: .m3u, url: "https://iptv-org.github.io/iptv/countries/us.m3u"))
-    }
 }
 
 private struct WelcomeOption: Identifiable {

@@ -45,34 +45,34 @@ struct SettingsAIPane: View {
             Section {
                 Toggle(isOn: $prefs.homeTopTen) {
                     Text("Top 10 on Home")
-                    Text("“Top 10 Movies” and “Top 10 TV Shows” rows with what's popular this week on Netflix (its public Top 10 lists) or in online catalogues, showing only titles your playlists have.")
+                    Text("“Top 10 Movies” and “Top 10 TV Shows” rows with what's popular this week (public weekly streaming charts or online catalogues), showing only titles your playlists have.")
                 }
                 if prefs.homeTopTen {
                     Picker("Chart", selection: $prefs.homeTopTenRegion) {
                         Text(automaticChartTitle).tag("")
-                        Text("Netflix · Worldwide").tag("global")
+                        Text("Weekly chart · Worldwide").tag("global")
                         Text("Popular now (TMDB or Cinemeta)").tag("popular")
                         Divider()
                         ForEach(TopTenText.countries, id: \.code) { country in
-                            Text("Netflix · \(country.name)").tag(country.code)
+                            Text("Weekly chart · \(country.name)").tag(country.code)
                         }
                     }
                 }
             } header: {
                 Text("Home")
             } footer: {
-                Text("Downloads public popularity lists — Netflix's weekly country list once a week (up to 30 MB, skipped on cellular and Low Data Mode), the others are small — and matches them with your library on this device. Nothing about your library is sent.")
+                Text("Downloads public popularity lists — the weekly country charts from Netflix's public Top 10 site once a week (up to 30 MB, skipped on cellular and Low Data Mode), the others are small — and matches them with your library on this device. Nothing about your library is sent.")
             }
         }
         .formStyle(.grouped)
     }
 
-    /// "Automatic (Netflix · Egypt)", or worldwide when Netflix has no list for this device's region.
+    /// "Automatic (Egypt)", or worldwide when there's no weekly chart for this device's region.
     private var automaticChartTitle: String {
         let chain = TopTenRegion.automatic.chain(deviceRegion: Locale.current.region?.identifier, hasTMDBKey: false)
         if case .netflixCountry(let code) = chain.first {
-            return "Automatic (Netflix · \(TopTenText.countryName(code)))"
+            return "Automatic (\(TopTenText.countryName(code)))"
         }
-        return "Automatic (Netflix · Worldwide)"
+        return "Automatic (Worldwide)"
     }
 }
