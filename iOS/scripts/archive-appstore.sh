@@ -4,7 +4,7 @@
 #   iOS/scripts/archive-appstore.sh                       # iPhone/iPad: archive + export build/ios/export/Tuner.ipa
 #   UPLOAD=1 iOS/scripts/archive-appstore.sh              # iPhone/iPad: archive + upload (TestFlight after processing)
 #   PLATFORM=mac UPLOAD=1 iOS/scripts/archive-appstore.sh # Mac: archive + upload (export: build/mac-store/export/Tuner.pkg)
-# Needs a paid team: DEVELOPMENT_TEAM in iOS/Config/Local.xcconfig. Both apps use bundle ID app.tuner.player (one
+# Needs a paid team: DEVELOPMENT_TEAM in iOS/Config/Local.xcconfig. Both apps use bundle ID app.antenna.player (one
 # product with Universal Purchase; TUNER_BUNDLE_ID overrides it). Signing uses the Apple ID in Xcode → Settings → Accounts, or an App Store Connect API key:
 #   ASC_KEY_ID=… ASC_ISSUER_ID=… ASC_KEY_PATH=~/…/AuthKey_….p8
 # Version: the VERSION file; build number: the commit count (must be higher than every earlier upload).
@@ -21,7 +21,7 @@ if [[ -n "$(git status --porcelain)" ]]; then
   exit 1
 fi
 
-BUNDLE_ID="${TUNER_BUNDLE_ID:-app.tuner.player}"
+BUNDLE_ID="${TUNER_BUNDLE_ID:-app.antenna.player}"
 VERSION="$(tr -d '[:space:]' < ../VERSION)"
 BUILD="$(git rev-list --count HEAD)"
 if [[ "${PLATFORM:-ios}" == mac ]]; then
