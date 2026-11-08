@@ -1,9 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<!-- Tuner collects no data and doesn't track. Required-reason APIs:
-     UserDefaults: settings. File timestamps: the artwork and ratings caches (least recently used files go first)
-     and iCloud sync files in the folder the user picked. Disk space: Downloads shows free space and checks it
-     before a download. -->
 <plist version="1.0">
 <dict>
 	<key>NSPrivacyTracking</key>

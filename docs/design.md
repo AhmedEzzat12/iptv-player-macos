@@ -470,11 +470,20 @@ empty-guide detection with guidance.
   for their playlists.
 - MPVKit's LGPL product replaced `MPVKit-GPL`: GPL code can't be distributed through the App Store. Everything Tuner
   uses (playback, subtitles, the `pan`/`dialoguenhance`/`volume`/`equalizer`/`speechnorm`/`acompressor` filters) is
-  in the LGPL build; only SMB support is missing. The libraries ship as separate frameworks, unmodified, which with
-  the public source satisfies the LGPL's relinking terms. `Acknowledgements.swift` lists them in Settings → About,
+  in the LGPL build; only SMB support is missing. The libraries are linked into the app unmodified; the public
+  source lets anyone rebuild it with modified ones, which is what the LGPL's relinking terms ask. `Acknowledgements.swift` lists them in Settings → About,
   with the LGPL 2.1 text bundled in `iOS/Resources/Licenses`.
 - Tuner's own code: PolyForm Noncommercial 1.0.0 (`LICENSE.md`), so the public repo can't be resold as a clone
   while the owner can charge for the app later.
 - `iOS/Resources/PrivacyInfo.xcprivacy` declares no tracking and no collected data, with reasons for UserDefaults
   (CA92.1), file timestamps (C617.1 caches, 3B52.1 the user-picked sync folder) and disk space (85F4.1, E174.1).
 - Top 10 labels don't name Netflix (guideline 5.2.1); the settings footer still says where the charts come from.
+- **Mac App Store app** (`TunerMac` in `iOS/project.yml`, built with `TUNER_APP_STORE`): the same Sources/Tuner,
+  sandboxed. `Distribution` (Support/Distribution.swift) says which build is running. The store build links MPVKit
+  (Mac slices, with LuaJIT; `load-scripts=no`) and replaces the CMPV loader and Sparkle with stand-ins
+  (`AppStore/Mac/Sources`). It hides recording and the AirPlay converter (they run ffmpeg as a program), fixes the
+  downloads folder to `~/Movies/Tuner Downloads` (Movies entitlement), copies opened playlist files into the library,
+  and keeps the iCloud sync folder as a security-scoped bookmark, as on iPhone. Shares `app.tuner.player` with the
+  iPhone/iPad app (Universal Purchase); the GitHub build stays `app.tuner.macos`.
+- XcodeGen writes entitlements from `project.yml` (`entitlements.properties`); a file listed without properties is
+  overwritten with an empty dictionary, which silently drops the sandbox.

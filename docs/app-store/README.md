@@ -1,17 +1,36 @@
-# Publishing the iPhone/iPad app on the App Store
+# Publishing Tuner on the App Store (iPhone, iPad and Mac)
 
-What's already set up in the repo, what you do in App Store Connect, and the text to paste. The Mac app stays on
-GitHub Releases (the Mac App Store would need the sandbox, no Sparkle and no Homebrew mpv/ffmpeg).
+What's already set up in the repo, what you do in App Store Connect, and the text to paste.
+
+There are three builds of the same code:
+
+| Build | How it's made | Where it goes |
+|---|---|---|
+| iPhone/iPad app | `iOS/scripts/archive-appstore.sh` (scheme `TunerIOS`) | App Store |
+| Mac App Store app | `PLATFORM=mac iOS/scripts/archive-appstore.sh` (scheme `TunerMac`) | Mac App Store |
+| GitHub Mac app | `scripts/release.sh` | GitHub Releases (Sparkle updates), as before |
+
+The two store apps share the bundle ID **`app.tuner.player`**, so they are one product in App Store Connect
+(**Universal Purchase**): one listing, and once you charge, one purchase unlocks iPhone, iPad and Mac. The GitHub
+Mac app keeps `app.tuner.macos` and its own library, so the two Mac apps can be installed side by side.
+
+**What the Mac App Store app leaves out** (the sandbox doesn't allow running Homebrew programs): recording and the
+AirPlay converter for MKV/TS (AirPlay still works for HLS/MP4; Screen Mirroring for the rest). mpv is built in, so
+nothing needs installing. Downloads go to `~/Movies/Tuner Downloads` (fixed), and iCloud sync uses a folder you pick
+once, as on iPhone.
 
 ## Already prepared
 
 - **Contentless:** the app ships with no playlists, channels or logos (the iptv-org "Try Free Channels" button is
   gone). About says the user is responsible for what their playlists contain.
-- **Licences:** the iPhone/iPad app uses MPVKit's **LGPL** build (the GPL one can't go through the App Store), as
-  separate frameworks. Settings → About lists every bundled library with its licence, includes the LGPL 2.1 text and
+- **Licences:** both store apps use MPVKit's **LGPL** build (the GPL one can't go through the App Store), linked
+  into the app. Settings → About lists every bundled library with its licence, includes the LGPL 2.1 text and
   links to Tuner's source. Tuner's own code is under the PolyForm Noncommercial License (`LICENSE.md`): anyone can read
   and rebuild it, but only you can sell it.
-- **Privacy manifest:** `iOS/Resources/PrivacyInfo.xcprivacy` (no tracking, no data collected; reasons for
+- **Mac sandbox:** the `TunerMac` target builds with `TUNER_APP_STORE` (no Sparkle, recording or AirPlay converter;
+  mpv linked in) and these entitlements: App Sandbox, outgoing network, user-selected files, app-scoped bookmarks and
+  the Movies folder (written by XcodeGen from `iOS/project.yml` into `AppStore/Mac/Tuner.entitlements`).
+- **Privacy manifest:** `iOS/Resources/PrivacyInfo.xcprivacy` (in both store apps) (no tracking, no data collected; reasons for
   UserDefaults, file timestamps and disk space).
 - **Export compliance:** `ITSAppUsesNonExemptEncryption = NO` (standard HTTPS and hashing only).
 - **No service names in the UI:** the Top 10 rows read "This week in Egypt"; only the settings footer names the source.
@@ -22,27 +41,29 @@ GitHub Releases (the Mac App Store would need the sandbox, no Sparkle and no Hom
 ## Steps
 
 1. **Bundle ID.** developer.apple.com → Certificates, IDs & Profiles → Identifiers → **+** → App IDs → App →
-   Explicit Bundle ID `app.tuner.ios`. No extra capabilities are needed (iCloud sync uses a Files folder, not
-   CloudKit).
-2. **Signing.** In `iOS/Config/Local.xcconfig` set `DEVELOPMENT_TEAM` to your **paid** team ID and
-   `TUNER_BUNDLE_ID = app.tuner.ios` (or leave the bundle ID out: the archive script uses `app.tuner.ios`). Sign in
-   to that team in Xcode → Settings → Accounts.
-3. **App Store Connect → Apps → + → New App:** iOS, name (see below), primary language English, bundle ID
-   `app.tuner.ios`, SKU `tuner-ios`, full access.
+   Explicit Bundle ID `app.tuner.player`. No extra capabilities are needed (iCloud sync uses a folder the user picks,
+   not CloudKit; the Mac sandbox needs no registered capabilities).
+2. **Signing.** In `iOS/Config/Local.xcconfig` set `DEVELOPMENT_TEAM` to your **paid** team ID (leave
+   `TUNER_BUNDLE_ID` as it is: the archive script uses `app.tuner.player`). Sign in to that team in Xcode →
+   Settings → Accounts.
+3. **App Store Connect → Apps → + → New App:** tick **iOS and macOS**, name (see below), primary language English,
+   bundle ID `app.tuner.player`, SKU `tuner`, full access. (If you created it for iOS only, open the app and click
+   **+** next to "macOS App" in the left column.)
 4. **Business → Agreements:** the Free Apps agreement is enough for now. Before charging: the Paid Apps agreement,
    banking and tax forms.
 5. **EU Digital Services Act:** App Store Connect asks whether you're a trader. A free app with no plans to earn can be
    "not a trader"; once you charge you're a trader and Apple shows your address, phone and email in the EU.
-6. **Upload a build:**
+6. **Upload the builds:**
    ```bash
    UPLOAD=1 iOS/scripts/archive-appstore.sh
+   PLATFORM=mac UPLOAD=1 iOS/scripts/archive-appstore.sh
    ```
    (or without `UPLOAD=1` to get `build/ios/export/Tuner.ipa` and upload it with Apple's Transporter app). The first
    run creates the distribution certificate and profile automatically. For the command line without Xcode's account,
    create an API key in App Store Connect → Users and Access → Integrations and pass `ASC_KEY_ID`, `ASC_ISSUER_ID`,
    `ASC_KEY_PATH`.
 7. **TestFlight:** after processing (10–30 min) add yourself as an internal tester and install TestFlight builds on
-   your iPhone. This replaces the 7-day re-installs: remove the agent with `iOS/scripts/install-resign-agent.sh
+   your iPhone and Mac (TestFlight is also a Mac app). This replaces the 7-day re-installs: remove the agent with `iOS/scripts/install-resign-agent.sh
    --remove`. (The App Store/TestFlight app has a different bundle ID from your current personal install, so it's a
    separate app with an empty library; turn on iCloud sync on both first to carry favourites and progress over.)
 8. **App Information / Pricing:** category Entertainment (secondary: Photo & Video), price Free, availability all
@@ -51,9 +72,9 @@ GitHub Releases (the Mac App Store would need the sandbox, no Sparkle and no Hom
    `https://github.com/AhmedEzzat12/iptv-player-macos/blob/main/docs/app-store/privacy.md`.
 10. **Age rating:** answer the questionnaire for what the *app* contains (nothing): no unrestricted web access, no
     user-generated content. If App Review asks for a higher rating because playlists can contain anything, accept it.
-11. **Screenshots:** 6.9" iPhone (1320 × 2868) and 13" iPad (2064 × 2752), from the test kit only (invented channels
-    and posters, never a real provider's content or real movie posters).
-12. **Submit for review** with the notes below. Typical review: 1–3 days.
+11. **Screenshots:** iOS: 6.9" iPhone (1320 × 2868) and 13" iPad (2064 × 2752). macOS: 16:10, e.g. 2880 × 1800.
+    From the test kit only (invented channels and posters, never a real provider's content or real movie posters).
+12. **Submit for review**, iOS and macOS versions together, with the notes below. Typical review: 1–3 days.
 
 ## Listing text
 
@@ -80,6 +101,8 @@ in the name or keywords.)
 >
 > Tuner does not provide any content. You need a subscription or playlist from an IPTV provider, and you are
 > responsible for having the rights to what you play.
+
+(For the Mac listing, leave out Picture in Picture if you like; everything else applies.)
 
 **Keywords:** iptv,m3u,player,live tv,epg,guide,catchup,streaming,playlist,tv
 

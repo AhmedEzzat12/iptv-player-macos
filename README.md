@@ -140,9 +140,10 @@ Blender Foundation open movies (CC BY). No provider content is shown.</sub>
 
 ## iPhone and iPad
 
-The same app runs on iPhone and iPad (iOS/iPadOS 26+). It's being prepared for the App Store
-([docs/app-store](docs/app-store/README.md): steps, listing text and review notes); until then you install it on your
-own devices from Xcode, with a free Apple ID or a paid developer account.
+The same app runs on iPhone and iPad (iOS/iPadOS 26+). It's being prepared for the App Store, together with a
+sandboxed Mac App Store version of the Mac app ([docs/app-store](docs/app-store/README.md): steps, listing text and
+review notes; the Mac App Store version has no recording or AirPlay converter). Until then you install it on your own
+devices from Xcode, with a free Apple ID or a paid developer account.
 
 **What's different on iPhone/iPad**
 
@@ -315,4 +316,4 @@ playlists they add.
 build, change and share it for noncommercial purposes; selling it or a derivative isn't allowed. Automatic updates
 use [Sparkle](https://github.com/sparkle-project/Sparkle) (MIT). The Mac app loads the libmpv and ffmpeg you install
 with Homebrew. The iPhone/iPad app bundles libmpv and FFmpeg through [MPVKit](https://github.com/mpvkit/MPVKit)'s
-LGPL build, unmodified, as separate frameworks; Settings → About lists every bundled library and its licence.
+LGPL build, unmodified, linked into the app; Settings → About lists every bundled library and its licence.

@@ -5,6 +5,7 @@ name: TunerIOS
 options:
   deploymentTarget:
     iOS: "26.0"
+    macOS: "15.0"
   createIntermediateGroups: true
   developmentLanguage: en
 
@@ -89,7 +90,76 @@ targets:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         CODE_SIGN_STYLE: Automatic
 
+  # The Mac App Store app: the same Sources/Tuner as the GitHub Mac app (scripts/build-app.sh), sandboxed, without
+  # Sparkle, recording or the AirPlay converter, with MPVKit's libmpv linked in (TUNER_APP_STORE; see
+  # Sources/Tuner/Support/Distribution.swift and AppStore/Mac). Same bundle ID as the iPhone/iPad app, so the two are
+  # one App Store product (Universal Purchase).
+  TunerMac:
+    type: application
+    platform: macOS
+    sources:
+      - path: ../AppStore/Mac/Sources
+      - path: ../AppStore/Mac/Resources/Assets.xcassets
+      - path: Resources/PrivacyInfo.xcprivacy
+      - path: Resources/Licenses
+        type: folder
+      - path: ../Sources/Tuner
+        group: Shared
+        excludes:
+          - "App/Updates/**"
+    dependencies:
+      - package: Tuner
+        product: TunerCore
+      # LGPL build, as on iPhone/iPad.
+      - package: MPVKit
+        product: MPVKit
+      - sdk: OpenGL.framework
+      - sdk: AVKit.framework
+      - sdk: UserNotifications.framework
+      - sdk: MediaPlayer.framework
+      - sdk: WebKit.framework
+    # App Sandbox, network access for IPTV servers, ~/Movies for downloads, and files/folders the user picks
+    # (playlist files, the iCloud sync folder, kept with security-scoped bookmarks). XcodeGen writes the file.
+    entitlements:
+      path: ../AppStore/Mac/Tuner.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
+        com.apple.security.network.client: true
+        com.apple.security.files.user-selected.read-write: true
+        com.apple.security.files.bookmarks.app-scope: true
+        com.apple.security.assets.movies.read-write: true
+    info:
+      path: ../AppStore/Mac/Info.plist
+      properties:
+        CFBundleDisplayName: Tuner
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        LSApplicationCategoryType: public.app-category.entertainment
+        NSHumanReadableCopyright: "© 2026 Ahmed Ezzat"
+        NSSupportsAutomaticGraphicsSwitching: true
+        NSAppTransportSecurity:
+          NSAllowsArbitraryLoads: true
+        NSLocalNetworkUsageDescription: Tuner connects to IPTV servers and media on your local network.
+        ITSAppUsesNonExemptEncryption: false
+    settings:
+      base:
+        PRODUCT_NAME: Tuner
+        PRODUCT_MODULE_NAME: Tuner
+        PRODUCT_BUNDLE_IDENTIFIER: $(TUNER_BUNDLE_ID)
+        SWIFT_VERSION: "5.0"
+        OTHER_SWIFT_FLAGS: "$(inherited) -D TUNER_APP_STORE"
+        OTHER_LDFLAGS: "$(inherited) -weak_framework FoundationModels"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        CODE_SIGN_STYLE: Automatic
+        ENABLE_HARDENED_RUNTIME: YES
+
 schemes:
+  TunerMac:
+    build:
+      targets:
+        TunerMac: all
+    run:
+      config: Debug
   TunerIOS:
     build:
       targets:

@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
-# Builds the App Store version of the iPhone/iPad app and (with UPLOAD=1) sends it to App Store Connect.
-#   iOS/scripts/archive-appstore.sh            # archive + export build/ios/export/Tuner.ipa
-#   UPLOAD=1 iOS/scripts/archive-appstore.sh   # archive + upload (then it shows in TestFlight after processing)
-# Needs a paid team: DEVELOPMENT_TEAM in iOS/Config/Local.xcconfig. The bundle ID is app.tuner.ios (TUNER_BUNDLE_ID
-# overrides it). Signing uses the Apple ID in Xcode → Settings → Accounts, or an App Store Connect API key:
+# Builds the App Store version of the iPhone/iPad app (or, with PLATFORM=mac, the Mac App Store app) and, with
+# UPLOAD=1, sends it to App Store Connect.
+#   iOS/scripts/archive-appstore.sh                       # iPhone/iPad: archive + export build/ios/export/Tuner.ipa
+#   UPLOAD=1 iOS/scripts/archive-appstore.sh              # iPhone/iPad: archive + upload (TestFlight after processing)
+#   PLATFORM=mac UPLOAD=1 iOS/scripts/archive-appstore.sh # Mac: archive + upload (export: build/mac-store/export/Tuner.pkg)
+# Needs a paid team: DEVELOPMENT_TEAM in iOS/Config/Local.xcconfig. Both apps use bundle ID app.tuner.player (one
+# product with Universal Purchase; TUNER_BUNDLE_ID overrides it). Signing uses the Apple ID in Xcode → Settings → Accounts, or an App Store Connect API key:
 #   ASC_KEY_ID=… ASC_ISSUER_ID=… ASC_KEY_PATH=~/…/AuthKey_….p8
 # Version: the VERSION file; build number: the commit count (must be higher than every earlier upload).
 set -euo pipefail
@@ -19,10 +21,14 @@ if [[ -n "$(git status --porcelain)" ]]; then
   exit 1
 fi
 
-BUNDLE_ID="${TUNER_BUNDLE_ID:-app.tuner.ios}"
+BUNDLE_ID="${TUNER_BUNDLE_ID:-app.tuner.player}"
 VERSION="$(tr -d '[:space:]' < ../VERSION)"
 BUILD="$(git rev-list --count HEAD)"
-OUT="../build/ios"
+if [[ "${PLATFORM:-ios}" == mac ]]; then
+  SCHEME=TunerMac; DEST="generic/platform=macOS"; OUT="../build/mac-store"; PRODUCT="Tuner.pkg"
+else
+  SCHEME=TunerIOS; DEST="generic/platform=iOS"; OUT="../build/ios"; PRODUCT="Tuner.ipa"
+fi
 ARCHIVE="$OUT/Tuner.xcarchive"
 AUTH=()
 if [[ -n "${ASC_KEY_ID:-}" ]]; then
@@ -37,9 +43,9 @@ trap 'cp "$RESOLVED_BACKUP" ../Package.resolved; rm -f "$RESOLVED_BACKUP" "$EXPO
 
 xcodegen generate --quiet
 rm -rf "$ARCHIVE" "$OUT/export"
-echo "Archiving Tuner $VERSION ($BUILD) as $BUNDLE_ID"
-xcodebuild -project TunerIOS.xcodeproj -scheme TunerIOS -configuration Release \
-  -destination "generic/platform=iOS" -archivePath "$ARCHIVE" -derivedDataPath ../.build/xcode-archive \
+echo "Archiving $SCHEME $VERSION ($BUILD) as $BUNDLE_ID"
+xcodebuild -project TunerIOS.xcodeproj -scheme "$SCHEME" -configuration Release \
+  -destination "$DEST" -archivePath "$ARCHIVE" -derivedDataPath "../.build/xcode-archive-$SCHEME" \
   -allowProvisioningUpdates ${AUTH[@]+"${AUTH[@]}"} \
   TUNER_BUNDLE_ID="$BUNDLE_ID" MARKETING_VERSION="$VERSION" CURRENT_PROJECT_VERSION="$BUILD" \
   archive -quiet
@@ -65,5 +71,5 @@ xcodebuild -exportArchive -archivePath "$ARCHIVE" -exportPath "$OUT/export" -exp
 if [[ "$DESTINATION" == upload ]]; then
   echo "Uploaded Tuner $VERSION ($BUILD). It appears in App Store Connect → TestFlight after processing (10–30 min)."
 else
-  echo "Exported $OUT/export/Tuner.ipa. Upload with UPLOAD=1, or drag it into Apple's Transporter app."
+  echo "Exported $OUT/export/$PRODUCT. Upload with UPLOAD=1, or drag it into Apple's Transporter app."
 fi

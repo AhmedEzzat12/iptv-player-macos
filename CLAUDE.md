@@ -42,7 +42,14 @@ scripts/build-app.sh release    # build/Tuner.app (version from VERSION, build n
 - New features go to both apps unless the platform can't do them; list exceptions in README → iPhone and iPad.
 - Check both before committing: `scripts/test.sh`, `swift build --product Tuner`, `iOS/scripts/check-build.sh`.
 - Never commit `iOS/Config/Local.xcconfig` (the owner's team ID) or generated `*.xcodeproj`.
-- The iPhone/iPad app goes to the App Store (`docs/app-store/README.md`): keep it contentless (no built-in playlists,
+- Three builds: the GitHub Mac app (`scripts/build-app.sh`), the Mac App Store app (`TunerMac` in `iOS/project.yml`,
+  compiled with `TUNER_APP_STORE`: sandboxed, no Sparkle/recording/ffmpeg, MPVKit linked) and the iPhone/iPad app.
+  Gate store differences with `Distribution` (`Sources/Tuner/Support/Distribution.swift`), and check the store build
+  compiles: `cd iOS && xcodegen generate && xcodebuild -project TunerIOS.xcodeproj -scheme TunerMac
+  -destination 'generic/platform=macOS' CODE_SIGNING_ALLOWED=NO build` (restore `Package.resolved` afterwards).
+  Never launch a store build unless `codesign -d --entitlements -` shows `app-sandbox`: unsandboxed, it opens the
+  maintainer's real library.
+- The store apps go to the App Store (`docs/app-store/README.md`): keep them contentless (no built-in playlists,
   channels, logos or links to lists), use only LGPL/permissive dependencies there (MPVKit's `MPVKit` product, never
   `MPVKit-GPL`), list new bundled libraries in `Acknowledgements.swift`, declare new required-reason APIs in
   `iOS/Resources/PrivacyInfo.xcprivacy`, and keep other services' names (Netflix…) out of the UI.
