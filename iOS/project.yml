@@ -6,7 +6,7 @@ options:
   deploymentTarget:
     iOS: "26.0"
     macOS: "15.0"
-  createIntermediateGroups: true
+  createIntermediateGroups: false
   developmentLanguage: en
 
 configFiles:
@@ -150,7 +150,8 @@ targets:
         PRODUCT_MODULE_NAME: Tuner
         PRODUCT_BUNDLE_IDENTIFIER: $(TUNER_BUNDLE_ID)
         SWIFT_VERSION: "5.0"
-        OTHER_SWIFT_FLAGS: "$(inherited) -D TUNER_APP_STORE"
+        # OpenGL is deliberate (mpv's OpenGL render API): silence Apple's deprecation warnings, as on iPhone.
+        OTHER_SWIFT_FLAGS: "$(inherited) -D TUNER_APP_STORE -Xcc -DGL_SILENCE_DEPRECATION"
         OTHER_LDFLAGS: "$(inherited) -weak_framework FoundationModels"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         CODE_SIGN_STYLE: Automatic

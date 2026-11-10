@@ -33,7 +33,12 @@ let package = Package(
         .executableTarget(
             name: "Tuner",
             dependencies: ["TunerCore", "CMPV", .product(name: "Sparkle", package: "Sparkle")],
-            swiftSettings: [.swiftLanguageMode(.v5)],
+            swiftSettings: [
+                .swiftLanguageMode(.v5),
+                // The mpv video layer uses OpenGL on purpose (libmpv's OpenGL render API); Apple's headers offer this
+                // macro to silence the deprecation warnings.
+                .unsafeFlags(["-Xcc", "-DGL_SILENCE_DEPRECATION"]),
+            ],
             linkerSettings: [
                 // Sparkle.framework is embedded in Contents/Frameworks by scripts/build-app.sh.
                 .unsafeFlags(["-Xlinker", "-rpath", "-Xlinker", "@executable_path/../Frameworks"]),

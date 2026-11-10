@@ -443,17 +443,15 @@ public struct RecommendationIndex: Sendable {
     static func extractInParallel(_ items: [RecommendationItem]) -> [(features: [Token: Float], titleKey: String)] {
         let chunkSize = 2_000
         let chunks = (items.count + chunkSize - 1) / chunkSize
-        var results = [[(features: [Token: Float], titleKey: String)]](repeating: [], count: chunks)
-        results.withUnsafeMutableBufferPointer { buffer in
-            DispatchQueue.concurrentPerform(iterations: chunks) { chunk in
-                var extractor = FeatureExtractor()
-                let range = (chunk * chunkSize)..<min(items.count, (chunk + 1) * chunkSize)
-                buffer[chunk] = items[range].map { item in
-                    (extractor.features(of: item), RecommendationText.titleKey(item.title, isSeries: item.kind == .series).key)
-                }
-            }
+        let results = ChunkResults<[(features: [Token: Float], titleKey: String)]>(count: chunks)
+        DispatchQueue.concurrentPerform(iterations: chunks) { chunk in
+            var extractor = FeatureExtractor()
+            let range = (chunk * chunkSize)..<min(items.count, (chunk + 1) * chunkSize)
+            results.set(chunk, items[range].map { item in
+                (extractor.features(of: item), RecommendationText.titleKey(item.title, isSeries: item.kind == .series).key)
+            })
         }
-        return results.flatMap { $0 }
+        return results.inOrder.flatMap { $0 }
     }
 
     static func features(of item: RecommendationItem) -> [Token: Float] {
@@ -642,5 +640,24 @@ public struct RecommendationIndex: Sendable {
             }
         }
         return sum
+    }
+}
+
+/// Results of `concurrentPerform` chunks: each chunk stores its own slot (under a lock, so the writes from different
+/// threads are safe); read back in chunk order once all are done.
+private final class ChunkResults<Value>: @unchecked Sendable {
+    private var slots: [Value?]
+    private let lock = NSLock()
+
+    init(count: Int) {
+        slots = Array(repeating: nil, count: count)
+    }
+
+    func set(_ index: Int, _ value: Value) {
+        lock.withLock { slots[index] = value }
+    }
+
+    var inOrder: [Value] {
+        lock.withLock { slots.compactMap { $0 } }
     }
 }

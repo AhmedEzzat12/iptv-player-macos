@@ -139,10 +139,8 @@ struct PlayerHost: View {
 
     @ViewBuilder
     private func stage(size: CGSize, safe: CGRect) -> some View {
-        let player = model.player
         let mode = self.mode
         let isFull = mode == .full
-        let bounds = CGRect(origin: .zero, size: size)
         let chromeShown = isFull && (chrome.isVisible || chromeHeld)
         let compact = compactRect(for: mode, safe: safe)
         // Touch screens: the full-screen player is a card that follows a swipe down, shrinking as it goes (0…1).

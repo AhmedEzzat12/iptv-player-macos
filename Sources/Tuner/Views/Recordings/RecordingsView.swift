@@ -213,7 +213,7 @@ private struct RecordingsFFmpegNotice: View {
                 .foregroundStyle(.orange)
             VStack(alignment: .leading, spacing: 3) {
                 Text("Recording needs ffmpeg").font(.headline)
-                (Text("Install it with Homebrew, then come back: ") + Text("brew install ffmpeg").font(.callout.monospaced()))
+                Text("Install it with Homebrew, then come back: \(Text("brew install ffmpeg").font(.callout.monospaced()))")
                     .font(.callout)
                     .foregroundStyle(.secondary)
                     .textSelection(.enabled)

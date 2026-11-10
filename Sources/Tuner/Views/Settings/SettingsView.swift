@@ -138,7 +138,7 @@ struct SettingsToolStatusRow: View {
             } label: {
                 Label {
                     Text(missingTitle)
-                    Text(missingDetail) + Text(" ") + Text(command).font(.callout.monospaced())
+                    Text("\(missingDetail) \(Text(command).font(.callout.monospaced()))")
                 } icon: {
                     Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
                 }
