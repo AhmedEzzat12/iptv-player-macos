@@ -144,6 +144,8 @@ struct SidebarView: View {
                     Button { showNewGroup = true } label: { Image(systemName: "plus") }
                         .buttonStyle(.borderless)
                         .help("New channel group")
+                        // The header spans the whole sidebar; without this the button sat past the rows' edge.
+                        .padding(.trailing, 8)
                 }
             }
         }

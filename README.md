@@ -34,6 +34,8 @@ A native IPTV player for **Mac, iPhone and iPad** with an Apple TV app–style e
 | ![Up Next row](docs/media/22-up-next.png) | ![Pull to refresh hint](docs/media/23-pull-to-sync.png) |
 | **Skip Intro** | **Dialogue Boost, Night Mode, Volume Levelling** |
 | ![Skip Intro button](docs/media/24-skip-intro.png) | ![Audio settings](docs/media/25-audio-settings.png) |
+| **Rows start clear of the sidebar** | |
+| ![Home rows aligned with their titles](docs/media/26-home-rows.png) | |
 
 <sub>Screenshots and video use the local test kit (`scripts/testkit`): synthetic channels and titles, plus four
 Blender Foundation open movies (CC BY). No provider content is shown.</sub>
