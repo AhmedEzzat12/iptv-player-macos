@@ -111,6 +111,7 @@ private struct HomeContent: View {
         }
         .ignoresSafeArea(edges: hasHero ? .top : [])
         .pullToSync()
+        .tracksPageScrolling()
         .background(VODTheme.background)
         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { viewHeight = $0 }
         .navigationTitle("Home")
@@ -556,9 +557,15 @@ private struct HomeHero: View {
     @Environment(\.tunerCompact) private var compact
     @ViewState private var index = 0
     @ViewState private var hovering = false
+    @ViewState private var visible = true
+    @ViewState private var onScreen = true
+    @Environment(\.pageIsScrolling) private var pageIsScrolling
 
     private var current: VODItem { items[min(index, items.count - 1)] }
-    private var paused: Bool { hovering || model.player.isFullWindow }
+    /// Rotation stops while hovered or playing full window, and also while the page scrolls, while the hero is out
+    /// of view and while a page is open on top of Home: each swap loads and fades in a new backdrop, which caused
+    /// hitches mid-scroll and cost work nobody saw.
+    private var paused: Bool { hovering || model.player.isFullWindow || pageIsScrolling || !visible || !onScreen }
 
     /// The metadata backdrop first (consistent, high-resolution fan art), then the provider's.
     private func backdrops(_ item: VODItem) -> [String?] {
@@ -628,6 +635,9 @@ private struct HomeHero: View {
         .environment(\.colorScheme, .dark)
         .overlay(alignment: .bottom) { VODTheme.heroBottomFade }
         .onHover { hovering = $0 }
+        .onScrollVisibilityChange(threshold: 0.3) { visible = $0 }
+        .onAppear { onScreen = true }
+        .onDisappear { onScreen = false }
         .onChange(of: items.count) { _, count in
             if index >= count { index = 0 }
         }

@@ -429,19 +429,17 @@ struct VODBackdropArtwork: View {
     @ViewBuilder
     private func layer(_ url: String) -> some View {
         if let parsed = URL(string: url), parsed.scheme != nil {
+            // Through ArtworkLoader (downsampled to the hero's size, cached, decoded off the main thread), not
+            // AsyncImage, which decoded the full-size image on first draw and fetched it again for every hero swap.
             Color.clear.overlay {
-                AsyncImage(url: parsed, transaction: Transaction(animation: .easeOut(duration: 0.35))) { phase in
-                    if case .success(let image) = phase {
-                        image.resizable()
-                            .aspectRatio(contentMode: .fill)
-                            .task {
-                                // Let the fade-in finish before removing what's underneath.
-                                try? await Task.sleep(for: .milliseconds(500))
-                                loaded.insert(url)
-                            }
-                    } else {
-                        Color.clear
+                RemoteImage(url: url, onLoaded: {
+                    Task {
+                        // Let the fade-in finish before removing what's underneath.
+                        try? await Task.sleep(for: .milliseconds(500))
+                        loaded.insert(url)
                     }
+                }) {
+                    Color.clear
                 }
             }
         }
@@ -450,14 +448,63 @@ struct VODBackdropArtwork: View {
     @ViewBuilder
     private var blurredFallback: some View {
         if let fallbackURL {
-            RemoteImage(url: fallbackURL) { VODArtworkPlaceholder(title: title, symbol: symbol) }
+            // A blur baked into a small copy once, not a live 36-pt blur over the whole hero: on pages whose
+            // backdrops never load, that live blur was redrawn on every scroll frame.
+            BakedBlurArtwork(url: fallbackURL) { VODArtworkPlaceholder(title: title, symbol: symbol) }
                 .scaleEffect(1.35)
-                .blur(radius: 36, opaque: true)
                 .overlay(Color.black.opacity(0.15))
         } else {
             VODArtworkPlaceholder(title: title, symbol: symbol)
         }
     }
+}
+
+/// Artwork shown heavily blurred, with the blur baked into a small image (`VODStillLoader.bakedBlur`) off the main
+/// thread, so it costs nothing to composite while the page scrolls.
+struct BakedBlurArtwork<Placeholder: View>: View {
+    let url: String
+    @ViewBuilder var placeholder: () -> Placeholder
+
+    @ViewState private var image: CGImage?
+
+    private static var cache: NSCache<NSString, BlurEntry> { BlurEntry.cache }
+
+    var body: some View {
+        ZStack {
+            if let image {
+                Image(decorative: image, scale: 1)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .transition(.opacity)
+            } else {
+                placeholder()
+            }
+        }
+        .task(id: url) {
+            if let cached = Self.cache.object(forKey: url as NSString) {
+                image = cached.image
+                return
+            }
+            guard let parsed = URL(string: url), parsed.scheme != nil,
+                  let small = await ArtworkLoader.shared.image(for: parsed, maxPixels: 256), !Task.isCancelled
+            else { return }
+            let blurred = await Task.detached(priority: .utility) { VODStillLoader.bakedBlur(small, width: 160, sigma: 7) }.value
+            guard let blurred, !Task.isCancelled else { return }
+            Self.cache.setObject(BlurEntry(blurred), forKey: url as NSString)
+            withAnimation(.easeOut(duration: 0.25)) { image = blurred }
+        }
+    }
+}
+
+final class BlurEntry {
+    let image: CGImage
+    init(_ image: CGImage) { self.image = image }
+
+    static let cache: NSCache<NSString, BlurEntry> = {
+        let cache = NSCache<NSString, BlurEntry>()
+        cache.countLimit = 60
+        return cache
+    }()
 }
 
 /// The title as artwork: the transparent title logo from online metadata when there is one (like the TV
@@ -522,15 +569,20 @@ struct VODTitleArtwork: View {
         }
         // URLSession.shared uses the app's enlarged URLCache, like AsyncImage.
         guard let (data, response) = try? await URLSession.shared.data(from: url), !Task.isCancelled,
-              (response as? HTTPURLResponse).map({ (200..<300).contains($0.statusCode) }) ?? true,
-              let image = NSImage(data: data), Self.isLegibleOnDark(image)
+              (response as? HTTPURLResponse).map({ (200..<300).contains($0.statusCode) }) ?? true
         else { return }
+        // Decoding and the legibility check draw the image: off the main thread (the hero swaps every 8 s).
+        let image = await Task.detached(priority: .utility) { () -> NSImage? in
+            guard let image = NSImage(data: data), Self.isLegibleOnDark(image) else { return nil }
+            return image
+        }.value
+        guard let image, !Task.isCancelled else { return }
         withAnimation(.easeInOut(duration: 0.35)) { logo = image }
     }
 
     /// Heroes are dark, so a black or very dark logo would disappear; such logos fall back to the text title.
     /// Averages the luminance of the logo's visible pixels on a tiny copy.
-    static func isLegibleOnDark(_ image: NSImage) -> Bool {
+    nonisolated static func isLegibleOnDark(_ image: NSImage) -> Bool {
         guard let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else { return true }
         let side = 24
         var pixels = [UInt8](repeating: 0, count: side * side * 4)
@@ -1118,6 +1170,7 @@ struct VODShelf<Content: View>: View {
     @ViewState private var geometry = VODShelfGeometryBox()
     @ViewState private var edges = VODShelfEdges()
     @ViewState private var hovering = false
+    @Environment(\.pageIsScrolling) private var pageIsScrolling
 
     init(_ title: String? = nil, subtitle: String? = nil, @ViewBuilder content: @escaping () -> Content) {
         self.title = title
@@ -1167,7 +1220,12 @@ struct VODShelf<Content: View>: View {
             }
         }
         .onHover { inside in
+            // Rows sliding under a still pointer during a page scroll don't show their chevrons.
+            if inside && pageIsScrolling { return }
             withAnimation(.easeOut(duration: 0.18)) { hovering = inside }
+        }
+        .onChange(of: pageIsScrolling) { _, scrolling in
+            if scrolling && hovering { hovering = false }
         }
     }
 

@@ -84,6 +84,7 @@ struct VODBrowser: View {
         }
         .pullToSync()
         .scrollPosition($scrollPosition)
+        .tracksPageScrolling()
         .background(VODTheme.background)
         .navigationTitle(kind.title)
         .searchable(text: $search, placement: .toolbar, prompt: "Search \(kind.title)")

@@ -9,21 +9,26 @@ import TunerCore
 struct RemoteImage<Placeholder: View>: View {
     let urls: [String]
     var contentMode: ContentMode = .fill
+    /// Called once an image is showing (from memory or after loading).
+    var onLoaded: (() -> Void)?
     @ViewBuilder var placeholder: () -> Placeholder
 
     @Environment(\.displayScale) private var displayScale
     @ViewState private var size: CGSize = .zero
     @ViewState private var loaded: ArtworkLoader.Loaded?
 
-    init(url: String?, contentMode: ContentMode = .fill, @ViewBuilder placeholder: @escaping () -> Placeholder) {
-        self.init(urls: [url], contentMode: contentMode, placeholder: placeholder)
+    init(url: String?, contentMode: ContentMode = .fill, onLoaded: (() -> Void)? = nil,
+         @ViewBuilder placeholder: @escaping () -> Placeholder) {
+        self.init(urls: [url], contentMode: contentMode, onLoaded: onLoaded, placeholder: placeholder)
     }
 
     /// Tries `urls` in order (nil/empty ones and repeats skipped).
-    init(urls: [String?], contentMode: ContentMode = .fill, @ViewBuilder placeholder: @escaping () -> Placeholder) {
+    init(urls: [String?], contentMode: ContentMode = .fill, onLoaded: (() -> Void)? = nil,
+         @ViewBuilder placeholder: @escaping () -> Placeholder) {
         var seen = Set<String>()
         self.urls = urls.compactMap { $0?.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty && seen.insert($0).inserted }
         self.contentMode = contentMode
+        self.onLoaded = onLoaded
         self.placeholder = placeholder
     }
 
@@ -71,6 +76,7 @@ struct RemoteImage<Placeholder: View>: View {
             } else {
                 withAnimation(.easeOut(duration: 0.2)) { loaded = .init(url: url, image: image) }
             }
+            onLoaded?()
             return
         }
     }

@@ -113,6 +113,7 @@ struct SeriesDetailView: View {
             }
         }
         .ignoresSafeArea(edges: .top)
+        .tracksPageScrolling()
         .background(VODTheme.background)
         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { viewHeight = $0 }
         .navigationTitle(series.name)
@@ -988,11 +989,16 @@ enum VODStillLoader {
     /// Heavy Gaussian blur on a small copy (cheap, and nothing recognisable survives). Baked into the
     /// image rather than a live view filter, so a shelf of blurred cards costs nothing to scroll.
     private static func blur(_ image: CGImage) -> CGImage? {
+        bakedBlur(image)
+    }
+
+    /// A Gaussian blur of a copy scaled down to `width` pixels (also used for the hero's blurred fallback).
+    static func bakedBlur(_ image: CGImage, width: CGFloat = 240, sigma: Double = 9) -> CGImage? {
         let input = CIImage(cgImage: image)
-        let scale = min(1, 240 / CGFloat(max(image.width, 1)))
+        let scale = min(1, width / CGFloat(max(image.width, 1)))
         let small = input.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
         let extent = small.extent.integral
-        let output = small.clampedToExtent().applyingGaussianBlur(sigma: 9).cropped(to: extent)
+        let output = small.clampedToExtent().applyingGaussianBlur(sigma: sigma).cropped(to: extent)
         return ciContext.createCGImage(output, from: extent)
     }
 }

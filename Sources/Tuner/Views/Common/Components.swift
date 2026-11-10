@@ -74,17 +74,56 @@ extension View {
     }
 }
 
+/// Lift on hover. No shadow at rest: a shadow on clipped artwork is drawn offscreen, and with ~100 cards on Home that
+/// cost frames while scrolling. Cards that slide under a still pointer during a scroll don't lift either.
 private struct HoverLift: ViewModifier {
     let scale: CGFloat
+    @Environment(\.pageIsScrolling) private var pageIsScrolling
     @ViewState private var hovering = false
 
     func body(content: Content) -> some View {
+        let lifted = hovering && !pageIsScrolling
         content
-            .scaleEffect(hovering ? scale : 1)
-            .shadow(color: .black.opacity(hovering ? 0.45 : 0.2), radius: hovering ? 18 : 6, y: hovering ? 10 : 3)
-            .animation(.spring(response: 0.3, dampingFraction: 0.75), value: hovering)
-            .onHover { hovering = $0 }
-            .zIndex(hovering ? 1 : 0)
+            .scaleEffect(lifted ? scale : 1)
+            .shadow(color: .black.opacity(lifted ? 0.45 : 0), radius: lifted ? 18 : 0, y: lifted ? 10 : 0)
+            .animation(.spring(response: 0.3, dampingFraction: 0.75), value: lifted)
+            .onHover { inside in
+                if inside && pageIsScrolling { return }
+                hovering = inside
+            }
+            .zIndex(lifted ? 1 : 0)
+    }
+}
+
+extension View {
+    /// For a page's vertical scroll view: tells the content (`pageIsScrolling`) while it scrolls, so hover effects
+    /// stay still. Updates when a scroll starts and ends, not on every frame.
+    func tracksPageScrolling() -> some View {
+        modifier(PageScrollingTracker())
+    }
+}
+
+private struct PageScrollingTracker: ViewModifier {
+    @ViewState private var scrolling = false
+
+    func body(content: Content) -> some View {
+        content
+            .onScrollPhaseChange { _, phase in
+                if phase.isScrolling != scrolling { scrolling = phase.isScrolling }
+            }
+            .environment(\.pageIsScrolling, scrolling)
+    }
+}
+
+private struct PageIsScrollingKey: EnvironmentKey {
+    static let defaultValue = false
+}
+
+extension EnvironmentValues {
+    /// True while the page's scroll view is scrolling (`tracksPageScrolling`).
+    var pageIsScrolling: Bool {
+        get { self[PageIsScrollingKey.self] }
+        set { self[PageIsScrollingKey.self] = newValue }
     }
 }
 

@@ -93,6 +93,7 @@ struct MovieDetailView: View {
             }
         }
         .ignoresSafeArea(edges: .top)
+        .tracksPageScrolling()
         .background(VODTheme.background)
         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { viewHeight = $0 }
         .navigationTitle(movie.name)
