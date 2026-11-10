@@ -120,7 +120,9 @@ targets:
       - sdk: MediaPlayer.framework
       - sdk: WebKit.framework
     # App Sandbox, network access for IPTV servers, ~/Movies for downloads, and files/folders the user picks
-    # (playlist files, the iCloud sync folder, kept with security-scoped bookmarks). XcodeGen writes the file.
+    # (playlist files, the iCloud sync folder, kept with security-scoped bookmarks). XcodeGen writes the file, so
+    # entitlements added to it by hand disappear: add them here. No allow-jit: MPVKit's LuaJIT doesn't use MAP_JIT
+    # memory, so it wouldn't help; mpv's Lua scripts are switched off instead (MPVEngine.makeCore).
     entitlements:
       path: ../AppStore/Mac/Tuner.entitlements
       properties:

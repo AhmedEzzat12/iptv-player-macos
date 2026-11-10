@@ -491,3 +491,10 @@ empty-guide detection with guidance.
   "Tuner…" in October 2026, so the store apps (iPhone/iPad and Mac App Store) are called Antenna:
   `Distribution.appName` in visible text, `CFBundleDisplayName` (and the Mac `PRODUCT_NAME`) in `iOS/project.yml`.
   The code, repo, bundle IDs, data folders, log subsystem and the GitHub Mac app keep "Tuner".
+- **No Lua in the store app.** MPVKit's Mac build links LuaJIT, and mpv starts its built-in scripts (stats, console,
+  select, osc…) at `mpv_initialize`. Under the hardened runtime, the code LuaJIT compiles lands in unsigned memory
+  and macOS kills the app (TestFlight 1.9.3 (127): "Code Signature Invalid" in the `*/stats` thread on every play).
+  `load-scripts=no` only covers script folders, so the store build also sets `scripts=` and every built-in switch
+  (`osc`, `ytdl`, `load-stats-overlay`, `load-console`, `load-osd-console`, `load-auto-profiles`, `load-select`,
+  `load-positioning`, `load-commands`, `load-context-menu`) to `no`, after the advanced-options box. A future mpv
+  with a new built-in script needs its switch added there. `allow-jit` doesn't help (LuaJIT doesn't use `MAP_JIT`).

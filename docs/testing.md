@@ -307,11 +307,14 @@ xcodebuild -project TunerIOS.xcodeproj -scheme TunerMac -configuration Release -
 cd .. && git checkout Package.resolved          # Xcode adds MPVKit to it
 cp -R .build/xcode-mac/Build/Products/Release/Antenna.app <scratch>/
 plutil -replace CFBundleIdentifier -string app.antenna.player.scratch <scratch>/Antenna.app/Contents/Info.plist
-for f in <scratch>/Antenna.app/Contents/Frameworks/*.framework; do codesign --force -s - "$f"; done
-codesign --force -s - --entitlements AppStore/Mac/Tuner.entitlements <scratch>/Antenna.app
+for f in <scratch>/Antenna.app/Contents/Frameworks/*.framework; do codesign --force --options runtime -s - "$f"; done
+codesign --force --options runtime -s - --entitlements AppStore/Mac/Tuner.entitlements <scratch>/Antenna.app
 codesign -d --entitlements - <scratch>/Antenna.app | grep app-sandbox    # must print a line
 ```
 
+- Sign with `--options runtime` (the hardened runtime, as in TestFlight and the App Store): without it, code that
+  only crashes under the hardened runtime runs fine here. That's how build 1.9.3 (127) passed this test and then
+  crashed on every play in TestFlight (mpv's built-in Lua scripts, JIT-compiled by LuaJIT).
 - **Never launch it if the last command prints nothing.** Without the sandbox it opens the real
   `~/Library/Application Support/Tuner/` library. (`AppStore/Mac/Tuner.entitlements` is written by XcodeGen from
   `project.yml`; if it's an empty `<dict/>`, regenerate.)
