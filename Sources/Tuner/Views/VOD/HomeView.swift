@@ -557,15 +557,13 @@ private struct HomeHero: View {
     @Environment(\.tunerCompact) private var compact
     @ViewState private var index = 0
     @ViewState private var hovering = false
-    @ViewState private var visible = true
-    @ViewState private var onScreen = true
+    @ViewState private var scrollGate = HomeHeroScrollGate()
     @Environment(\.pageIsScrolling) private var pageIsScrolling
 
     private var current: VODItem { items[min(index, items.count - 1)] }
-    /// Rotation stops while hovered or playing full window, and also while the page scrolls, while the hero is out
-    /// of view and while a page is open on top of Home: each swap loads and fades in a new backdrop, which caused
-    /// hitches mid-scroll and cost work nobody saw.
-    private var paused: Bool { hovering || model.player.isFullWindow || pageIsScrolling || !visible || !onScreen }
+    /// Rotation stops while hovered or playing full window. A swap that falls during a page scroll waits for the scroll
+    /// to end (`HomeHeroScrollGate`), since loading and fading in a new backdrop mid-scroll caused hitches.
+    private var paused: Bool { hovering || model.player.isFullWindow }
 
     /// The metadata backdrop first (consistent, high-resolution fan art), then the provider's.
     private func backdrops(_ item: VODItem) -> [String?] {
@@ -635,15 +633,16 @@ private struct HomeHero: View {
         .environment(\.colorScheme, .dark)
         .overlay(alignment: .bottom) { VODTheme.heroBottomFade }
         .onHover { hovering = $0 }
-        .onScrollVisibilityChange(threshold: 0.3) { visible = $0 }
-        .onAppear { onScreen = true }
-        .onDisappear { onScreen = false }
+        .onChange(of: pageIsScrolling, initial: true) { _, scrolling in scrollGate.update(scrolling: scrolling) }
         .onChange(of: items.count) { _, count in
             if index >= count { index = 0 }
         }
         .task(id: HomeHeroTick(index: index, paused: paused, count: items.count)) {
             guard items.count > 1, !paused else { return }
             try? await Task.sleep(for: .seconds(8))
+            while scrollGate.holdsSwap, !Task.isCancelled {
+                try? await Task.sleep(for: .milliseconds(500))
+            }
             guard !Task.isCancelled else { return }
             withAnimation(.easeInOut(duration: 0.8)) { index = (index + 1) % items.count }
         }
@@ -727,6 +726,23 @@ private struct HomeHero: View {
         .padding(.vertical, 8)
         .tunerGlass(in: Capsule())
         .animation(.spring(response: 0.35, dampingFraction: 0.8), value: index)
+    }
+}
+
+/// Whether the page is scrolling, read when a hero swap is due (a reference, so the waiting task sees the current
+/// value). A swap waits while the page scrolls, but at most 10 s after scrolling started, so a scroll phase that's
+/// never reported as ended can delay the rotation but not stop it.
+@MainActor
+private final class HomeHeroScrollGate {
+    private var scrollingSince: Date?
+
+    func update(scrolling: Bool) {
+        scrollingSince = scrolling ? (scrollingSince ?? Date()) : nil
+    }
+
+    var holdsSwap: Bool {
+        guard let since = scrollingSince else { return false }
+        return Date().timeIntervalSince(since) < 10
     }
 }
 
