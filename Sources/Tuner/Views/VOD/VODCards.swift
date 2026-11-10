@@ -1110,7 +1110,10 @@ struct VODShelf<Content: View>: View {
     var subtitle: String?
     @ViewBuilder var content: () -> Content
 
-    @ViewState private var position = ScrollPosition(edge: .leading)
+    // No initial edge: `ScrollPosition(edge: .leading)` puts the content's own leading edge at offset 0, ignoring the
+    // inset that keeps it clear of the floating sidebar on macOS 26, so the first card started behind the sidebar until
+    // the row was scrolled. The default position respects the insets.
+    @ViewState private var position = ScrollPosition()
     /// Latest scroll geometry, kept out of observation so scrolling doesn't re-render the shelf.
     @ViewState private var geometry = VODShelfGeometryBox()
     @ViewState private var edges = VODShelfEdges()
@@ -1187,10 +1190,11 @@ struct VODShelf<Content: View>: View {
         let metrics = geometry.metrics
         let target = metrics.offset + direction * max(200, metrics.page - VODMetrics.inset * 2)
         withAnimation(.smooth(duration: 0.45)) {
+            // Offsets, not edges: the edges ignore the sidebar inset (see `position`).
             if target <= metrics.minOffset + 1 {
-                position.scrollTo(edge: .leading)
+                position.scrollTo(x: metrics.minOffset)
             } else if target >= metrics.maxOffset - 1 {
-                position.scrollTo(edge: .trailing)
+                position.scrollTo(x: metrics.maxOffset)
             } else {
                 position.scrollTo(x: target)
             }
