@@ -86,6 +86,12 @@ final class MPVEngine: PlaybackEngine {
         option("vo", "libmpv")
         #if os(macOS)
         option("hwdec", prefs.hardwareDecoding ? "auto-safe" : "no")
+        // AVFoundation audio output first. mpv's CoreAudio output (0.41) registers a device-change listener that
+        // CoreAudio can still call after the output is torn down: when an audio device appears or disappears as
+        // playback stops (Bluetooth/AirPods switching profile), the queued callback logs through the freed output and
+        // the app crashes (TestFlight 1.9.4 (133), `hotplug_cb` in "HALC_ProxyNotification Call Listener Queue").
+        // The AVFoundation output has no such listener. CoreAudio stays as the fallback; the advanced box can override.
+        option("ao", "avfoundation,coreaudio")
         #elseif targetEnvironment(simulator)
         // The simulator's VideoToolbox corrupts HEVC (blocks, smears) and isn't the real hardware anyway.
         option("hwdec", "no")
