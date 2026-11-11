@@ -130,9 +130,9 @@ Blender Foundation open movies (CC BY). No provider content is shown.</sub>
   Data Mode); the others are small.
 - **iCloud sync** (Settings → Sync, off by default): watch progress, favourites, custom groups, hidden and pinned
   categories, channel names and guide choices, recently watched channels, recent searches and settings follow you
-  between your Macs, iPhone and iPad. Playlists come along with their passwords, encrypted separately for each of
-  your devices (the sync folder never holds them readably), so they turn on by themselves; turn off "Include Playlist
-  Passwords" to enter them on each device instead ("Needs password" in Settings → Playlists). Settings → Sync lists
+  between your Macs, iPhone and iPad. Playlists come along with their passwords for the devices you allow (Settings →
+  Sync → Devices → Passwords), encrypted separately for each (the sync folder never holds them readably), so they turn
+  on by themselves; otherwise enter them on each device ("Needs password" in Settings → Playlists). Settings → Sync lists
   your devices: rename this one, or remove one you no longer use (it stops syncing and can't read new passwords).
   Reinstalling the app on iPhone/iPad keeps it the same device. Each device
   keeps one small file in a folder in your iCloud Drive (on the Mac `iCloud Drive/Tuner Sync`; on iPhone/iPad you
@@ -171,36 +171,10 @@ devices from Xcode, with a free Apple ID or a paid developer account.
 Everything else — sources, sync, guide, metadata, categories, search, episodes and Up Next, downloads —
 is the same code on both.
 
-**Install on your iPhone/iPad** (needs Xcode 26+ with the iOS platform, and `brew install xcodegen`):
-
-1. In Xcode → Settings → Accounts, sign in with your Apple ID. Note your team ID.
-2. `cp iOS/Config/Local.xcconfig.example iOS/Config/Local.xcconfig`, then set your team ID (`DEVELOPMENT_TEAM`) and
-   a bundle ID of your own (`TUNER_BUNDLE_ID`). The file is git-ignored.
-3. Connect the device with a cable, unlock it and tap **Trust**. Turn on **Settings → Privacy & Security →
-   Developer Mode** (the device restarts).
-4. Run:
-   ```bash
-   iOS/scripts/install-device.sh
-   ```
-5. The first time, allow the app on the device: **Settings → General → VPN & Device Management** → your Apple ID →
-   Trust.
-
-With a **free Apple ID** the install expires after 7 days (your library and settings are kept): run the script
-again before then, or install a login agent that does it for you. Every 3 hours it checks, and once the last install
-is 4 days old it re-installs whatever is checked out, as soon as the device is reachable (plugged in, or on the
-same Wi-Fi once paired; it may be locked). It waits while the sources have uncommitted changes, posts a notification
-after each successful re-install, and from day 5 posts one if it still couldn't. Log: `~/Library/Logs/Tuner-iOS-resign.log`.
-
-```bash
-iOS/scripts/install-resign-agent.sh            # --remove to uninstall it
-FORCE=1 iOS/scripts/resign-if-due.sh           # re-install now
-```
-
-To re-install from [Raycast](https://www.raycast.com), add the folder `iOS/scripts/raycast` in Raycast → Settings →
-Extensions → Script Commands → Add Directories, then run **Reinstall Tuner on iPhone**. It notifies when it starts and
-when it's done (or why it couldn't), and logs to the same file.
-
-A paid Apple Developer Program membership makes installs last a year.
+**On your iPhone/iPad:** install **Antenna** from the App Store (or TestFlight for beta builds). To run your own build
+from source, `brew install xcodegen`, copy `iOS/Config/Local.xcconfig.example` to `iOS/Config/Local.xcconfig` with your
+team ID (`DEVELOPMENT_TEAM`) and a bundle ID of your own (`TUNER_BUNDLE_ID`), run `cd iOS && xcodegen generate`, open
+`TunerIOS.xcodeproj` and run the `TunerIOS` scheme on your device from Xcode.
 
 ## Install
 
@@ -290,9 +264,9 @@ and the build number of both is the commit count on `main`. A release is a tag `
    without Xcode), builds the Mac app, signs the update with your Sparkle key, writes `appcast.xml` and creates
    GitHub release `v<version>` with `Tuner.zip` and the appcast. Installed Macs check
    `releases/latest/download/appcast.xml` daily and offer the update.
-3. Update your iPhone/iPad from the same commit: `git pull && iOS/scripts/install-device.sh` (the login agent, if
-   installed, installs whatever the checkout holds the next time it runs). For TestFlight and the App Store:
-   `UPLOAD=1 iOS/scripts/archive-appstore.sh` (see [docs/app-store](docs/app-store/README.md)).
+3. Upload the iPhone/iPad and Mac App Store builds from the same commit: `UPLOAD=1 iOS/scripts/archive-appstore.sh`
+   and `PLATFORM=mac UPLOAD=1 iOS/scripts/archive-appstore.sh` (see [docs/app-store](docs/app-store/README.md));
+   they reach TestFlight after processing.
 
 - The signing key lives in your login keychain. The first run creates it (Keychain may ask); Soonbar uses the same
   key. **Back it up once** — without it, installed copies can't verify future updates:

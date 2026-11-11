@@ -67,9 +67,9 @@ once, as on iPhone.
    create an API key in App Store Connect → Users and Access → Integrations and pass `ASC_KEY_ID`, `ASC_ISSUER_ID`,
    `ASC_KEY_PATH`.
 7. **TestFlight:** after processing (10–30 min) add yourself as an internal tester and install TestFlight builds on
-   your iPhone and Mac (TestFlight is also a Mac app). This replaces the 7-day re-installs: remove the agent with `iOS/scripts/install-resign-agent.sh
-   --remove`. (The App Store/TestFlight app has a different bundle ID from your current personal install, so it's a
-   separate app with an empty library; turn on iCloud sync on both first to carry favourites and progress over.)
+   your iPhone and Mac (TestFlight is also a Mac app). (The App Store/TestFlight app has a different bundle ID from a
+   personal install built from source, so it's a separate app with an empty library; turn on iCloud sync on both
+   first to carry favourites and progress over.)
 8. **App Information / Pricing:** category Entertainment (secondary: Photo & Video), price Free, availability all
    countries (you can exclude some).
 9. **App Privacy:** "Data Not Collected". Privacy policy URL:

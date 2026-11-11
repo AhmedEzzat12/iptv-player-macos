@@ -291,7 +291,8 @@ Never against the real feed or your own keychain. Use a throwaway key and a loca
 - **HEVC in MPEG-TS** (AVFoundation plays the sound only, so the app must switch to mpv): make one from a test-kit feed
   with `ffmpeg -i TestMedia/channels/feed2-sports.ts -c:v libx265 -c:a copy -f hls -hls_segment_type mpegts …` and serve
   it with `python3 -m http.server`.
-- **A real device:** `iOS/scripts/install-device.sh`; screenshots with
+- **A real device:** run the `TunerIOS` scheme from Xcode (`cd iOS && xcodegen generate`, open `TunerIOS.xcodeproj`),
+  or install the TestFlight build; screenshots with
   `xcrun devicectl device capture screenshot --device <udid> --destination shot.png`. Picture in Picture, background
   audio, AirPlay and hardware decoding can only be checked on a device.
 - The simulator's display lags several seconds behind input: take a second screenshot before deciding a tap failed.
@@ -359,8 +360,8 @@ defaults to `<data dir>/Sync`, so a test copy never writes to iCloud Drive even 
    defaults) and different `TUNER_DATA_DIR`s, the same `TUNER_SYNC_DIR`.
 4. Add the test kit's Xtream panel (`http://127.0.0.1:8765`, `test`/`test`; in the background, paste
    `http://127.0.0.1:8765/player_api.php?username=test&password=test` into Server) on one copy only. If that copy syncs
-   before the other has ever synced, the other first shows it with "Needs password" (nobody to seal the password for
-   yet); after the first copy's next pass (Sync Now) the other turns it on by itself. With "Include Playlist Passwords"
+   before the other has ever synced, the other first shows it with "Needs password". In Settings → Sync → Devices on
+   the first copy, turn on Passwords for the other one; after that pass the other turns the playlist on by itself. With "Include Playlist Passwords"
    off, enter `test` by hand. The M3U playlist (`http://127.0.0.1:8765/playlist.m3u`) has no secret and arrives ready.
    Check `grep -c '"secret"' <scratch>/sync/*.json` is 0 and `sealedSecret.keys` lists only the other device's id.
 5. Devices: rename this device in Settings → Sync, then Remove the other copy there. Its file disappears and the
