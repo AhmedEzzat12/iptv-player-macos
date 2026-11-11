@@ -28,7 +28,7 @@ struct SettingsSyncPane: View {
             Section {
                 Toggle("Include Playlist Passwords", isOn: Binding(get: { sync.includePasswords }, set: { sync.includePasswords = $0 }))
             } footer: {
-                SettingsFooter("Playlists sync with their passwords and full links, so they turn on by themselves on your other devices. Turn on Passwords for each of your devices under Devices: passwords are encrypted separately for each device you allow, so the sync folder never holds them in readable form, and a device you didn't allow (or that was removed) can't read them.")
+                SettingsFooter("Playlists sync with their passwords and full links, so they turn on by themselves on your other devices (within a few minutes of a device joining). Passwords are encrypted separately for each device in the list below, so the sync folder never holds them in readable form; remove a device to stop sending it passwords.")
             }
 
             folderSection
@@ -105,13 +105,9 @@ struct SettingsSyncPane: View {
                         Image(systemName: Self.symbol(for: peer.platform))
                     }
                     Spacer()
-                    if sync.includePasswords, peer.publicKey != nil {
-                        Toggle("Passwords", isOn: Binding(get: { sync.receivesPasswords(peer) },
-                                                          set: { sync.allowPasswords(peer, $0) }))
-                            .labelsHidden()
-                            .toggleStyle(.switch)
-                            .controlSize(.small)
-                            .help("Send playlist passwords to this device")
+                    if sync.includePasswords, sync.keyChanged(peer) {
+                        Button("Trust Again") { sync.trustAgain(peer) }
+                            .buttonStyle(.borderless)
                     }
                     Button("Remove", role: .destructive) { removing = peer }
                         .buttonStyle(.borderless)
@@ -127,19 +123,12 @@ struct SettingsSyncPane: View {
 
     @ViewBuilder
     private func passwordStatus(_ peer: CloudSyncPeer) -> some View {
-        Group {
-            if peer.publicKey == nil {
-                Text("Update \(Distribution.appName) there to send it passwords")
-            } else if sync.receivesPasswords(peer) {
-                Text("Gets playlist passwords")
-            } else if sync.trustedKeys[peer.id] != nil {
-                Text("Its key changed: turn on again only if this is still your device").foregroundStyle(.orange)
-            } else {
-                Text("Turn on to send it playlist passwords")
-            }
+        if peer.publicKey == nil {
+            Text("Update \(Distribution.appName) there to sync passwords").font(.caption).foregroundStyle(.secondary)
+        } else if sync.keyChanged(peer) {
+            Text("Its key changed, so it gets no passwords. Trust it again only if it's still your device.")
+                .font(.caption).foregroundStyle(.orange)
         }
-        .font(.caption)
-        .foregroundStyle(.secondary)
     }
 
     private func commitName() {

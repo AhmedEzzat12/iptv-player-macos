@@ -282,6 +282,8 @@ public struct CloudSyncReport: Sendable {
     public var removedThisDevice = false
     /// Every removed device known after this pass (this device's list joined with the other files'), to keep.
     public var removedDevices: [String: Int64] = [:]
+    /// Devices' keys as first seen (device id → base64 public key), including ones met in this pass, to keep.
+    public var trustedKeys: [String: String] = [:]
 
     public init(finishedAt: Date, error: String? = nil) {
         self.finishedAt = finishedAt

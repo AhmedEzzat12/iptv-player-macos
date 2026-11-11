@@ -360,8 +360,9 @@ defaults to `<data dir>/Sync`, so a test copy never writes to iCloud Drive even 
    defaults) and different `TUNER_DATA_DIR`s, the same `TUNER_SYNC_DIR`.
 4. Add the test kit's Xtream panel (`http://127.0.0.1:8765`, `test`/`test`; in the background, paste
    `http://127.0.0.1:8765/player_api.php?username=test&password=test` into Server) on one copy only. If that copy syncs
-   before the other has ever synced, the other first shows it with "Needs password". In Settings → Sync → Devices on
-   the first copy, turn on Passwords for the other one; after that pass the other turns the playlist on by itself. With "Include Playlist Passwords"
+   before the other has ever synced, the other first shows it with "Needs password"; within about 2–4 minutes (the
+   first copy's next pass seals the password for the newcomer, the newcomer's next pass opens it; nothing needs to be
+   in front) it turns on by itself. Check the library: `sqlite3 <lib>/tuner.sqlite "SELECT needsPassword, enabled FROM source"`. With "Include Playlist Passwords"
    off, enter `test` by hand. The M3U playlist (`http://127.0.0.1:8765/playlist.m3u`) has no secret and arrives ready.
    Check `grep -c '"secret"' <scratch>/sync/*.json` is 0 and `sealedSecret.keys` lists only the other device's id.
 5. Devices: rename this device in Settings → Sync, then Remove the other copy there. Its file disappears and the

@@ -183,22 +183,25 @@ struct CloudSyncRoundTripTests {
         #expect(!filled.needsPassword && filled.enabled && filled.password == "pw-A-secret")
     }
 
-    @Test func passwordsGoOnlyToAllowedDevicesWithTheirPinnedKey() async throws {
+    @Test func newDevicesAreTrustedOnFirstSightButAChangedKeyGetsNothing() async throws {
         try await a.save(xtream(id: "SA"))
         _ = await engineB.sync(folder: folder, preferences: [:], now: at(9))
-        // Not allowed yet: B gets the playlist without its password.
-        _ = await engineA.sync(folder: folder, preferences: [:], includeSecrets: true, now: at(10))
+        // No approval needed: A seals for B the first time it sees it, and remembers B's key.
+        let onA = await engineA.sync(folder: folder, preferences: [:], includeSecrets: true, now: at(10))
+        #expect(onA.trustedKeys == trustB)
         _ = await engineB.sync(folder: folder, preferences: [:], now: at(11))
-        #expect(try await b.sources().first?.needsPassword == true)
-        // Allowed with an old key (B's key changed since): still nothing.
-        let stale = ["device-B": CloudSyncSecrets.publicKeyString(CloudSyncSecrets.PrivateKey())]
-        _ = await engineA.sync(folder: folder, preferences: [:], includeSecrets: true, trustedKeys: stale, now: at(12))
-        _ = await engineB.sync(folder: folder, preferences: [:], now: at(13))
-        #expect(try await b.sources().first?.needsPassword == true)
-        // Allowed with its current key: B turns it on.
-        _ = await engineA.sync(folder: folder, preferences: [:], includeSecrets: true, trustedKeys: trustB, now: at(14))
-        _ = await engineB.sync(folder: folder, preferences: [:], now: at(15))
         #expect(try await b.sources().first?.password == "pw-A-secret")
+
+        // A known device id with another key (a forged file): nothing is sealed for it.
+        let c = try AppDatabase.inMemory()
+        let impostor = CloudSyncEngine(db: c, device: .init(id: "device-B", name: "iPhone", platform: "iOS", appVersion: "1.5.0"))
+        _ = await impostor.sync(folder: folder, preferences: [:], now: at(12))
+        var changed = try #require(try await a.source(id: "SA"))
+        changed.password = "pw-A-new"
+        try await a.save(changed)
+        _ = await engineA.sync(folder: folder, preferences: [:], includeSecrets: true, trustedKeys: onA.trustedKeys, now: at(13))
+        _ = await impostor.sync(folder: folder, preferences: [:], now: at(14))
+        #expect(try await c.sources().first?.password == nil)
     }
 
     @Test func deviceIdsThatArentPlainIdsAreRejected() throws {

@@ -13,7 +13,8 @@ import TunerCore
 /// iCloud sync for the app (Settings → Sync): the folder, when passes run, and the status shown in Settings.
 /// The work itself happens in `CloudSyncEngine` (TunerCore), off the main actor.
 ///
-/// Passes run at launch (once the library is loaded), when the app becomes active, every 2 minutes while it is,
+/// Passes run at launch (once the library is loaded), when the app becomes active, every 2 minutes (the Mac also in the
+/// background; iPhone/iPad only while active),
 /// a few seconds after user-state or preference changes (a minute for watch progress, which is saved every few
 /// seconds during playback), and on "Sync Now".
 @MainActor
@@ -183,20 +184,22 @@ final class CloudSyncController {
         set { defaults.set(newValue.mapValues { NSNumber(value: $0) }, forKey: Self.removedKey) }
     }
 
-    /// Devices allowed to receive passwords, with the key they had when allowed (device id → base64 public key).
+    /// Other devices' keys as first seen (device id → base64 public key). Every device in the folder gets passwords;
+    /// one whose key changed since gets nothing until "Trust Again".
     private(set) var trustedKeys: [String: String] = [:] {
         didSet { defaults.set(trustedKeys, forKey: Self.trustedKeysKey) }
     }
 
-    /// Whether passwords are sent to this device (allowed, and its key hasn't changed since).
-    func receivesPasswords(_ peer: CloudSyncPeer) -> Bool {
-        peer.publicKey != nil && trustedKeys[peer.id] == peer.publicKey
+    /// A known device that now shows another key (a file someone else wrote, or a reinstall that lost its key).
+    func keyChanged(_ peer: CloudSyncPeer) -> Bool {
+        guard let key = peer.publicKey, let pinned = trustedKeys[peer.id] else { return false }
+        return key != pinned
     }
 
-    /// Lets a device receive passwords from this one, pinning its current key: if the key ever changes (a device file
-    /// someone else wrote), nothing more is sent until it's allowed again.
-    func allowPasswords(_ peer: CloudSyncPeer, _ allowed: Bool) {
-        if allowed, let key = peer.publicKey { trustedKeys[peer.id] = key } else { trustedKeys[peer.id] = nil }
+    /// Accepts a device's new key (only if it's really still one of your devices).
+    func trustAgain(_ peer: CloudSyncPeer) {
+        guard let key = peer.publicKey else { return }
+        trustedKeys[peer.id] = key
         syncNow()
     }
 
@@ -263,9 +266,11 @@ final class CloudSyncController {
         schedule(in: 0)
     }
 
+    /// Whether the 2-minute passes run. The Mac keeps syncing in the background (cheap: small files), so a new device
+    /// gets its passwords within minutes without bringing the app to the front.
     private static var appIsActive: Bool {
         #if os(macOS)
-        NSApp.isActive
+        true
         #else
         UIApplication.shared.applicationState == .active
         #endif
@@ -345,6 +350,7 @@ final class CloudSyncController {
                                        removedDevices: removedDevices)
         endAccess()
         if !report.removedDevices.isEmpty, report.removedDevices != removedDevices { removedDevices = report.removedDevices }
+        if !report.trustedKeys.isEmpty, report.trustedKeys != trustedKeys { trustedKeys = report.trustedKeys }
         if report.removedThisDevice {
             await removedByAnotherDevice()
             return

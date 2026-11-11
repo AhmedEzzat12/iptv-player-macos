@@ -130,9 +130,9 @@ Blender Foundation open movies (CC BY). No provider content is shown.</sub>
   Data Mode); the others are small.
 - **iCloud sync** (Settings → Sync, off by default): watch progress, favourites, custom groups, hidden and pinned
   categories, channel names and guide choices, recently watched channels, recent searches and settings follow you
-  between your Macs, iPhone and iPad. Playlists come along with their passwords for the devices you allow (Settings →
-  Sync → Devices → Passwords), encrypted separately for each (the sync folder never holds them readably), so they turn
-  on by themselves; otherwise enter them on each device ("Needs password" in Settings → Playlists). Settings → Sync lists
+  between your Macs, iPhone and iPad. Playlists come along with their passwords, encrypted separately for each of
+  your devices (the sync folder never holds them readably), so they turn on by themselves within a few minutes of a
+  device joining; turn off "Include Playlist Passwords" to enter them on each device instead. Settings → Sync lists
   your devices: rename this one, or remove one you no longer use (it stops syncing and can't read new passwords).
   Reinstalling the app on iPhone/iPad keeps it the same device. Each device
   keeps one small file in a folder in your iCloud Drive (on the Mac `iCloud Drive/Tuner Sync`; on iPhone/iPad you

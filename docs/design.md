@@ -291,10 +291,11 @@ user is asked again). Off by default (Settings → Sync).
   but files only ever hold `sealedSecret` (`CloudSyncSecrets`). Each device has a Curve25519 key pair (private key in
   the Keychain on iPhone/iPad, `<data dir>/sync-key` with mode 0600 on the Mac) and publishes the public key in its
   file. When writing, each secret is encrypted once with a random AES-GCM key, and that key is wrapped for every other
-  device the user allowed (Devices → Passwords), with a key derived from X25519(writer, reader) through HKDF-SHA256.
-  Allowing pins the device's public key (`cloudSyncTrustedKeys` in `UserDefaults`); anyone who can write to the
-  folder could add a device file, so a device that wasn't allowed, or whose key changed since, gets nothing until it's
-  allowed (again). Removing a device drops its pin. Device ids from files must be plain ids (letters, digits, `-`),
+  device in the folder, with a key derived from X25519(writer, reader) through HKDF-SHA256. A device's key is pinned
+  the first time it's seen (`cloudSyncTrustedKeys` in `UserDefaults`): a known device id that turns up with another key
+  gets nothing until "Trust Again" in Devices. No per-device approval, by choice (it made password sync fail silently
+  until each device was allowed): someone who can write to the user's sync folder could add a device and receive
+  passwords, but it shows in the Devices list and Remove stops it. Removing a device drops its pin. Device ids from files must be plain ids (letters, digits, `-`),
   as they name the files a removal deletes. A
   reader opens only what was wrapped for it; the rest is dropped (the playlist then waits for its password). A secret
   sealed for nobody (a device alone in the folder) is left out of the file entirely. Because a device can only get the
@@ -317,7 +318,8 @@ user is asked again). Off by default (Settings → Sync).
   deletions. Editing a playlist's server or username changes its
   fingerprint, so the other devices get it as a new playlist.
 - **When** (`CloudSyncController`, app target): after the library loads, when the app becomes active, every 2 minutes
-  while it is, 3 s after user-state or preference changes (60 s after watch-progress saves, which happen every few
+  (on the Mac also in the background, so a device that joins gets its passwords within minutes; on iPhone/iPad while
+  active), 3 s after user-state or preference changes (60 s after watch-progress saves, which happen every few
   seconds during playback), when leaving the app if a pass is pending, and on Sync Now. Passes run in the
   `CloudSyncEngine` actor (one at a time, never while a source editor is open); applied rows bump the usual revisions
   through the table observers. `TUNER_SYNC_DIR` (or `-TunerSyncDir` in iOS debug builds) uses a plain folder and turns

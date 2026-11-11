@@ -56,8 +56,9 @@ public actor CloudSyncEngine {
     /// One pass: read the other devices' files, apply what's newer, publish this device's state.
     /// `preferences` are this device's whitelisted preferences (`CloudSyncPreferences.keys`) with local ids.
     /// `includeSecrets` publishes playlists with their passwords (and links with tokens).
-    /// `trustedKeys` are the devices the user allowed to receive passwords, with the key they had then (device id →
-    /// base64 public key): passwords are sealed only for those, and only while their key is unchanged.
+    /// `trustedKeys` are the keys devices had when first seen (device id → base64 public key). Passwords are sealed
+    /// for every device in the folder: new ones are trusted on first sight (and added to `report.trustedKeys`), but a
+    /// known device whose key changed gets nothing until it's trusted again.
     /// `removedDevices` are the devices this device knows were removed from sync (id → sync milliseconds); their files
     /// are deleted and ignored, and when this device's own id is among the removed (here or in any file) the pass
     /// stops and reports `removedThisDevice`.
@@ -115,14 +116,17 @@ public actor CloudSyncEngine {
         report.readySourceIds = result.refreshSourceIds
         report.sourcesNeedingPassword = result.createdNeedingPassword
 
-        // Passwords are sealed only for devices the user allowed, while they still have the key they had then: anyone
-        // who can write to the folder could add a device file, so a new or changed key gets nothing.
+        // Passwords are sealed for every device in the folder, pinned to the key it had when first seen: a device id
+        // that turns up with another key gets nothing (someone else's file, or a reinstall that lost its key).
+        var trusted = trustedKeys
         var recipients: [String: CloudSyncSecrets.PublicKey] = [:]
         for file in files {
-            guard let text = file.publicKey, trustedKeys[file.deviceId] == text,
-                  let publicKey = CloudSyncSecrets.publicKey(text) else { continue }
+            guard let text = file.publicKey, let publicKey = CloudSyncSecrets.publicKey(text) else { continue }
+            if trusted[file.deviceId] == nil { trusted[file.deviceId] = text }
+            guard trusted[file.deviceId] == text else { continue }
             recipients[file.deviceId] = publicKey
         }
+        report.trustedKeys = trusted
         let recipientKeys = recipients.mapValues { $0.rawRepresentation.base64EncodedString() }
         let ownKey = CloudSyncSecrets.publicKeyString(key)
 
