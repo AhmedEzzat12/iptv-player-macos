@@ -33,7 +33,12 @@ struct SettingsOnlineGuidesSheet: View {
             Divider()
             footer
         }
+        #if os(macOS)
         .frame(width: 560, height: 620)
+        #else
+        // iPhone/iPad: fill the sheet (a fixed Mac size overflows a phone's width).
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        #endif
         .task(id: reloadToken) { await load() }
     }
 
@@ -129,7 +134,8 @@ struct SettingsOnlineGuidesSheet: View {
             Text("Guides from epgshare01.online — free, community-maintained.")
                 .font(.callout)
                 .foregroundStyle(.secondary)
-            Spacer()
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
             Button("Done") { dismiss() }
                 .keyboardShortcut(.defaultAction)
         }
