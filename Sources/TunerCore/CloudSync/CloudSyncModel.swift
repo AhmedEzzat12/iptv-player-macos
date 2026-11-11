@@ -90,8 +90,17 @@ public struct CloudSyncRecord: Codable, Sendable, Hashable {
         if let value, !deleted { try c.encode(value, forKey: .value) }
     }
 
-    /// Hash of the published value ("" for a deletion).
-    var valueHash: String { deleted ? "" : (value ?? .null).contentHash }
+    /// Hash of the published value ("" for a deletion). A playlist's `secret` isn't part of it: devices that can't read
+    /// (or don't send) the password republish the same record without it, and that mustn't count as a change.
+    var valueHash: String {
+        guard !deleted else { return "" }
+        if case .object(var fields)? = value, fields.removeValue(forKey: CloudSyncSecrets.plainField) != nil {
+            return SyncJSON.object(fields).contentHash
+        }
+        return (value ?? .null).contentHash
+    }
+
+    var hasSecret: Bool { value?[CloudSyncSecrets.plainField] != nil }
 }
 
 /// The file a device writes: `<deviceId>.json` in the sync folder.
@@ -107,8 +116,15 @@ public struct CloudSyncDeviceFile: Codable, Sendable {
     public var appVersion: String?
     public var exportedAt: Date
     public var records: [CloudSyncRecord]
+    /// Devices removed from sync (device id → when, in sync milliseconds). Every device keeps the union, so a removed
+    /// device's file is deleted wherever it turns up and the device itself stops syncing when it sees its id here.
+    /// Optional: files from older versions don't have it (and older versions ignore it).
+    public var removedDevices: [String: Int64]?
+    /// This device's Curve25519 public key (base64), for sealing playlist passwords to it (`CloudSyncSecrets`).
+    public var publicKey: String?
 
-    public init(deviceId: String, deviceName: String, platform: String, appVersion: String?, exportedAt: Date, records: [CloudSyncRecord]) {
+    public init(deviceId: String, deviceName: String, platform: String, appVersion: String?, exportedAt: Date,
+                records: [CloudSyncRecord], removedDevices: [String: Int64]? = nil, publicKey: String? = nil) {
         schema = Self.currentSchema
         self.deviceId = deviceId
         self.deviceName = deviceName
@@ -116,6 +132,8 @@ public struct CloudSyncDeviceFile: Codable, Sendable {
         self.appVersion = appVersion
         self.exportedAt = exportedAt
         self.records = records
+        self.removedDevices = removedDevices?.isEmpty == true ? nil : removedDevices
+        self.publicKey = publicKey
     }
 
     public func encoded() throws -> Data {
@@ -231,6 +249,7 @@ public struct CloudSyncPeer: Sendable, Hashable, Identifiable {
     public var platform: String
     public var exportedAt: Date
     public var recordCount: Int
+    public var appVersion: String?
 }
 
 /// The outcome of one sync pass.
@@ -252,6 +271,10 @@ public struct CloudSyncReport: Sendable {
     public var wroteFile = false
     /// The pass stopped before changing anything because its task was cancelled (a newer pass takes over).
     public var cancelled = false
+    /// Another device removed this one from sync: nothing was applied or written.
+    public var removedThisDevice = false
+    /// Every removed device known after this pass (this device's list joined with the other files'), to keep.
+    public var removedDevices: [String: Int64] = [:]
 
     public init(finishedAt: Date, error: String? = nil) {
         self.finishedAt = finishedAt

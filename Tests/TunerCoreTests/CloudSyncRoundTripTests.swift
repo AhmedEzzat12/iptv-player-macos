@@ -11,6 +11,7 @@ struct CloudSyncRoundTripTests {
     let b: AppDatabase
     let engineA: CloudSyncEngine
     let engineB: CloudSyncEngine
+    let keyA = CloudSyncSecrets.PrivateKey()
     /// Later than any timestamp the database helpers take from the clock.
     let t0 = Date().addingTimeInterval(1000)
 
@@ -22,7 +23,7 @@ struct CloudSyncRoundTripTests {
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         a = try AppDatabase.inMemory()
         b = try AppDatabase.inMemory()
-        engineA = CloudSyncEngine(db: a, device: .init(id: "device-A", name: "Mac", platform: "macOS", appVersion: "1.5.0"))
+        engineA = CloudSyncEngine(db: a, device: .init(id: "device-A", name: "Mac", platform: "macOS", appVersion: "1.5.0"), key: keyA)
         engineB = CloudSyncEngine(db: b, device: .init(id: "device-B", name: "iPhone", platform: "iOS", appVersion: "1.5.0"))
     }
 
@@ -140,6 +141,109 @@ struct CloudSyncRoundTripTests {
         let onA = try #require(try await a.source(id: "SA"))
         #expect(onA.enabled && onA.password == "pw-A-secret")
         #expect(try await a.sources().count == 2)
+    }
+
+    @Test func passwordsTravelWhenSecretsAreOn() async throws {
+        try await a.save(xtream(id: "SA"))
+        try await a.save(Source(id: "MA", name: "Tokened", kind: .m3u, url: "http://lists.example.com/get.php?username=u&password=topsecret&type=m3u", sortIndex: 1))
+        // B has synced before (so A knows B's key).
+        _ = await engineB.sync(folder: folder, preferences: [:], now: at(9))
+        _ = await engineA.sync(folder: folder, preferences: [:], includeSecrets: true, now: at(10))
+        let report = await engineB.sync(folder: folder, preferences: [:], now: at(11))
+
+        // The folder never holds a readable password.
+        for name in try FileManager.default.contentsOfDirectory(atPath: folder.path) {
+            let text = try String(contentsOf: folder.appendingPathComponent(name), encoding: .utf8)
+            #expect(!text.contains("pw-A-secret") && !text.contains("topsecret"))
+        }
+
+        let sources = try await b.sources()
+        let x = try #require(sources.first { $0.kind == .xtream })
+        #expect(!x.needsPassword && x.enabled && x.password == "pw-A-secret")
+        let m = try #require(sources.first { $0.kind == .m3u })
+        #expect(!m.needsPassword && m.enabled && m.url.contains("topsecret"))
+        #expect(Set(report.readySourceIds) == [x.id, m.id])
+        #expect(report.sourcesNeedingPassword == 0)
+    }
+
+    @Test func aNewDeviceGetsPasswordsOnceTheOthersKnowItsKey() async throws {
+        try await a.save(xtream(id: "SA"))
+        // A syncs alone first: there is nobody to seal the password for, so it isn't in the file at all.
+        _ = await engineA.sync(folder: folder, preferences: [:], includeSecrets: true, now: at(10))
+        _ = await engineB.sync(folder: folder, preferences: [:], now: at(11))
+        let waiting = try #require(try await b.sources().first)
+        #expect(waiting.needsPassword)
+        // A sees B's key and seals the password for it (same record time); B takes it.
+        _ = await engineA.sync(folder: folder, preferences: [:], includeSecrets: true, now: at(12))
+        _ = await engineB.sync(folder: folder, preferences: [:], now: at(13))
+        let filled = try #require(try await b.source(id: waiting.id))
+        #expect(!filled.needsPassword && filled.enabled && filled.password == "pw-A-secret")
+    }
+
+    @Test func sealedSecretsOpenOnlyForTheirReader() throws {
+        let writer = CloudSyncSecrets.PrivateKey(), reader = CloudSyncSecrets.PrivateKey(), stranger = CloudSyncSecrets.PrivateKey()
+        let record = CloudSyncRecord(key: "source/abc", updatedAt: 1, value: .object([
+            "name": .string("P"), "secret": .object(["password": .string("hunter2")]),
+        ]))
+        let sealed = CloudSyncSecrets.seal([record], writer: "W", key: writer, recipients: ["R": reader.publicKey])
+        #expect(sealed[0].value?["secret"] == nil && sealed[0].value?["sealedSecret"] != nil)
+        let file = CloudSyncDeviceFile(deviceId: "W", deviceName: "W", platform: "macOS", appVersion: nil, exportedAt: Date(),
+                                       records: sealed, publicKey: CloudSyncSecrets.publicKeyString(writer))
+        #expect(CloudSyncSecrets.open(file, reader: "R", key: reader).records == [record])
+        let other = CloudSyncSecrets.open(file, reader: "S", key: stranger).records[0]
+        #expect(other.value?["secret"] == nil && other.value?["sealedSecret"] == nil && other.value?["name"] == .string("P"))
+        // Nobody to send it to: the secret is left out.
+        #expect(CloudSyncSecrets.seal([record], writer: "W", key: writer, recipients: [:])[0].value == .object(["name": .string("P")]))
+    }
+
+    @Test func waitingPlaylistTurnsOnWhenThePasswordArrives() async throws {
+        try await a.save(xtream(id: "SA"))
+        _ = await engineA.sync(folder: folder, preferences: [:], now: at(10))
+        _ = await engineB.sync(folder: folder, preferences: [:], now: at(11))
+        let waiting = try #require(try await b.sources().first)
+        #expect(waiting.needsPassword && !waiting.enabled)
+
+        // A turns password sync on: B fills the password in and turns the playlist on.
+        _ = await engineA.sync(folder: folder, preferences: [:], includeSecrets: true, now: at(20))
+        let report = await engineB.sync(folder: folder, preferences: [:], now: at(21))
+        let filled = try #require(try await b.source(id: waiting.id))
+        #expect(!filled.needsPassword && filled.enabled && filled.password == "pw-A-secret")
+        #expect(report.readySourceIds == [waiting.id])
+
+        // A changes the password later: B follows.
+        var changed = try #require(try await a.source(id: "SA"))
+        changed.password = "pw-A-new"
+        try await a.save(changed)
+        _ = await engineA.sync(folder: folder, preferences: [:], includeSecrets: true, now: at(30))
+        _ = await engineB.sync(folder: folder, preferences: [:], now: at(31))
+        #expect(try await b.source(id: waiting.id)?.password == "pw-A-new")
+    }
+
+    @Test func removedDeviceStopsSyncingAndItsFileGoes() async throws {
+        try await a.save(xtream(id: "SA"))
+        _ = await engineA.sync(folder: folder, preferences: [:], now: at(10))
+        _ = await engineB.sync(folder: folder, preferences: [:], now: at(11))
+        let fileB = folder.appendingPathComponent(CloudSyncFolder.fileName(deviceId: "device-B"))
+        #expect(FileManager.default.fileExists(atPath: fileB.path))
+
+        // A removes B: B's file is deleted and A remembers the removal in its own file.
+        let removal = ["device-B": at(12).syncMillis]
+        let onA = await engineA.sync(folder: folder, preferences: [:], removedDevices: removal, now: at(12))
+        #expect(onA.peers.isEmpty)
+        #expect(onA.removedDevices == removal)
+        #expect(!FileManager.default.fileExists(atPath: fileB.path))
+
+        // B sees the removal on its next pass, stops and doesn't write its file again.
+        let onB = await engineB.sync(folder: folder, preferences: [:], now: at(13))
+        #expect(onB.removedThisDevice)
+        #expect(!FileManager.default.fileExists(atPath: fileB.path))
+
+        // Joining again under a new id works; the old id stays removed.
+        await engineB.setDeviceId("device-B2")
+        let again = await engineB.sync(folder: folder, preferences: [:], removedDevices: onB.removedDevices, now: at(14))
+        #expect(!again.removedThisDevice && again.peers.map(\.id) == ["device-A"])
+        let onA2 = await engineA.sync(folder: folder, preferences: [:], removedDevices: removal, now: at(15))
+        #expect(onA2.peers.map(\.id) == ["device-B2"])
     }
 
     @Test func m3uWithTokenNeedsItsLinkAgain() async throws {
@@ -282,7 +386,7 @@ struct CloudSyncRoundTripTests {
         let second = await engineA.sync(folder: folder, preferences: [:], now: at(20))
         #expect(!second.wroteFile)
         // A fresh engine (app relaunch) reads its own file and doesn't rewrite it either.
-        let relaunched = CloudSyncEngine(db: a, device: .init(id: "device-A", name: "Mac", platform: "macOS", appVersion: "1.5.0"))
+        let relaunched = CloudSyncEngine(db: a, device: .init(id: "device-A", name: "Mac", platform: "macOS", appVersion: "1.5.0"), key: keyA)
         #expect(!(await relaunched.sync(folder: folder, preferences: [:], now: at(30))).wroteFile)
     }
 
@@ -291,3 +395,4 @@ struct CloudSyncRoundTripTests {
         #expect(report.error != nil)
     }
 }
+

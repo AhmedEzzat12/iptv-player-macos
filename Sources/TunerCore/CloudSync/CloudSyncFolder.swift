@@ -121,6 +121,16 @@ public enum CloudSyncFolder {
         if let error = coordinationError ?? writeError { throw .notWritten(error.localizedDescription) }
     }
 
+    /// Deletes a device's file (a device removed from sync). Missing files are fine.
+    public static func delete(deviceId: String, in folder: URL) {
+        let url = folder.appendingPathComponent(fileName(deviceId: deviceId))
+        guard FileManager.default.fileExists(atPath: url.path) else { return }
+        var coordinationError: NSError?
+        NSFileCoordinator(filePresenter: nil).coordinate(writingItemAt: url, options: .forDeleting, error: &coordinationError) { target in
+            try? FileManager.default.removeItem(at: target)
+        }
+    }
+
     static func coordinatedRead(_ url: URL) -> Data? {
         var coordinationError: NSError?
         var data: Data?

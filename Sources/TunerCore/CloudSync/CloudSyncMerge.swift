@@ -92,7 +92,14 @@ public enum CloudSyncMerge {
         var out: [String: CloudSyncRemoteRecord] = [:]
         for file in files {
             for record in file.records {
-                if let current = out[record.key], !wins(record.updatedAt, file.deviceId, over: current.record.updatedAt, current.deviceId) { continue }
+                if let current = out[record.key], !wins(record.updatedAt, file.deviceId, over: current.record.updatedAt, current.deviceId) {
+                    // Same change, but only this copy carries the password (sealed for this device): take it.
+                    let sameChange = record.updatedAt == current.record.updatedAt && record.valueHash == current.record.valueHash
+                    guard sameChange && record.hasSecret && !current.record.hasSecret else { continue }
+                } else if let current = out[record.key], record.updatedAt == current.record.updatedAt,
+                          record.valueHash == current.record.valueHash, current.record.hasSecret, !record.hasSecret {
+                    continue
+                }
                 out[record.key] = CloudSyncRemoteRecord(record, deviceId: file.deviceId)
             }
         }
@@ -112,7 +119,8 @@ public enum CloudSyncMerge {
             if r.record.deleted && CloudSyncKey.kind(of: key) == .source { continue }
             if let l = local[key] {
                 guard wins(r.record.updatedAt, r.deviceId, over: l.updatedAt, localDeviceId) else { continue }
-                if l.deleted == r.record.deleted && l.valueHash == r.record.valueHash { continue }
+                let newSecret = r.record.hasSecret && r.record.value?[CloudSyncSecrets.plainField] != l.value?[CloudSyncSecrets.plainField]
+                if l.deleted == r.record.deleted && l.valueHash == r.record.valueHash && !newSecret { continue }
             } else if r.record.deleted {
                 continue
             }

@@ -24,10 +24,12 @@ extension AppDatabase {
         remote: [String: CloudSyncRemoteRecord],
         preferences: [String: SyncJSON],
         deviceId: String,
+        includeSecrets: Bool = false,
         now: Date = Date()
     ) async throws -> CloudSyncPassResult {
         try await writer.write { db in
-            try Self.cloudSyncPass(db, remote: remote, preferences: preferences, deviceId: deviceId, now: now.syncMillis)
+            try Self.cloudSyncPass(db, remote: remote, preferences: preferences, deviceId: deviceId,
+                                   includeSecrets: includeSecrets, now: now.syncMillis)
         }
     }
 
@@ -47,6 +49,7 @@ extension AppDatabase {
         remote: [String: CloudSyncRemoteRecord],
         preferences: [String: SyncJSON],
         deviceId: String,
+        includeSecrets: Bool = false,
         now: Int64
     ) throws -> CloudSyncPassResult {
         var result = CloudSyncPassResult()
@@ -57,12 +60,19 @@ extension AppDatabase {
         // 1. Playlists.
         var sources = try Source.fetchAll(db)
         var map = CloudSyncSourceMap(sources: sources)
-        let sourceSnapshot = Self.sourceSnapshot(sources, map: map)
+        let sourceSnapshot = Self.sourceSnapshot(sources, map: map, includeSecrets: includeSecrets)
         let sourceState = CloudSyncMerge.diff(
             snapshot: sourceSnapshot.entries, ledger: ledger.filter { CloudSyncKey.kind(of: $0.key) == .source },
             frozen: sourceSnapshot.frozen, firstSync: firstSync, now: now)
-        let sourceDecisions = CloudSyncMerge.decide(
-            local: sourceState, remote: remote.filter { CloudSyncKey.kind(of: $0.key) == .source }, localDeviceId: deviceId)
+        let remoteSources = remote.filter { CloudSyncKey.kind(of: $0.key) == .source }
+        var sourceDecisions = CloudSyncMerge.decide(local: sourceState, remote: remoteSources, localDeviceId: deviceId)
+        // A playlist waiting for its password takes it as soon as a device can send it, even when the record's time
+        // didn't change (the other device sealed the password for this one only after it saw this device's key).
+        for key in sourceSnapshot.frozen where sourceDecisions[key] == nil {
+            guard let r = remoteSources[key], !r.record.deleted, r.record.value?[CloudSyncSecrets.plainField] != nil,
+                  let local = sourceState[key], r.record.updatedAt >= local.updatedAt else { continue }
+            sourceDecisions[key] = r
+        }
         if !sourceDecisions.isEmpty {
             for (key, r) in sourceDecisions.sorted(by: { $0.key < $1.key }) {
                 let fp = CloudSyncKey.rest(of: key)
@@ -74,7 +84,7 @@ extension AppDatabase {
             }
             sources = try Source.fetchAll(db)
             map = CloudSyncSourceMap(sources: sources)
-            let after = Self.sourceSnapshot(sources, map: map)
+            let after = Self.sourceSnapshot(sources, map: map, includeSecrets: includeSecrets)
             for (key, r) in sourceDecisions where after.entries[key] != nil || after.frozen.contains(key) {
                 ledger[key] = CloudSyncLedgerEntry(key: key, value: r.record.value, localHash: after.entries[key]?.value.contentHash ?? "",
                                                    updatedAt: r.record.updatedAt, deleted: false)
@@ -83,7 +93,7 @@ extension AppDatabase {
 
         // 2. Everything else.
         let isLocal: (String) -> Bool = { key in CloudSyncKey.fingerprint(of: key).map(map.hasFingerprint) ?? true }
-        let snapshot = try Self.snapshot(db, sources: sources, map: map, preferences: preferences, ledger: ledger)
+        let snapshot = try Self.snapshot(db, sources: sources, map: map, preferences: preferences, ledger: ledger, includeSecrets: includeSecrets)
         var state = CloudSyncMerge.diff(snapshot: snapshot.entries, ledger: ledger, frozen: snapshot.frozen,
                                         isLocal: isLocal, firstSync: firstSync, now: now)
         let usable = remote.filter { key, _ in
@@ -102,7 +112,7 @@ extension AppDatabase {
             for (key, r) in decisions where CloudSyncKey.kind(of: key) == .pref {
                 ledgerAfter[key] = CloudSyncLedgerEntry(key: key, value: r.record.value, localHash: "", updatedAt: r.record.updatedAt, deleted: r.record.deleted)
             }
-            let after = try Self.snapshot(db, sources: sources, map: map, preferences: prefsAfter, ledger: ledgerAfter)
+            let after = try Self.snapshot(db, sources: sources, map: map, preferences: prefsAfter, ledger: ledgerAfter, includeSecrets: includeSecrets)
             for (key, r) in decisions {
                 if r.record.deleted {
                     if after.entries[key] == nil {
@@ -134,7 +144,7 @@ extension AppDatabase {
         var frozen: Set<String> = []
     }
 
-    static func sourceSnapshot(_ sources: [Source], map: CloudSyncSourceMap) -> CloudSyncSnapshot {
+    static func sourceSnapshot(_ sources: [Source], map: CloudSyncSourceMap, includeSecrets: Bool = false) -> CloudSyncSnapshot {
         var snap = CloudSyncSnapshot()
         for source in sources {
             guard let fp = map.fingerprintBySourceId[source.id] else { continue }
@@ -142,7 +152,7 @@ extension AppDatabase {
             if source.needsPassword {
                 snap.frozen.insert(key)
             } else {
-                snap.entries[key] = CloudSyncLocalValue(syncValue(of: source))
+                snap.entries[key] = CloudSyncLocalValue(syncValue(of: source, includeSecrets: includeSecrets))
             }
         }
         return snap
@@ -154,9 +164,10 @@ extension AppDatabase {
         sources: [Source],
         map: CloudSyncSourceMap,
         preferences: [String: SyncJSON],
-        ledger: [String: CloudSyncLedgerEntry]
+        ledger: [String: CloudSyncLedgerEntry],
+        includeSecrets: Bool = false
     ) throws -> CloudSyncSnapshot {
-        var snap = sourceSnapshot(sources, map: map)
+        var snap = sourceSnapshot(sources, map: map, includeSecrets: includeSecrets)
         func put(_ kind: CloudSyncKind, _ rest: String, _ value: SyncJSON, ownStamp: Int64? = nil) {
             snap.entries[CloudSyncKey.make(kind, rest)] = CloudSyncLocalValue(value, ownStamp: ownStamp)
         }
@@ -240,12 +251,13 @@ extension AppDatabase {
         return SyncJSON(list)
     }
 
-    /// A playlist's synced settings: no password, URLs without secrets (lists drop the URLs that have one).
-    static func syncValue(of source: Source) -> SyncJSON {
+    /// A playlist's synced settings: URLs without secrets (lists drop the URLs that have one). With `includeSecrets`,
+    /// a `secret` object adds the password and the full URLs, so other devices can turn the playlist on by themselves.
+    static func syncValue(of source: Source, includeSecrets: Bool = false) -> SyncJSON {
         let main = SourceFingerprint.publicURL(source.url)
         let needsSecret = main.removedSecret || !(source.password ?? "").isEmpty
         let isPublic: (String) -> Bool = { !SourceFingerprint.containsSecret($0) }
-        return .object([
+        var value: [String: SyncJSON] = [
             "name": .string(source.name),
             "kind": .string(source.kind.rawValue),
             "url": .string(main.url),
@@ -263,7 +275,20 @@ extension AppDatabase {
             "includeVOD": .bool(source.includeVOD),
             "refreshHours": SyncJSON(source.refreshHours),
             "sortIndex": SyncJSON(source.sortIndex),
-        ])
+        ]
+        let secretLists = source.extraEPGURLs.contains(where: SourceFingerprint.containsSecret)
+            || source.backupURLs.contains(where: SourceFingerprint.containsSecret)
+            || (source.epgURL.map(SourceFingerprint.containsSecret) ?? false)
+        if includeSecrets, needsSecret || secretLists {
+            value["secret"] = .object([
+                "url": .string(source.url),
+                "password": SyncJSON(source.password),
+                "epgURL": SyncJSON(source.epgURL),
+                "extraEPGURLs": SyncJSON(source.extraEPGURLs),
+                "backupURLs": SyncJSON(source.backupURLs),
+            ])
+        }
+        return .object(value)
     }
 
     // MARK: - Apply
@@ -300,16 +325,32 @@ extension AppDatabase {
         source.sortIndex = v["sortIndex"]?.int ?? source.sortIndex
         let enabled = v["enabled"]?.bool ?? true
 
+        // The password and full URLs, when the other device syncs them (Settings → Sync).
+        var gotSecret = false
+        if let secret = v["secret"], case .object = secret {
+            if let full = secret["url"]?.string, !full.isEmpty,
+               SourceFingerprint.of(kind: kind, url: full, username: username, mac: mac) == fingerprint {
+                source.url = full
+            }
+            source.password = secret["password"]?.string
+            if let epg = secret["epgURL"] { source.epgURL = epg.string }
+            if let extra = secret["extraEPGURLs"]?.strings { source.extraEPGURLs = extra }
+            if let backups = secret["backupURLs"]?.strings { source.backupURLs = backups }
+            gotSecret = true
+        }
+
         if existing == nil {
-            source.needsPassword = v["needsSecret"]?.bool ?? true
+            source.needsPassword = !gotSecret && (v["needsSecret"]?.bool ?? true)
             source.enabled = enabled && !source.needsPassword
             try source.insert(db)
             return SourceOutcome(id: source.id, refresh: source.enabled, createdNeedingPassword: source.needsPassword)
         }
+        if gotSecret { source.needsPassword = false }
         if !source.needsPassword { source.enabled = enabled }
         guard source != before else { return nil }
         try source.update(db)
-        let refresh = source.enabled && (!before.enabled || before.includeLive != source.includeLive || before.includeVOD != source.includeVOD
+        let refresh = source.enabled && (!before.enabled || before.url != source.url || before.password != source.password
+            || before.includeLive != source.includeLive || before.includeVOD != source.includeVOD
             || before.epgURL != source.epgURL || before.extraEPGURLs != source.extraEPGURLs
             || before.epgTimeshiftHours != source.epgTimeshiftHours || before.autoLoadEPG != source.autoLoadEPG)
         return SourceOutcome(id: source.id, refresh: refresh, createdNeedingPassword: false)
