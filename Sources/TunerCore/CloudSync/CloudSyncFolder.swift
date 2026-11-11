@@ -123,7 +123,9 @@ public enum CloudSyncFolder {
 
     /// Deletes a device's file (a device removed from sync). Missing files are fine.
     public static func delete(deviceId: String, in folder: URL) {
+        guard CloudSyncDeviceFile.isValidDeviceId(deviceId) else { return }
         let url = folder.appendingPathComponent(fileName(deviceId: deviceId))
+        guard url.deletingLastPathComponent().standardizedFileURL == folder.standardizedFileURL else { return }
         guard FileManager.default.fileExists(atPath: url.path) else { return }
         var coordinationError: NSError?
         NSFileCoordinator(filePresenter: nil).coordinate(writingItemAt: url, options: .forDeleting, error: &coordinationError) { target in

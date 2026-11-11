@@ -155,8 +155,13 @@ public struct CloudSyncDeviceFile: Codable, Sendable {
         decoder.dateDecodingStrategy = .iso8601
         guard let header = try? decoder.decode(Header.self, from: data) else { throw .unreadable }
         guard header.schema == currentSchema else { throw .otherSchema(header.schema) }
-        guard let file = try? decoder.decode(CloudSyncDeviceFile.self, from: data) else { throw .unreadable }
+        guard let file = try? decoder.decode(CloudSyncDeviceFile.self, from: data), isValidDeviceId(file.deviceId) else { throw .unreadable }
         return file
+    }
+
+    /// Device ids are UUIDs; anything else (a path, say) is rejected, as ids name files in the sync folder.
+    public static func isValidDeviceId(_ id: String) -> Bool {
+        !id.isEmpty && id.count <= 64 && id.allSatisfy { $0.isASCII && ($0.isLetter || $0.isNumber || $0 == "-") }
     }
 }
 
@@ -250,6 +255,8 @@ public struct CloudSyncPeer: Sendable, Hashable, Identifiable {
     public var exportedAt: Date
     public var recordCount: Int
     public var appVersion: String?
+    /// Its key for sealing passwords (base64); nil for versions without password sync.
+    public var publicKey: String?
 }
 
 /// The outcome of one sync pass.

@@ -12,6 +12,9 @@ struct CloudSyncRoundTripTests {
     let engineA: CloudSyncEngine
     let engineB: CloudSyncEngine
     let keyA = CloudSyncSecrets.PrivateKey()
+    let keyB = CloudSyncSecrets.PrivateKey()
+    /// A has allowed B to receive passwords.
+    var trustB: [String: String] { ["device-B": CloudSyncSecrets.publicKeyString(keyB)] }
     /// Later than any timestamp the database helpers take from the clock.
     let t0 = Date().addingTimeInterval(1000)
 
@@ -24,7 +27,7 @@ struct CloudSyncRoundTripTests {
         a = try AppDatabase.inMemory()
         b = try AppDatabase.inMemory()
         engineA = CloudSyncEngine(db: a, device: .init(id: "device-A", name: "Mac", platform: "macOS", appVersion: "1.5.0"), key: keyA)
-        engineB = CloudSyncEngine(db: b, device: .init(id: "device-B", name: "iPhone", platform: "iOS", appVersion: "1.5.0"))
+        engineB = CloudSyncEngine(db: b, device: .init(id: "device-B", name: "iPhone", platform: "iOS", appVersion: "1.5.0"), key: keyB)
     }
 
     func at(_ seconds: Double) -> Date { t0.addingTimeInterval(seconds) }
@@ -148,7 +151,7 @@ struct CloudSyncRoundTripTests {
         try await a.save(Source(id: "MA", name: "Tokened", kind: .m3u, url: "http://lists.example.com/get.php?username=u&password=topsecret&type=m3u", sortIndex: 1))
         // B has synced before (so A knows B's key).
         _ = await engineB.sync(folder: folder, preferences: [:], now: at(9))
-        _ = await engineA.sync(folder: folder, preferences: [:], includeSecrets: true, now: at(10))
+        _ = await engineA.sync(folder: folder, preferences: [:], includeSecrets: true, trustedKeys: trustB, now: at(10))
         let report = await engineB.sync(folder: folder, preferences: [:], now: at(11))
 
         // The folder never holds a readable password.
@@ -169,15 +172,49 @@ struct CloudSyncRoundTripTests {
     @Test func aNewDeviceGetsPasswordsOnceTheOthersKnowItsKey() async throws {
         try await a.save(xtream(id: "SA"))
         // A syncs alone first: there is nobody to seal the password for, so it isn't in the file at all.
-        _ = await engineA.sync(folder: folder, preferences: [:], includeSecrets: true, now: at(10))
+        _ = await engineA.sync(folder: folder, preferences: [:], includeSecrets: true, trustedKeys: trustB, now: at(10))
         _ = await engineB.sync(folder: folder, preferences: [:], now: at(11))
         let waiting = try #require(try await b.sources().first)
         #expect(waiting.needsPassword)
         // A sees B's key and seals the password for it (same record time); B takes it.
-        _ = await engineA.sync(folder: folder, preferences: [:], includeSecrets: true, now: at(12))
+        _ = await engineA.sync(folder: folder, preferences: [:], includeSecrets: true, trustedKeys: trustB, now: at(12))
         _ = await engineB.sync(folder: folder, preferences: [:], now: at(13))
         let filled = try #require(try await b.source(id: waiting.id))
         #expect(!filled.needsPassword && filled.enabled && filled.password == "pw-A-secret")
+    }
+
+    @Test func passwordsGoOnlyToAllowedDevicesWithTheirPinnedKey() async throws {
+        try await a.save(xtream(id: "SA"))
+        _ = await engineB.sync(folder: folder, preferences: [:], now: at(9))
+        // Not allowed yet: B gets the playlist without its password.
+        _ = await engineA.sync(folder: folder, preferences: [:], includeSecrets: true, now: at(10))
+        _ = await engineB.sync(folder: folder, preferences: [:], now: at(11))
+        #expect(try await b.sources().first?.needsPassword == true)
+        // Allowed with an old key (B's key changed since): still nothing.
+        let stale = ["device-B": CloudSyncSecrets.publicKeyString(CloudSyncSecrets.PrivateKey())]
+        _ = await engineA.sync(folder: folder, preferences: [:], includeSecrets: true, trustedKeys: stale, now: at(12))
+        _ = await engineB.sync(folder: folder, preferences: [:], now: at(13))
+        #expect(try await b.sources().first?.needsPassword == true)
+        // Allowed with its current key: B turns it on.
+        _ = await engineA.sync(folder: folder, preferences: [:], includeSecrets: true, trustedKeys: trustB, now: at(14))
+        _ = await engineB.sync(folder: folder, preferences: [:], now: at(15))
+        #expect(try await b.sources().first?.password == "pw-A-secret")
+    }
+
+    @Test func deviceIdsThatArentPlainIdsAreRejected() throws {
+        #expect(CloudSyncDeviceFile.isValidDeviceId("6F1C9A2B-0000-4000-8000-123456789ABC"))
+        for bad in ["../../etc/x", "a/b", "", ".hidden", String(repeating: "a", count: 65)] {
+            #expect(!CloudSyncDeviceFile.isValidDeviceId(bad))
+        }
+        let file = CloudSyncDeviceFile(deviceId: "../outside", deviceName: "X", platform: "macOS", appVersion: nil,
+                                       exportedAt: Date(), records: [])
+        #expect(throws: CloudSyncDeviceFile.ReadError.unreadable) { try CloudSyncDeviceFile.decode(try file.encoded()) }
+        // Deleting by such an id never leaves the folder.
+        let outside = folder.deletingLastPathComponent().appendingPathComponent("outside.json")
+        try Data("{}".utf8).write(to: outside)
+        defer { try? FileManager.default.removeItem(at: outside) }
+        CloudSyncFolder.delete(deviceId: "../outside", in: folder)
+        #expect(FileManager.default.fileExists(atPath: outside.path))
     }
 
     @Test func sealedSecretsOpenOnlyForTheirReader() throws {
@@ -204,7 +241,7 @@ struct CloudSyncRoundTripTests {
         #expect(waiting.needsPassword && !waiting.enabled)
 
         // A turns password sync on: B fills the password in and turns the playlist on.
-        _ = await engineA.sync(folder: folder, preferences: [:], includeSecrets: true, now: at(20))
+        _ = await engineA.sync(folder: folder, preferences: [:], includeSecrets: true, trustedKeys: trustB, now: at(20))
         let report = await engineB.sync(folder: folder, preferences: [:], now: at(21))
         let filled = try #require(try await b.source(id: waiting.id))
         #expect(!filled.needsPassword && filled.enabled && filled.password == "pw-A-secret")
@@ -214,7 +251,7 @@ struct CloudSyncRoundTripTests {
         var changed = try #require(try await a.source(id: "SA"))
         changed.password = "pw-A-new"
         try await a.save(changed)
-        _ = await engineA.sync(folder: folder, preferences: [:], includeSecrets: true, now: at(30))
+        _ = await engineA.sync(folder: folder, preferences: [:], includeSecrets: true, trustedKeys: trustB, now: at(30))
         _ = await engineB.sync(folder: folder, preferences: [:], now: at(31))
         #expect(try await b.source(id: waiting.id)?.password == "pw-A-new")
     }

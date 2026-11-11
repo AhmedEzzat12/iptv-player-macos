@@ -69,6 +69,7 @@ final class CloudSyncController {
     static let deviceNameKey = "cloudSyncDeviceName"
     static let passwordsKey = "cloudSyncPasswords"
     static let removedKey = "cloudSyncRemovedDevices"
+    static let trustedKeysKey = "cloudSyncTrustedKeys"
     static let interval: Duration = .seconds(120)
 
     init(db: AppDatabase, defaults: UserDefaults = .standard) {
@@ -76,6 +77,7 @@ final class CloudSyncController {
         debugFolder = Self.debugFolderOverride(defaults)
         isEnabled = debugFolder != nil || defaults.bool(forKey: Self.enabledKey)
         includePasswords = defaults.object(forKey: Self.passwordsKey) as? Bool ?? true
+        trustedKeys = defaults.dictionary(forKey: Self.trustedKeysKey) as? [String: String] ?? [:]
         let deviceId = Self.loadDeviceId(defaults)
         self.deviceId = deviceId
         let name = defaults.string(forKey: Self.deviceNameKey).flatMap { $0.isEmpty ? nil : $0 } ?? Self.systemDeviceName
@@ -181,12 +183,30 @@ final class CloudSyncController {
         set { defaults.set(newValue.mapValues { NSNumber(value: $0) }, forKey: Self.removedKey) }
     }
 
+    /// Devices allowed to receive passwords, with the key they had when allowed (device id → base64 public key).
+    private(set) var trustedKeys: [String: String] = [:] {
+        didSet { defaults.set(trustedKeys, forKey: Self.trustedKeysKey) }
+    }
+
+    /// Whether passwords are sent to this device (allowed, and its key hasn't changed since).
+    func receivesPasswords(_ peer: CloudSyncPeer) -> Bool {
+        peer.publicKey != nil && trustedKeys[peer.id] == peer.publicKey
+    }
+
+    /// Lets a device receive passwords from this one, pinning its current key: if the key ever changes (a device file
+    /// someone else wrote), nothing more is sent until it's allowed again.
+    func allowPasswords(_ peer: CloudSyncPeer, _ allowed: Bool) {
+        if allowed, let key = peer.publicKey { trustedKeys[peer.id] = key } else { trustedKeys[peer.id] = nil }
+        syncNow()
+    }
+
     /// Removes a device from sync: its file is deleted on the next pass, and the removal travels in this device's file,
     /// so the removed device turns sync off when it next runs (and a stale file from it is deleted wherever it turns up).
     func removeDevice(_ peer: CloudSyncPeer) {
         var removed = removedDevices
         removed[peer.id] = Int64((Date().timeIntervalSince1970 * 1000).rounded())
         removedDevices = removed
+        trustedKeys[peer.id] = nil
         peers.removeAll { $0.id == peer.id }
         syncNow()
     }
@@ -321,7 +341,8 @@ final class CloudSyncController {
             return
         }
         let report = await engine.sync(folder: folder, preferences: model.prefs.cloudSyncValues(),
-                                       includeSecrets: includePasswords, removedDevices: removedDevices)
+                                       includeSecrets: includePasswords, trustedKeys: trustedKeys,
+                                       removedDevices: removedDevices)
         endAccess()
         if !report.removedDevices.isEmpty, report.removedDevices != removedDevices { removedDevices = report.removedDevices }
         if report.removedThisDevice {

@@ -291,7 +291,11 @@ user is asked again). Off by default (Settings → Sync).
   but files only ever hold `sealedSecret` (`CloudSyncSecrets`). Each device has a Curve25519 key pair (private key in
   the Keychain on iPhone/iPad, `<data dir>/sync-key` with mode 0600 on the Mac) and publishes the public key in its
   file. When writing, each secret is encrypted once with a random AES-GCM key, and that key is wrapped for every other
-  (non-removed) device that has a public key, with a key derived from X25519(writer, reader) through HKDF-SHA256. A
+  device the user allowed (Devices → Passwords), with a key derived from X25519(writer, reader) through HKDF-SHA256.
+  Allowing pins the device's public key (`cloudSyncTrustedKeys` in `UserDefaults`); anyone who can write to the
+  folder could add a device file, so a device that wasn't allowed, or whose key changed since, gets nothing until it's
+  allowed (again). Removing a device drops its pin. Device ids from files must be plain ids (letters, digits, `-`),
+  as they name the files a removal deletes. A
   reader opens only what was wrapped for it; the rest is dropped (the playlist then waits for its password). A secret
   sealed for nobody (a device alone in the folder) is left out of the file entirely. Because a device can only get the
   password after the others have seen its key, the secret is not part of a record's hash (`valueHash`): copies with and

@@ -56,11 +56,14 @@ public actor CloudSyncEngine {
     /// One pass: read the other devices' files, apply what's newer, publish this device's state.
     /// `preferences` are this device's whitelisted preferences (`CloudSyncPreferences.keys`) with local ids.
     /// `includeSecrets` publishes playlists with their passwords (and links with tokens).
+    /// `trustedKeys` are the devices the user allowed to receive passwords, with the key they had then (device id →
+    /// base64 public key): passwords are sealed only for those, and only while their key is unchanged.
     /// `removedDevices` are the devices this device knows were removed from sync (id → sync milliseconds); their files
     /// are deleted and ignored, and when this device's own id is among the removed (here or in any file) the pass
     /// stops and reports `removedThisDevice`.
     public func sync(folder: URL, preferences: [String: SyncJSON], includeSecrets: Bool = false,
-                     removedDevices: [String: Int64] = [:], now: Date = Date()) async -> CloudSyncReport {
+                     trustedKeys: [String: String] = [:], removedDevices: [String: Int64] = [:],
+                     now: Date = Date()) async -> CloudSyncReport {
         var report = CloudSyncReport(finishedAt: now)
         let listing: CloudSyncFolder.Listing
         do {
@@ -90,7 +93,7 @@ public actor CloudSyncEngine {
 
         report.peers = files.map {
             CloudSyncPeer(id: $0.deviceId, name: $0.deviceName, platform: $0.platform, exportedAt: $0.exportedAt,
-                          recordCount: $0.records.count, appVersion: $0.appVersion)
+                          recordCount: $0.records.count, appVersion: $0.appVersion, publicKey: $0.publicKey)
         }
 
         let ownPrefs = preferences.filter { CloudSyncPreferences.keys.contains($0.key) }
@@ -112,10 +115,13 @@ public actor CloudSyncEngine {
         report.readySourceIds = result.refreshSourceIds
         report.sourcesNeedingPassword = result.createdNeedingPassword
 
-        // Passwords are sealed for the other devices that have a key (and aren't removed).
+        // Passwords are sealed only for devices the user allowed, while they still have the key they had then: anyone
+        // who can write to the folder could add a device file, so a new or changed key gets nothing.
         var recipients: [String: CloudSyncSecrets.PublicKey] = [:]
         for file in files {
-            if let publicKey = CloudSyncSecrets.publicKey(file.publicKey) { recipients[file.deviceId] = publicKey }
+            guard let text = file.publicKey, trustedKeys[file.deviceId] == text,
+                  let publicKey = CloudSyncSecrets.publicKey(text) else { continue }
+            recipients[file.deviceId] = publicKey
         }
         let recipientKeys = recipients.mapValues { $0.rawRepresentation.base64EncodedString() }
         let ownKey = CloudSyncSecrets.publicKeyString(key)
