@@ -58,14 +58,16 @@ struct MobileRootView: View {
         .overlay { TrailerOverlay() }
         .environment(\.tunerCompact, phoneLayout)
         // While Settings is up, it presents the source editor itself (a second sheet can't stack from here).
+        // Sheets don't inherit the modifier above: pass the phone layout on.
         .sheet(item: showSettings ? .constant(nil) : $model.sourceEditor) { request in
-            SourceEditorView(request: request).environment(model)
+            SourceEditorView(request: request).environment(model).environment(\.tunerCompact, phoneLayout)
         }
         .sheet(isPresented: $showSettings) {
             MobileSettingsView()
                 .environment(model)
+                .environment(\.tunerCompact, phoneLayout)
                 .sheet(item: $model.sourceEditor) { request in
-                    SourceEditorView(request: request).environment(model)
+                    SourceEditorView(request: request).environment(model).environment(\.tunerCompact, phoneLayout)
                 }
         }
         // iPhone: the full-screen player follows rotation (and the full-screen button); browsing stays portrait.

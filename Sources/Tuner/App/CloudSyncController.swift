@@ -5,6 +5,9 @@ import UIKit
 #endif
 import Foundation
 import Observation
+#if os(iOS)
+import Security
+#endif
 import TunerCore
 
 /// iCloud sync for the app (Settings → Sync): the folder, when passes run, and the status shown in Settings.
@@ -35,6 +38,18 @@ final class CloudSyncController {
     private(set) var needsFolder = false
     /// TUNER_SYNC_DIR (or `-TunerSyncDir` in iOS debug builds): a plain folder for testing; turns sync on.
     let debugFolder: URL?
+    /// Playlists sync with their passwords and full links, so other devices turn them on by themselves.
+    var includePasswords: Bool {
+        didSet {
+            guard includePasswords != oldValue else { return }
+            defaults.set(includePasswords, forKey: Self.passwordsKey)
+            syncNow()
+        }
+    }
+    /// This device's name in the other devices' lists (defaults to the computer or device name).
+    private(set) var deviceName: String
+    /// This device's sync id (shown nowhere; kept across reinstalls on iPhone/iPad, see `loadDeviceId`).
+    private(set) var deviceId: String
 
     @ObservationIgnored private let defaults: UserDefaults
     @ObservationIgnored private let engine: CloudSyncEngine
@@ -51,26 +66,28 @@ final class CloudSyncController {
     static let folderPathKey = "cloudSyncFolderPath"
     static let folderBookmarkKey = "cloudSyncFolderBookmark"
     static let deviceIdKey = "cloudSyncDeviceId"
+    static let deviceNameKey = "cloudSyncDeviceName"
+    static let passwordsKey = "cloudSyncPasswords"
+    static let removedKey = "cloudSyncRemovedDevices"
     static let interval: Duration = .seconds(120)
 
     init(db: AppDatabase, defaults: UserDefaults = .standard) {
         self.defaults = defaults
         debugFolder = Self.debugFolderOverride(defaults)
         isEnabled = debugFolder != nil || defaults.bool(forKey: Self.enabledKey)
-        let deviceId: String
-        if let stored = defaults.string(forKey: Self.deviceIdKey) {
-            deviceId = stored
-        } else {
-            deviceId = UUID().uuidString
-            defaults.set(deviceId, forKey: Self.deviceIdKey)
-        }
+        includePasswords = defaults.object(forKey: Self.passwordsKey) as? Bool ?? true
+        let deviceId = Self.loadDeviceId(defaults)
+        self.deviceId = deviceId
+        let name = defaults.string(forKey: Self.deviceNameKey).flatMap { $0.isEmpty ? nil : $0 } ?? Self.systemDeviceName
+        deviceName = name
         #if os(macOS)
         let platform = "macOS"
         #else
         let platform = "iOS"
         #endif
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
-        engine = CloudSyncEngine(db: db, device: .init(id: deviceId, name: Self.deviceName, platform: platform, appVersion: version))
+        engine = CloudSyncEngine(db: db, device: .init(id: deviceId, name: name, platform: platform, appVersion: version),
+                                 key: Self.loadKey())
         refreshFolderDescription()
     }
 
@@ -84,12 +101,104 @@ final class CloudSyncController {
         return URL(fileURLWithPath: (path as NSString).expandingTildeInPath, isDirectory: true)
     }
 
-    private static var deviceName: String {
+    static var systemDeviceName: String {
         #if os(macOS)
         Host.current().localizedName ?? "Mac"
         #else
         UIDevice.current.name
         #endif
+    }
+
+    // MARK: - This device
+
+    /// The sync id. On iPhone/iPad it lives in the Keychain, which survives deleting the app (UserDefaults doesn't), so a
+    /// reinstall keeps writing the same file instead of showing up as a new device. Ids saved by earlier versions in
+    /// UserDefaults move to the Keychain. On the Mac, UserDefaults already survive reinstalling.
+    private static func loadDeviceId(_ defaults: UserDefaults) -> String {
+        #if os(iOS)
+        if let data = SyncKeychain.read("deviceId"), let id = String(data: data, encoding: .utf8) {
+            defaults.set(id, forKey: deviceIdKey)
+            return id
+        }
+        let id = defaults.string(forKey: deviceIdKey) ?? UUID().uuidString
+        SyncKeychain.write("deviceId", Data(id.utf8))
+        defaults.set(id, forKey: deviceIdKey)
+        return id
+        #else
+        if let id = defaults.string(forKey: deviceIdKey) { return id }
+        let id = UUID().uuidString
+        defaults.set(id, forKey: deviceIdKey)
+        return id
+        #endif
+    }
+
+    private func newDeviceId() {
+        let id = UUID().uuidString
+        deviceId = id
+        defaults.set(id, forKey: Self.deviceIdKey)
+        #if os(iOS)
+        SyncKeychain.write("deviceId", Data(id.utf8))
+        #endif
+        Task { await engine.setDeviceId(id) }
+    }
+
+    /// The private key that opens passwords other devices sealed for this one (`CloudSyncSecrets`). It never leaves
+    /// the device: iPhone/iPad keep it in the Keychain (surviving reinstalls, like the device id); the Mac in a file only
+    /// this user can read, next to the library.
+    private static func loadKey() -> CloudSyncSecrets.PrivateKey {
+        #if os(iOS)
+        if let data = SyncKeychain.read("privateKey"), let key = try? CloudSyncSecrets.PrivateKey(rawRepresentation: data) { return key }
+        let key = CloudSyncSecrets.PrivateKey()
+        SyncKeychain.write("privateKey", key.rawRepresentation)
+        return key
+        #else
+        let url = TunerApp.dataDirectory.appendingPathComponent("sync-key")
+        if let data = try? Data(contentsOf: url), let key = try? CloudSyncSecrets.PrivateKey(rawRepresentation: data) { return key }
+        let key = CloudSyncSecrets.PrivateKey()
+        try? FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        FileManager.default.createFile(atPath: url.path, contents: key.rawRepresentation, attributes: [.posixPermissions: 0o600])
+        return key
+        #endif
+    }
+
+    /// Renames this device for the other devices' lists; an empty name goes back to the system name.
+    func setDeviceName(_ name: String) {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty { defaults.removeObject(forKey: Self.deviceNameKey) } else { defaults.set(trimmed, forKey: Self.deviceNameKey) }
+        let resolved = trimmed.isEmpty ? Self.systemDeviceName : trimmed
+        guard resolved != deviceName else { return }
+        deviceName = resolved
+        Task {
+            await engine.setDeviceName(resolved)
+            syncNow()
+        }
+    }
+
+    // MARK: - Other devices
+
+    private var removedDevices: [String: Int64] {
+        get { (defaults.dictionary(forKey: Self.removedKey) as? [String: NSNumber])?.mapValues(\.int64Value) ?? [:] }
+        set { defaults.set(newValue.mapValues { NSNumber(value: $0) }, forKey: Self.removedKey) }
+    }
+
+    /// Removes a device from sync: its file is deleted on the next pass, and the removal travels in this device's file,
+    /// so the removed device turns sync off when it next runs (and a stale file from it is deleted wherever it turns up).
+    func removeDevice(_ peer: CloudSyncPeer) {
+        var removed = removedDevices
+        removed[peer.id] = Int64((Date().timeIntervalSince1970 * 1000).rounded())
+        removedDevices = removed
+        peers.removeAll { $0.id == peer.id }
+        syncNow()
+    }
+
+    /// Another device removed this one: sync turns off, and turning it on again joins as a new device.
+    private func removedByAnotherDevice() async {
+        isEnabled = false
+        newDeviceId()
+        peers = []
+        try? await model?.db.resetCloudSyncLedger()
+        model?.notify(Banner(symbol: "icloud.slash", title: "Removed from sync",
+                             message: "This device was removed from sync on another device. Turn sync on in Settings → Sync to join again."))
     }
 
     // MARK: - Triggers
@@ -211,8 +320,14 @@ final class CloudSyncController {
             lastError = error.message
             return
         }
-        let report = await engine.sync(folder: folder, preferences: model.prefs.cloudSyncValues())
+        let report = await engine.sync(folder: folder, preferences: model.prefs.cloudSyncValues(),
+                                       includeSecrets: includePasswords, removedDevices: removedDevices)
         endAccess()
+        if !report.removedDevices.isEmpty, report.removedDevices != removedDevices { removedDevices = report.removedDevices }
+        if report.removedThisDevice {
+            await removedByAnotherDevice()
+            return
+        }
         // Nothing was changed; the newer pass reports.
         guard !report.cancelled else { return }
         // Applied even when a newer pass was scheduled meanwhile (that cancels this task, and the rows this pass
@@ -363,3 +478,32 @@ final class CloudSyncController {
         #endif
     }
 }
+
+#if os(iOS)
+/// Sync's device id and private key in the Keychain: this device only (not in backups or iCloud Keychain), readable
+/// after the first unlock so background passes work.
+enum SyncKeychain {
+    private static func query(_ account: String) -> [String: Any] {
+        [kSecClass as String: kSecClassGenericPassword,
+         kSecAttrService as String: "app.tuner.sync",
+         kSecAttrAccount as String: account]
+    }
+
+    static func read(_ account: String) -> Data? {
+        var q = query(account)
+        q[kSecReturnData as String] = true
+        q[kSecMatchLimit as String] = kSecMatchLimitOne
+        var result: AnyObject?
+        guard SecItemCopyMatching(q as CFDictionary, &result) == errSecSuccess else { return nil }
+        return result as? Data
+    }
+
+    static func write(_ account: String, _ data: Data) {
+        SecItemDelete(query(account) as CFDictionary)
+        var q = query(account)
+        q[kSecValueData as String] = data
+        q[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+        SecItemAdd(q as CFDictionary, nil)
+    }
+}
+#endif

@@ -208,6 +208,7 @@ struct SettingsPlaylistsPane: View {
 
 private struct SettingsSourceRow: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.tunerCompact) private var compact
     let source: Source
     let sync: SyncEvent?
     let isExporting: Bool
@@ -229,35 +230,47 @@ private struct SettingsSourceRow: View {
             SettingsSourceIcon(kind: source.kind, size: 32, dimmed: !source.enabled)
 
             VStack(alignment: .leading, spacing: 3) {
-                HStack(spacing: 6) {
+                if compact {
+                    // iPhone: the name gets the full width, the badges go underneath.
                     Text(source.name)
                         .font(.body.weight(.medium))
-                        .lineLimit(1)
-                    Text(source.kind.settingsBadge)
-                        .font(.caption2.weight(.semibold))
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 1)
-                        .background(Capsule().fill(.quaternary))
-                        .foregroundStyle(.secondary)
-                    if source.needsPassword {
-                        Text("Needs password")
-                            .font(.caption2.weight(.semibold))
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 1)
-                            .background(Capsule().fill(Color.orange.opacity(0.2)))
-                            .foregroundStyle(.orange)
+                        .lineLimit(2)
+                    HStack(spacing: 6) { badges }
+                } else {
+                    HStack(spacing: 6) {
+                        Text(source.name)
+                            .font(.body.weight(.medium))
+                            .lineLimit(1)
+                        badges
                     }
                 }
                 statusLine
+                if compact, source.needsPassword {
+                    Button(source.kind == .m3u ? "Enter Link…" : "Enter Password…", action: onEdit)
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                        .padding(.top, 4)
+                }
                 if source.enabled, sync == nil, !accountDetails.isEmpty {
-                    HStack(spacing: 0) {
-                        ForEach(Array(accountDetails.enumerated()), id: \.offset) { index, part in
-                            if index > 0 { Text(" · ") }
-                            Text(part.text).foregroundStyle(part.color)
+                    if compact {
+                        // iPhone: one detail per line (side by side they wrap into narrow columns).
+                        VStack(alignment: .leading, spacing: 2) {
+                            ForEach(Array(accountDetails.enumerated()), id: \.offset) { _, part in
+                                Text(part.text).foregroundStyle(part.color)
+                            }
                         }
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                    } else {
+                        HStack(spacing: 0) {
+                            ForEach(Array(accountDetails.enumerated()), id: \.offset) { index, part in
+                                if index > 0 { Text(" · ") }
+                                Text(part.text).foregroundStyle(part.color)
+                            }
+                        }
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
                     }
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
                 }
                 if let error = source.lastError, !error.isEmpty, sync == nil, source.enabled {
                     Label {
@@ -282,7 +295,7 @@ private struct SettingsSourceRow: View {
                     .help("Exported")
             }
 
-            if source.needsPassword {
+            if source.needsPassword && !compact {
                 Button(source.kind == .m3u ? "Enter Link…" : "Enter Password…", action: onEdit)
                     .controlSize(.small)
             }
@@ -294,13 +307,15 @@ private struct SettingsSourceRow: View {
                 .disabled(source.needsPassword)
                 .help(source.enabled ? "Turn off to hide this playlist without deleting it" : "Turn on to show this playlist")
 
-            Button(action: onEdit) {
-                Image(systemName: "info.circle")
-                    .font(.system(size: 15))
-                    .foregroundStyle(Color.secondary)
+            if !compact {
+                Button(action: onEdit) {
+                    Image(systemName: "info.circle")
+                        .font(.system(size: 15))
+                        .foregroundStyle(Color.secondary)
+                }
+                .buttonStyle(.borderless)
+                .help("Edit playlist details")
             }
-            .buttonStyle(.borderless)
-            .help("Edit playlist details")
 
             Menu {
                 actions
@@ -323,7 +338,7 @@ private struct SettingsSourceRow: View {
             }
         }
         .contentShape(Rectangle())
-        .onTapGesture(count: 2, perform: onEdit)
+        .onTapGesture(count: compact ? 1 : 2, perform: onEdit)
         .draggable(Self.dragPrefix + source.id) {
             HStack(spacing: 8) {
                 SettingsSourceIcon(kind: source.kind, size: 20)
@@ -343,6 +358,26 @@ private struct SettingsSourceRow: View {
             Divider()
             Button("Move Up") { onMove(-1) }.disabled(!canMoveUp)
             Button("Move Down") { onMove(1) }.disabled(!canMoveDown)
+        }
+    }
+
+    @ViewBuilder
+    private var badges: some View {
+        Text(source.kind.settingsBadge)
+            .font(.caption2.weight(.semibold))
+            .fixedSize()
+            .padding(.horizontal, 6)
+            .padding(.vertical, 1)
+            .background(Capsule().fill(.quaternary))
+            .foregroundStyle(.secondary)
+        if source.needsPassword {
+            Text("Needs password")
+                .font(.caption2.weight(.semibold))
+                .fixedSize()
+                .padding(.horizontal, 6)
+                .padding(.vertical, 1)
+                .background(Capsule().fill(Color.orange.opacity(0.2)))
+                .foregroundStyle(.orange)
         }
     }
 
@@ -380,8 +415,9 @@ private struct SettingsSourceRow: View {
             .font(.callout)
             .foregroundStyle(.secondary)
         } else if source.needsPassword {
-            Text(source.kind == .m3u ? "Added from another device · enter the full playlist link to turn it on"
-                                     : "Added from another device · enter the password to turn it on")
+            Text(compact ? "Added from another device"
+                 : source.kind == .m3u ? "Added from another device · enter the full playlist link to turn it on"
+                                       : "Added from another device · enter the password to turn it on")
                 .font(.callout)
                 .foregroundStyle(.secondary)
         } else if !source.enabled {

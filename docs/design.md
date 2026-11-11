@@ -250,7 +250,10 @@ or any folder chosen with the open panel); on iPhone/iPad a folder picked once i
 security-scoped bookmark (`UserDefaults`), resolved and opened for each pass (a stale bookmark is refreshed, or the
 user is asked again). Off by default (Settings → Sync).
 
-- **One file per device**, `<deviceId>.json` (device id: a UUID made once, in `UserDefaults`). A device writes only
+- **One file per device**, `<deviceId>.json`. The device id is a UUID made once: on iPhone/iPad it lives in the
+  Keychain (`SyncKeychain`, this-device-only), which survives deleting the app — `UserDefaults` doesn't, so in earlier
+  versions a reinstall showed up as a new device (ids saved by earlier versions move to the Keychain on first launch);
+  on the Mac it stays in `UserDefaults`, which survives reinstalling. A device writes only
   its own file and reads the others, so there are no write conflicts. Reads and writes are coordinated
   (`NSFileCoordinator`), writes atomic; iCloud placeholders (`.<name>.json.icloud`) and evicted files get
   `startDownloadingUbiquitousItem` and are read on a later pass. Corrupt, partial and other-schema files are skipped
@@ -283,6 +286,24 @@ user is asked again). Off by default (Settings → Sync).
   (URLs with secrets are left out of the backup/guide lists). Never synced: downloads,
   recordings, reminders, guide data, metadata caches, the library itself, and device-specific preferences (engine,
   buffers, paths, user agents, TMDB key, shortcuts, volume, last channel).
+- **Passwords** ("Include Playlist Passwords", on by default): with it, a playlist's record carries a `secret`
+  object (password, full URL, full guide/backup URLs) inside the app — database, ledger and merge see it in plain form —
+  but files only ever hold `sealedSecret` (`CloudSyncSecrets`). Each device has a Curve25519 key pair (private key in
+  the Keychain on iPhone/iPad, `<data dir>/sync-key` with mode 0600 on the Mac) and publishes the public key in its
+  file. When writing, each secret is encrypted once with a random AES-GCM key, and that key is wrapped for every other
+  (non-removed) device that has a public key, with a key derived from X25519(writer, reader) through HKDF-SHA256. A
+  reader opens only what was wrapped for it; the rest is dropped (the playlist then waits for its password). A secret
+  sealed for nobody (a device alone in the folder) is left out of the file entirely. Because a device can only get the
+  password after the others have seen its key, the secret is not part of a record's hash (`valueHash`): copies with and
+  without it are the same change, `newest` prefers the copy that carries it on a tie, `decide` applies a remote record
+  whose password differs, and a playlist waiting for its password takes a sealed one even at the same timestamp. A
+  record without a secret never clears a password already there. The file is rewritten when the set of readers changes.
+- **Devices** (Settings → Sync → Devices): this device's name (editable; defaults to the computer/device name) and the
+  others with Remove. Removing adds the device to `removedDevices` (device id → time), published in every file and
+  joined across files, so it sticks even if the remover goes away: any device deletes a removed device's file
+  wherever it turns up and stops sealing passwords for it, and the removed device, seeing its own id, stops before
+  applying or writing anything, turns sync off, makes a new device id and forgets its ledger, so turning sync on again
+  joins as a new device. Removal isn't remote wipe: what a removed device already has stays on it.
 - **Playlists:** one that arrives without its secret (Xtream, or an M3U link whose token was removed) is created off
   with `source.needsPassword` (migration `v7-sourceNeedsPassword`): provider sync skips it and Settings → Playlists
   shows "Needs password"; saving the editor with the password turns it on. Others (Stalker, plain M3U) are created

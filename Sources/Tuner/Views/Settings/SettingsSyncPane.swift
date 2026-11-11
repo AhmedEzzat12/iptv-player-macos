@@ -11,6 +11,8 @@ struct SettingsSyncPane: View {
     #if os(iOS) || TUNER_APP_STORE
     @ViewState private var pickingFolder = false
     #endif
+    @ViewState private var nameDraft = ""
+    @ViewState private var removing: CloudSyncPeer?
 
     private var sync: CloudSyncController { model.cloudSync }
 
@@ -20,10 +22,18 @@ struct SettingsSyncPane: View {
                 Toggle("Sync with iCloud Drive", isOn: Binding(get: { sync.isEnabled }, set: { sync.isEnabled = $0 }))
                     .disabled(sync.debugFolder != nil)
             } footer: {
-                SettingsFooter("Syncs watch progress, favourites, groups, hidden and pinned categories, recent searches and settings, and your playlists without their passwords. Each device keeps a small file in your iCloud Drive folder (end-to-end encrypted only with Advanced Data Protection). Downloads, recordings, reminders and the guide stay on each device.")
+                SettingsFooter("Syncs watch progress, favourites, groups, hidden and pinned categories, recent searches and settings, and your playlists. Each device keeps a small file in your iCloud Drive folder (end-to-end encrypted only with Advanced Data Protection). Downloads, recordings, reminders and the guide stay on each device.")
+            }
+
+            Section {
+                Toggle("Include Playlist Passwords", isOn: Binding(get: { sync.includePasswords }, set: { sync.includePasswords = $0 }))
+            } footer: {
+                SettingsFooter("Playlists sync with their passwords and full links, so they turn on by themselves on your other devices. Passwords are encrypted separately for each of your devices: the sync folder never holds them in readable form, and removed devices can't read new ones.")
             }
 
             folderSection
+
+            devicesSection
 
             Section("Status") {
                 statusRow
@@ -41,15 +51,6 @@ struct SettingsSyncPane: View {
                         .font(.callout)
                         .foregroundStyle(.secondary)
                 }
-                ForEach(sync.peers) { peer in
-                    LabeledContent {
-                        SettingsRelativeDate(prefix: "Updated", date: peer.exportedAt)
-                            .font(.callout)
-                            .foregroundStyle(.secondary)
-                    } label: {
-                        Label(peer.name, systemImage: peer.platform == "iOS" ? "iphone" : "laptopcomputer")
-                    }
-                }
                 HStack {
                     Spacer()
                     Button("Sync Now") { sync.syncNow() }
@@ -58,11 +59,79 @@ struct SettingsSyncPane: View {
             }
         }
         .formStyle(.grouped)
+        .onAppear { nameDraft = sync.deviceName }
+        .onDisappear(perform: commitName)
+        .confirmationDialog("Remove “\(removing?.name ?? "")” from sync?",
+                            isPresented: Binding(get: { removing != nil }, set: { if !$0 { removing = nil } }),
+                            titleVisibility: .visible) {
+            Button("Remove", role: .destructive) {
+                if let removing { sync.removeDevice(removing) }
+                removing = nil
+            }
+            Button("Cancel", role: .cancel) { removing = nil }
+        } message: {
+            Text("Its sync file is deleted. If the device is still in use, it turns sync off the next time it opens \(Distribution.appName); turning sync on there adds it again.")
+        }
         #if os(iOS) || TUNER_APP_STORE
         .fileImporter(isPresented: $pickingFolder, allowedContentTypes: [.folder]) { result in
             if case .success(let url) = result { sync.chooseFolder(url) }
         }
         #endif
+    }
+
+    // MARK: Devices
+
+    private var devicesSection: some View {
+        Section {
+            LabeledContent {
+                TextField("Name", text: $nameDraft, prompt: Text(CloudSyncController.systemDeviceName))
+                    .labelsHidden()
+                    .multilineTextAlignment(.trailing)
+                    .onSubmit(commitName)
+            } label: {
+                Label("This \(Self.thisDeviceKind)", systemImage: Self.symbol(for: Self.thisPlatform))
+            }
+            ForEach(sync.peers) { peer in
+                HStack {
+                    Label {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(peer.name)
+                            SettingsRelativeDate(prefix: "Updated", date: peer.exportedAt)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    } icon: {
+                        Image(systemName: Self.symbol(for: peer.platform))
+                    }
+                    Spacer()
+                    Button("Remove", role: .destructive) { removing = peer }
+                        .buttonStyle(.borderless)
+                        .foregroundStyle(.red)
+                }
+            }
+        } header: {
+            Text("Devices")
+        } footer: {
+            SettingsFooter("To add a device, install \(Distribution.appName) on it, turn on sync and choose the same folder. Remove devices you no longer use, or old entries left by reinstalling an earlier version.")
+        }
+    }
+
+    private func commitName() {
+        guard nameDraft != sync.deviceName else { return }
+        sync.setDeviceName(nameDraft)
+        nameDraft = sync.deviceName
+    }
+
+    #if os(macOS)
+    private static let thisPlatform = "macOS"
+    private static let thisDeviceKind = "Mac"
+    #else
+    private static let thisPlatform = "iOS"
+    private static var thisDeviceKind: String { UIDevice.current.userInterfaceIdiom == .pad ? "iPad" : "iPhone" }
+    #endif
+
+    private static func symbol(for platform: String) -> String {
+        platform == "iOS" ? "iphone" : "laptopcomputer"
     }
 
     @ViewBuilder

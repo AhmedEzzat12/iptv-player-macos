@@ -357,20 +357,31 @@ defaults to `<data dir>/Sync`, so a test copy never writes to iCloud Drive even 
    or pass the launch argument `-TunerSyncDir <scratch>/sync` (Debug builds).
 3. **Two Mac copies** work too: two scratch bundles with different bundle ids (each has its own device id in its
    defaults) and different `TUNER_DATA_DIR`s, the same `TUNER_SYNC_DIR`.
-4. Add the test kit's Xtream panel (`http://127.0.0.1:8765`, `test`/`test`) on one copy only. After a pass (at launch,
-   on Sync Now, or a few seconds after a change) the other copy shows it in Settings → Playlists with "Needs password";
-   enter `test` to turn it on. The M3U playlist (`http://127.0.0.1:8765/playlist.m3u`) has no secret and arrives ready.
-5. Check: favourite a channel, hide a category, pin a movie category, make a group, watch a movie halfway, change the
+4. Add the test kit's Xtream panel (`http://127.0.0.1:8765`, `test`/`test`; in the background, paste
+   `http://127.0.0.1:8765/player_api.php?username=test&password=test` into Server) on one copy only. If that copy syncs
+   before the other has ever synced, the other first shows it with "Needs password" (nobody to seal the password for
+   yet); after the first copy's next pass (Sync Now) the other turns it on by itself. With "Include Playlist Passwords"
+   off, enter `test` by hand. The M3U playlist (`http://127.0.0.1:8765/playlist.m3u`) has no secret and arrives ready.
+   Check `grep -c '"secret"' <scratch>/sync/*.json` is 0 and `sealedSecret.keys` lists only the other device's id.
+5. Devices: rename this device in Settings → Sync, then Remove the other copy there. Its file disappears and the
+   removal shows in this copy's `removedDevices`; at its next pass the removed copy turns sync off and doesn't
+   write its file again.
+6. Reinstall (iPhone/iPad): `xcrun simctl uninstall booted <bundle id>`, install and launch again with the same
+   `-TunerSyncDir`: the folder must still have one file for the simulator, with the same device id (it's in the
+   Keychain).
+7. Check: favourite a channel, hide a category, pin a movie category, make a group, watch a movie halfway, change the
    accent colour on one copy → Sync Now on the other. Then undo them (unfavourite, delete the group, remove the
    progress from Continue Watching) and check they disappear. Removing a playlist on one copy must leave it on the
    other.
-6. The files are readable JSON: `python3 -m json.tool <scratch>/sync/<deviceId>.json`. They must never contain a
-   password (playlist records have no password field; give a test M3U link a `&token=secret123` and check
+8. The files are readable JSON: `python3 -m json.tool <scratch>/sync/<deviceId>.json`. They must never contain a
+   readable password (passwords and full links only appear sealed; give a test M3U link a `&token=secret123` and check
    `grep -c secret123 <scratch>/sync/*.json` is 0) or a stream URL. Corrupt one
    (`echo '{' > <scratch>/sync/broken.json`): Settings → Sync lists it as skipped and the rest still syncs.
-7. Logs: `/usr/bin/log stream --predicate 'subsystem == "app.tuner.macos" AND category == "Sync"'` (counts only).
-8. Afterwards: remove `<scratch>/sync`, the scratch libraries, and the scratch defaults
-   (`defaults delete app.tuner.macos.scratch`, which also forgets the scratch copy's sync device id).
+9. Logs: `/usr/bin/log stream --predicate 'subsystem == "app.tuner.macos" AND category == "Sync"'` (counts only).
+10. Afterwards: remove `<scratch>/sync`, the scratch libraries (the Mac copy's `sync-key` is inside its
+   `TUNER_DATA_DIR`), and the scratch defaults (`defaults delete app.tuner.macos.scratch`, which also forgets the
+   scratch copy's sync device id). The simulator keeps its sync id and key in its Keychain:
+   `xcrun simctl keychain booted reset` clears them.
 
 The engine itself is covered by `scripts/test.sh` (`CloudSyncTests`, `CloudSyncRoundTripTests`: two in-memory
 libraries syncing through a temporary folder).

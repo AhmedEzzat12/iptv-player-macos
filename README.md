@@ -130,8 +130,11 @@ Blender Foundation open movies (CC BY). No provider content is shown.</sub>
   Data Mode); the others are small.
 - **iCloud sync** (Settings → Sync, off by default): watch progress, favourites, custom groups, hidden and pinned
   categories, channel names and guide choices, recently watched channels, recent searches and settings follow you
-  between your Macs, iPhone and iPad. Playlists come along without their passwords: an Xtream account (or an M3U
-  link with a token) shows "Needs password" in Settings → Playlists until you enter it on that device. Each device
+  between your Macs, iPhone and iPad. Playlists come along with their passwords, encrypted separately for each of
+  your devices (the sync folder never holds them readably), so they turn on by themselves; turn off "Include Playlist
+  Passwords" to enter them on each device instead ("Needs password" in Settings → Playlists). Settings → Sync lists
+  your devices: rename this one, or remove one you no longer use (it stops syncing and can't read new passwords).
+  Reinstalling the app on iPhone/iPad keeps it the same device. Each device
   keeps one small file in a folder in your iCloud Drive (on the Mac `iCloud Drive/Tuner Sync`; on iPhone/iPad you
   pick that folder once in Files); the newest change wins. Removing a playlist on one device leaves it on the others.
   Downloads, recordings, reminders and the guide stay on each device. The files are end-to-end encrypted only with
