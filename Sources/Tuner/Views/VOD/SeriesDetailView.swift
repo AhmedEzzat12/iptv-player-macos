@@ -78,7 +78,6 @@ struct SeriesDetailView: View {
                     rating: VODEnrichment.rating(provider: series.rating, metadata: info),
                     genres: VODEnrichment.genres(provider: series.genre, metadata: info),
                     plot: plot,
-                    isLoading: phase == .loading && !episodes.isEmpty,
                     height: VODMetrics.detailHeroHeight(for: viewHeight)
                 ) {
                     ViewThatFits(in: .horizontal) {
@@ -192,11 +191,6 @@ struct SeriesDetailView: View {
             } label: {
                 if let next = upNext {
                     Label(density == .minimal ? (next.resume ? "Resume" : "Play") : next.label, systemImage: "play.fill")
-                } else if phase == .loading {
-                    HStack(spacing: 8) {
-                        ProgressView().controlSize(.small).tint(.black)
-                        Text("Play")
-                    }
                 } else {
                     Label("Play", systemImage: "play.fill")
                 }
@@ -326,11 +320,7 @@ struct SeriesDetailView: View {
                 }
                 .frame(maxWidth: .infinity, minHeight: 200)
             case .loading where episodes.isEmpty:
-                HStack(spacing: 10) {
-                    ProgressView().controlSize(.small)
-                    Text("Loading episodes…").foregroundStyle(.secondary)
-                }
-                .frame(maxWidth: .infinity, minHeight: 200)
+                SeriesEpisodePlaceholderShelf()
             default:
                 if episodes.isEmpty {
                     ContentUnavailableView("No Episodes", systemImage: "tv", description: Text("This show has no episodes available yet."))
@@ -1014,4 +1004,33 @@ struct EarlierEpisodesPrompt: Identifiable {
     let id = UUID()
     let episode: Episode
     let earlier: [Episode]
+}
+
+/// Quiet placeholders shaped like episode cards while the episodes load (no spinner or text); the episodes replace them.
+private struct SeriesEpisodePlaceholderShelf: View {
+    var body: some View {
+        VODShelf {
+            ForEach(0..<4, id: \.self) { _ in SeriesEpisodePlaceholder() }
+        }
+        .allowsHitTesting(false)
+        .accessibilityLabel("Loading episodes")
+    }
+}
+
+/// An episode card's outline while the episodes load.
+private struct SeriesEpisodePlaceholder: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(Color.primary.opacity(0.07))
+                .aspectRatio(16 / 9, contentMode: .fit)
+            RoundedRectangle(cornerRadius: 4, style: .continuous)
+                .fill(Color.primary.opacity(0.07))
+                .frame(width: 160, height: 12)
+            RoundedRectangle(cornerRadius: 4, style: .continuous)
+                .fill(Color.primary.opacity(0.05))
+                .frame(width: 220, height: 10)
+        }
+        .frame(width: 280)
+    }
 }

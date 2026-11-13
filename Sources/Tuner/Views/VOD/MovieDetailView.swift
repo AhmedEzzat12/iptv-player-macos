@@ -18,7 +18,6 @@ struct MovieDetailView: View {
     @ViewState private var category: TunerCore.Category?
     @ViewState private var progress: WatchProgress?
     @ViewState private var isFavorite = false
-    @ViewState private var loadingDetails = false
     @ViewState private var viewHeight: CGFloat = 720
 
     init(movie: Movie) {
@@ -49,7 +48,6 @@ struct MovieDetailView: View {
                     rating: VODEnrichment.rating(provider: movie.rating, metadata: info),
                     genres: VODEnrichment.genres(provider: movie.genre, metadata: info),
                     plot: plot,
-                    isLoading: loadingDetails,
                     height: VODMetrics.detailHeroHeight(for: viewHeight)
                 ) {
                     ViewThatFits(in: .horizontal) {
@@ -211,8 +209,6 @@ struct MovieDetailView: View {
         guard !model.isOffline else { return }
         // Asked recently (this session): the saved details are current.
         if let at = model.detailsFetchedAt[movie.id], Date().timeIntervalSince(at) < 15 * 60 { return }
-        loadingDetails = true
-        defer { loadingDetails = false }
         guard let details = try? await model.sync.movieDetails(movie), !Task.isCancelled else { return }
         model.detailsFetchedAt[movie.id] = Date()
         withAnimation(.easeOut(duration: 0.25)) { movie = merged(movie, details) }
@@ -348,7 +344,6 @@ struct VODDetailHeader<Actions: View>: View {
     var rating: VODRating?
     var genres: [String] = []
     var plot: String?
-    var isLoading = false
     let height: CGFloat
     @ViewBuilder var actions: () -> Actions
     @Environment(\.tunerCompact) private var compact
@@ -414,9 +409,6 @@ struct VODDetailHeader<Actions: View>: View {
                         if let rating {
                             if !metadata.isEmpty { Text("·") }
                             VODRatingBadge(rating: rating)
-                        }
-                        if isLoading {
-                            ProgressView().controlSize(.small)
                         }
                     }
                     .font(.callout.weight(.medium))

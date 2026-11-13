@@ -525,10 +525,13 @@ struct VODTitleArtwork: View {
             if let logo, logo.size.width > 0, logo.size.height > 0 {
                 let size = fittedSize(logo.size)
                 VStack(alignment: .leading, spacing: 8) {
+                    // Up to the fitted size, but never wider than the space offered: a fixed width wider than an
+                    // iPhone pushed the Home hero (and the whole page) past the screen's edge.
                     Image(nsImage: logo)
                         .resizable()
                         .interpolation(.high)
-                        .frame(width: size.width, height: size.height)
+                        .aspectRatio(contentMode: .fit)
+                        .frame(maxWidth: size.width, maxHeight: size.height, alignment: .leading)
                         .shadow(color: .black.opacity(0.45), radius: 12)
                         .accessibilityRemoveTraits(.isImage)
                         .accessibilityLabel(title)
