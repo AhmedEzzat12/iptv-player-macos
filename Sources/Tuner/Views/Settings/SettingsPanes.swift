@@ -58,6 +58,15 @@ struct SettingsPlaybackPane: View {
             }
 
             Section {
+                Picker(selection: $prefs.streamSpeedDisplay) {
+                    ForEach(StreamSpeedDisplay.allCases) { Text($0.title).tag($0) }
+                } label: {
+                    Text("Stream speed")
+                    Text("How fast the stream is downloading, shown at the top of the player.")
+                }
+            }
+
+            Section {
                 Toggle("Resume where you left off", isOn: $prefs.resumePlayback)
                 Toggle("Play the next episode automatically", isOn: $prefs.autoplayNextEpisode)
                 Picker(selection: $prefs.upNextCountdown) {

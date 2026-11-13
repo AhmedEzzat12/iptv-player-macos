@@ -79,7 +79,9 @@ Blender Foundation open movies (CC BY). No provider content is shown.</sub>
 - **Automatic updates:** releases from GitHub install themselves with [Sparkle](https://sparkle-project.org)
   (Tuner → Check for Updates…, Settings → About). Each update is signed (EdDSA) and verified before it's installed.
 - **Player:** AVFoundation first (HLS, MP4; PiP, AirPlay), automatic libmpv fallback for raw MPEG-TS/MKV and
-  other formats; stall watchdog with failover to duplicate channels and reconnect; audio/subtitle tracks; stats.
+  other formats; stall watchdog with failover to duplicate channels and reconnect; audio/subtitle tracks; stats;
+  the stream's current download speed at the top of the player, always, with the buttons, or off (Settings →
+  Playback → Stream speed).
 - **AirPlay:** send video to an Apple TV or AirPlay display from the player's top bar. Streams that were opened
   with mpv are reopened in Apple's player automatically when their format allows (Xtream live via HLS, MP4,
   HLS). Formats AirPlay can't take directly (MKV, raw TS, HEVC in TS) are re-wrapped on the Mac by ffmpeg

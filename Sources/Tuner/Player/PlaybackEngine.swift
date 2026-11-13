@@ -45,6 +45,8 @@ struct EngineSnapshot: Equatable {
     var hardwareDecoder: String?
     var droppedFrames: Int?
     var isSeekable = false
+    /// How fast the stream is downloading right now (bytes per second), when the engine can tell.
+    var networkSpeed: Double?
 }
 
 enum EngineEvent {

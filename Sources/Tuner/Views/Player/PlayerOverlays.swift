@@ -321,6 +321,40 @@ struct PlayerChannelBanner: View {
     }
 }
 
+// MARK: - Stream speed
+
+/// The stream's current download speed ("↓ 8.4 Mbps") in a glass capsule (Settings → Playback → Stream speed): beside
+/// the top bar's buttons, and with "Always" also on its own while they're hidden (`PlayerHost`). Hidden while the
+/// engine can't tell (local files, nothing arriving yet).
+struct PlayerStreamSpeed: View {
+    @Environment(AppModel.self) private var model
+    let slot: PlayerSlot
+    let height: CGFloat
+
+    var body: some View {
+        if model.prefs.streamSpeedDisplay != .off, slot.stream?.url.isFileURL != true, let speed = slot.snapshot.networkSpeed {
+            Label(Self.format(speed), systemImage: "arrow.down")
+                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                .monospacedDigit()
+                .contentTransition(.numericText(value: speed))
+                .foregroundStyle(.white)
+                .padding(.horizontal, 12)
+                .frame(height: height)
+                .playerGlass(in: Capsule())
+                .fixedSize()
+                .help("Stream download speed")
+                .accessibilityLabel("Download speed \(Self.format(speed))")
+        }
+    }
+
+    /// Megabits per second, as internet speeds are quoted ("8.4 Mbps", "850 kbps").
+    static func format(_ bytesPerSecond: Double) -> String {
+        let bits = bytesPerSecond * 8
+        if bits >= 1_000_000 { return String(format: bits >= 100_000_000 ? "%.0f Mbps" : "%.1f Mbps", bits / 1_000_000) }
+        return String(format: "%.0f kbps", bits / 1000)
+    }
+}
+
 // MARK: - Stats
 
 /// Technical statistics for the main slot (toggle with I).

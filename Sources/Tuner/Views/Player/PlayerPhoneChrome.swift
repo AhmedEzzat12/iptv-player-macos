@@ -103,6 +103,8 @@ private struct PlayerPhoneTopBar: View {
             .padding(.horizontal, 4)
             .playerGlass(in: Capsule())
 
+            PlayerStreamSpeed(slot: slot, height: size)
+
             Spacer(minLength: 8)
 
             if item.isLive, let channel = item.channel {

@@ -74,6 +74,9 @@ final class AVEngine: NSObject, PlaybackEngine {
     private var seekTarget: Double?
     private var seekSerial = 0
     private var mediaInfo = MediaInfo()
+    /// Bytes the item had transferred at the last snapshot, and the smoothed download speed (bytes/s) since.
+    private var lastTransfer: (bytes: Int64, at: Date)?
+    private var networkSpeed: Double?
     private var frameRateSamples: [Double] = []
     private var mediaInfoTask: Task<Void, Never>?
     private var selectionTask: Task<Void, Never>?
@@ -230,6 +233,23 @@ final class AVEngine: NSObject, PlaybackEngine {
         videoView.setAspect(aspect)
     }
 
+    /// Download speed from the bytes the item transferred since the last snapshot (smoothed; the access log is
+    /// updated in bursts, per segment or request).
+    private func measureSpeed(_ events: [AVPlayerItemAccessLogEvent]) -> Double? {
+        let total = events.reduce(Int64(0)) { $0 + max(0, $1.numberOfBytesTransferred) }
+        let now = Date()
+        defer { lastTransfer = (total, now) }
+        guard let last = lastTransfer, total >= last.bytes else {
+            networkSpeed = nil
+            return events.last.flatMap { $0.observedBitrate > 0 ? $0.observedBitrate / 8 : nil }
+        }
+        let elapsed = now.timeIntervalSince(last.at)
+        guard elapsed > 0.2 else { return networkSpeed }
+        let instant = Double(total - last.bytes) / elapsed
+        networkSpeed = networkSpeed.map { $0 * 0.7 + instant * 0.3 } ?? instant
+        return networkSpeed
+    }
+
     func snapshot() -> EngineSnapshot {
         var s = EngineSnapshot()
         guard let item = player.currentItem, item === self.item else {
@@ -291,6 +311,7 @@ final class AVEngine: NSObject, PlaybackEngine {
                 known = true
             }
             if known { s.droppedFrames = dropped }
+            s.networkSpeed = measureSpeed(events)
         }
         s.videoBitrate = videoBitrate
         s.audioBitrate = audioBitrate

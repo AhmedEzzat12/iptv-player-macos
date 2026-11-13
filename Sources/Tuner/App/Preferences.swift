@@ -18,6 +18,24 @@ enum EngineChoice: String, CaseIterable, Identifiable, Codable {
 }
 
 /// How episode cards show their picture (episode stills can spoil plot points).
+/// Where the player shows the stream's download speed (Settings → Playback).
+enum StreamSpeedDisplay: String, CaseIterable, Identifiable, Codable {
+    /// Always on screen, also while the player's buttons are hidden.
+    case always
+    /// Next to the top bar's buttons, appearing and hiding with them.
+    case withControls
+    case off
+
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .always: "Always"
+        case .withControls: "With the player buttons"
+        case .off: "Off"
+        }
+    }
+}
+
 enum EpisodeThumbnailStyle: String, CaseIterable, Identifiable, Codable {
     /// The episode's own still (provider image, else online metadata), like the TV app.
     case show
@@ -72,6 +90,8 @@ final class Preferences {
     var maxRetries: Int { didSet { set(maxRetries, "maxRetries") } }
     var resumePlayback: Bool { didSet { set(resumePlayback, "resumePlayback") } }
     var autoplayNextEpisode: Bool { didSet { set(autoplayNextEpisode, "autoplayNextEpisode") } }
+    /// The stream's current download speed in the player.
+    var streamSpeedDisplay: StreamSpeedDisplay { didSet { set(streamSpeedDisplay.rawValue, "streamSpeedDisplay") } }
     /// Seconds the "Up Next" card counts down before the next episode starts; 0 = no card (starts right away).
     var upNextCountdown: Int { didSet { set(upNextCountdown, "upNextCountdown") } }
     var volume: Double { didSet { set(volume, "volume") } }
@@ -164,6 +184,7 @@ final class Preferences {
         maxRetries = v("maxRetries", 10)
         resumePlayback = v("resumePlayback", true)
         autoplayNextEpisode = v("autoplayNextEpisode", true)
+        streamSpeedDisplay = StreamSpeedDisplay(rawValue: v("streamSpeedDisplay", "")) ?? .withControls
         upNextCountdown = v("upNextCountdown", 10)
         volume = v("volume", 100.0)
         catchupPaddingMinutes = v("catchupPaddingMinutes", 0)

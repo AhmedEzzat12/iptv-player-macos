@@ -265,6 +265,7 @@ final class MPVEngine: PlaybackEngine {
         if let hw = string("hwdec-current"), hw != "no" { s.hardwareDecoder = hw }
         s.droppedFrames = int("frame-drop-count").map { Int($0) }
         s.isSeekable = flag("seekable") ?? false
+        s.networkSpeed = double("cache-speed")
         return s
     }
 
