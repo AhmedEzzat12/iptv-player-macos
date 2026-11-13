@@ -18,6 +18,9 @@ struct PlayerVideoOverlay: View {
     /// An edge tap's show/hide, held back briefly in case a second tap makes it a seek.
     @ViewState private var pendingTap: Task<Void, Never>?
     @ViewState private var seekFeedback: SeekFeedback?
+    /// Hides the seek indicator a moment after the last seek. Kept here rather than on the indicator view: a task on
+    /// a view that is fading out could be dropped when a new seek arrived mid-fade, leaving the indicator stuck.
+    @ViewState private var seekFeedbackHide: Task<Void, Never>?
     #endif
 
     var body: some View {
@@ -37,11 +40,6 @@ struct PlayerVideoOverlay: View {
                 PlayerSeekFeedbackView(feedback: seekFeedback, size: size)
                     .transition(.opacity)
                     .allowsHitTesting(false)
-                    .task(id: seekFeedback.token) {
-                        try? await Task.sleep(for: .milliseconds(650))
-                        guard !Task.isCancelled else { return }
-                        withAnimation(.smooth(duration: 0.2)) { self.seekFeedback = nil }
-                    }
             }
             #endif
 
@@ -53,6 +51,12 @@ struct PlayerVideoOverlay: View {
             }
         }
         .frame(width: size.width, height: size.height)
+        #if !os(macOS)
+        .onDisappear {
+            seekFeedbackHide?.cancel()
+            seekFeedback = nil
+        }
+        #endif
         .accessibilityElement(children: .contain)
         .accessibilityLabel(slot.item?.title ?? "Player")
     }
@@ -88,6 +92,12 @@ struct PlayerVideoOverlay: View {
             withAnimation(.smooth(duration: 0.14)) {
                 seekFeedback = SeekFeedback(side: side, seconds: streak, location: location,
                                             token: (seekFeedback?.token ?? 0) + 1)
+            }
+            seekFeedbackHide?.cancel()
+            seekFeedbackHide = Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(650))
+                guard !Task.isCancelled else { return }
+                withAnimation(.smooth(duration: 0.2)) { seekFeedback = nil }
             }
             return
         }

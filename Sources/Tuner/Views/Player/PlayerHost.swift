@@ -257,6 +257,17 @@ struct PlayerHost: View {
                          onPanelHeight: { panelHeight = $0 })
                 .zIndex(5)
 
+            // Stream speed "Always": stays in the top-right corner while the buttons are hidden.
+            if !chromeShown, model.prefs.streamSpeedDisplay == .always {
+                PlayerStreamSpeed(slot: player.main, height: compact ? 32 : 34)
+                    .padding(.trailing, compact ? 16 : 20)
+                    .padding(.top, PlayerChromeMetrics.topBarTop + (compact ? 6 : 5))
+                    .playerPlaced(in: safe, alignment: .topTrailing)
+                    .allowsHitTesting(false)
+                    .transition(.opacity)
+                    .zIndex(4)
+            }
+
             if showZapBanner, player.main.item?.isLive == true {
                 PlayerChannelBanner(slot: player.main)
                     .padding(.leading, 20)
@@ -480,6 +491,13 @@ struct PlayerHost: View {
             try? await Task.sleep(for: .milliseconds(400))
             guard !Task.isCancelled else { return }
             chrome.clearStaleInteraction()
+            #if !os(macOS)
+            // An open menu keeps the controls (and restarts the countdown once it closes).
+            if chrome.isVisible, PlayerMenuPresence.isShowing {
+                chrome.touch()
+                continue
+            }
+            #endif
             guard chrome.isVisible, !chromePinned, Date().timeIntervalSince(chrome.lastActivity) >= 3 else { continue }
             chrome.hide()
             if NSApp.isActive, let window = model.mainWindow, window.isKeyWindow,
