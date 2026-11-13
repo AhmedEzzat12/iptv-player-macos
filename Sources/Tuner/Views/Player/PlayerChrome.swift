@@ -192,6 +192,8 @@ private struct PlayerTopBar: View {
                 PlayerAirPlayControl(slot: slot, size: 40)
             }
 
+            PlayerStreamSpeed(slot: slot, height: 40)
+
             Button { player.showStats.toggle() } label: {
                 Image(systemName: player.showStats ? "info.circle.fill" : "info.circle")
             }
@@ -273,6 +275,12 @@ struct PlayerControlPanel: View {
         return key.isEmpty ? title : "\(title) (\(ShortcutKey.label(key)))"
     }
     let isWindowFullScreen: Bool
+    /// Widths of the transport row and of its three groups (measured), to tell whether the side buttons fit beside
+    /// the centred controls.
+    @ViewState private var rowWidth: CGFloat = 0
+    @ViewState private var leadingWidth: CGFloat = 0
+    @ViewState private var trailingWidth: CGFloat = 0
+    @ViewState private var centerWidth: CGFloat = 0
 
     var body: some View {
         if let item = slot.item {
@@ -284,6 +292,7 @@ struct PlayerControlPanel: View {
                     PlayerScrubber(slot: slot, chrome: chrome)
                 }
                 transport(item)
+                    .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { rowWidth = $0 }
             }
             .padding(compact ? 14 : 20)
             .frame(maxWidth: compact ? 640 : 920)
@@ -297,6 +306,78 @@ struct PlayerControlPanel: View {
     private func transport(_ item: PlaybackItem) -> some View {
         let side: CGFloat = compact ? 32 : 40
         let skip: CGFloat = compact ? 36 : 44
+        let spacing: CGFloat = compact ? 6 : 8
+        let leading = HStack(spacing: spacing) { leadingButtons(item, side: side) }
+            .fixedSize()
+            .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { leadingWidth = $0 }
+        let trailing = HStack(spacing: spacing) { trailingButtons(side: side) }
+            .fixedSize()
+            .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { trailingWidth = $0 }
+        let center = centerButtons(item, skip: skip)
+            .fixedSize()
+            .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { centerWidth = $0 }
+        return Group {
+            if sideButtonsFit {
+                ZStack {
+                    HStack(spacing: spacing) {
+                        leading
+                        Spacer(minLength: 0)
+                        trailing
+                    }
+                    center
+                }
+            } else {
+                // Too narrow for the side buttons beside the centred controls (iPad portrait): the controls get
+                // their own row.
+                VStack(spacing: 12) {
+                    center
+                    HStack(spacing: spacing) {
+                        leading
+                        Spacer(minLength: 0)
+                        trailing
+                    }
+                }
+            }
+        }
+    }
+
+    /// Whether the left and right groups fit on either side of the centred controls without reaching them. The
+    /// groups have fixed sizes, so their widths don't depend on which layout is shown.
+    private var sideButtonsFit: Bool {
+        guard rowWidth > 0, centerWidth > 0 else { return true }
+        return (rowWidth - centerWidth) / 2 >= max(leadingWidth, trailingWidth) + 16
+    }
+
+    @ViewBuilder
+    private func leadingButtons(_ item: PlaybackItem, side: CGFloat) -> some View {
+        PlayerTracksMenu(slot: slot, size: side)
+        PlayerAspectMenu(slot: slot, size: side)
+        PlayerAudioMenu(slot: slot, size: side)
+        if isEpisode {
+            Button {
+                withAnimation(.smooth(duration: 0.3)) { model.player.isEpisodeListOpen.toggle() }
+                chrome.touch()
+            } label: {
+                PlayerGlassSymbol(symbol: model.player.isEpisodeListOpen ? "rectangle.stack.fill" : "rectangle.stack", size: side)
+            }
+            .buttonStyle(.plain)
+            .help("Episodes")
+            .accessibilityLabel("Episodes")
+        }
+        if !item.isLive, !compact { PlayerSpeedMenu(slot: slot, height: side) }
+    }
+
+    @ViewBuilder
+    private func trailingButtons(side: CGFloat) -> some View {
+        PlayerVolumeControl(slot: slot, chrome: chrome, buttonSize: side, sliderWidth: compact ? nil : 110)
+        Button { model.toggleWindowFullScreen() } label: {
+            Image(systemName: isWindowFullScreen ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
+        }
+        .buttonStyle(PlayerTransportButtonStyle(size: side, iconSize: side * 0.42))
+        .help(isWindowFullScreen ? "Exit Full Screen" : "Enter Full Screen")
+    }
+
+    private func centerButtons(_ item: PlaybackItem, skip: CGFloat) -> some View {
         let paused = slot.phase == .paused
         let ended = slot.phase == .ended
         let failed: Bool = {
@@ -305,69 +386,42 @@ struct PlayerControlPanel: View {
         }()
         let playSymbol = failed ? "arrow.clockwise" : (ended ? "arrow.counterclockwise" : (paused ? "play.fill" : "pause.fill"))
         let playTitle = failed ? "Try Again" : (ended ? "Replay" : (paused ? "Play" : "Pause"))
-        return ZStack {
-            HStack(spacing: compact ? 6 : 8) {
-                PlayerTracksMenu(slot: slot, size: side)
-                PlayerAspectMenu(slot: slot, size: side)
-                PlayerAudioMenu(slot: slot, size: side)
-                if isEpisode {
-                    Button {
-                        withAnimation(.smooth(duration: 0.3)) { model.player.isEpisodeListOpen.toggle() }
-                        chrome.touch()
-                    } label: {
-                        PlayerGlassSymbol(symbol: model.player.isEpisodeListOpen ? "rectangle.stack.fill" : "rectangle.stack", size: side)
-                    }
-                    .buttonStyle(.plain)
-                    .help("Episodes")
-                    .accessibilityLabel("Episodes")
-                }
-                if !item.isLive, !compact { PlayerSpeedMenu(slot: slot, height: side) }
-                Spacer(minLength: 0)
-                PlayerVolumeControl(slot: slot, chrome: chrome, buttonSize: side, sliderWidth: compact ? nil : 110)
-                Button { model.toggleWindowFullScreen() } label: {
-                    Image(systemName: isWindowFullScreen ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
-                }
-                .buttonStyle(PlayerTransportButtonStyle(size: side, iconSize: side * 0.42))
-                .help(isWindowFullScreen ? "Exit Full Screen" : "Enter Full Screen")
+        return HStack(spacing: compact ? 10 : 18) {
+            if item.isLive {
+                Button { model.channelUp(); chrome.touch() } label: { Image(systemName: "chevron.up") }
+                    .buttonStyle(PlayerTransportButtonStyle(size: skip, iconSize: skip * 0.45))
+                    .disabled(model.zapList.isEmpty)
+                    .help(shortcutHelp("Previous Channel", .channelUp))
+            } else {
+                if isEpisode { episodeButton(-1, skip: skip) }
+                Button { slot.seek(by: -10); chrome.touch() } label: { Image(systemName: "gobackward.10") }
+                    .buttonStyle(PlayerTransportButtonStyle(size: skip, iconSize: skip * 0.5))
+                    .disabled(!slot.canSeek)
+                    .help("Back 10 Seconds (←)")
             }
 
-            HStack(spacing: compact ? 10 : 18) {
-                if item.isLive {
-                    Button { model.channelUp(); chrome.touch() } label: { Image(systemName: "chevron.up") }
-                        .buttonStyle(PlayerTransportButtonStyle(size: skip, iconSize: skip * 0.45))
-                        .disabled(model.zapList.isEmpty)
-                        .help(shortcutHelp("Previous Channel", .channelUp))
-                } else {
-                    if isEpisode { episodeButton(-1, skip: skip) }
-                    Button { slot.seek(by: -10); chrome.touch() } label: { Image(systemName: "gobackward.10") }
-                        .buttonStyle(PlayerTransportButtonStyle(size: skip, iconSize: skip * 0.5))
-                        .disabled(!slot.canSeek)
-                        .help("Back 10 Seconds (←)")
-                }
+            Button {
+                if failed { slot.retry() } else { slot.togglePause() }
+                chrome.touch()
+            } label: {
+                Image(systemName: playSymbol)
+                    .contentTransition(.symbolEffect(.replace))
+            }
+            .buttonStyle(PlayerGlassButtonStyle(size: compact ? 46 : 58))
+            .help(failed ? playTitle : "\(playTitle) (Space)")
+            .accessibilityLabel(playTitle)
 
-                Button {
-                    if failed { slot.retry() } else { slot.togglePause() }
-                    chrome.touch()
-                } label: {
-                    Image(systemName: playSymbol)
-                        .contentTransition(.symbolEffect(.replace))
-                }
-                .buttonStyle(PlayerGlassButtonStyle(size: compact ? 46 : 58))
-                .help(failed ? playTitle : "\(playTitle) (Space)")
-                .accessibilityLabel(playTitle)
-
-                if item.isLive {
-                    Button { model.channelDown(); chrome.touch() } label: { Image(systemName: "chevron.down") }
-                        .buttonStyle(PlayerTransportButtonStyle(size: skip, iconSize: skip * 0.45))
-                        .disabled(model.zapList.isEmpty)
-                        .help(shortcutHelp("Next Channel", .channelDown))
-                } else {
-                    Button { slot.seek(by: 10); chrome.touch() } label: { Image(systemName: "goforward.10") }
-                        .buttonStyle(PlayerTransportButtonStyle(size: skip, iconSize: skip * 0.5))
-                        .disabled(!slot.canSeek)
-                        .help("Forward 10 Seconds (→)")
-                    if isEpisode { episodeButton(1, skip: skip) }
-                }
+            if item.isLive {
+                Button { model.channelDown(); chrome.touch() } label: { Image(systemName: "chevron.down") }
+                    .buttonStyle(PlayerTransportButtonStyle(size: skip, iconSize: skip * 0.45))
+                    .disabled(model.zapList.isEmpty)
+                    .help(shortcutHelp("Next Channel", .channelDown))
+            } else {
+                Button { slot.seek(by: 10); chrome.touch() } label: { Image(systemName: "goforward.10") }
+                    .buttonStyle(PlayerTransportButtonStyle(size: skip, iconSize: skip * 0.5))
+                    .disabled(!slot.canSeek)
+                    .help("Forward 10 Seconds (→)")
+                if isEpisode { episodeButton(1, skip: skip) }
             }
         }
     }

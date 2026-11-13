@@ -42,7 +42,7 @@ struct LiveGuideHeader: View {
                         .foregroundStyle(.secondary)
                     Text("Select a channel")
                         .font(.headline)
-                    Text("Click a channel in the guide to preview it here.")
+                    Text(Self.previewHint)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
@@ -59,6 +59,15 @@ struct LiveGuideHeader: View {
         .animation(.easeOut(duration: 0.25), value: model.player.hasMedia)
     }
 
+    // Touch screens: a tap previews a channel and a second tap on it opens full screen (`LiveGuideStore.activate`).
+    #if os(macOS)
+    private static let previewHint = "Click a channel in the guide to preview it here."
+    private static let guideHint = "Choose a channel in the guide to preview it. Double-click, or press Return, to watch full screen."
+    #else
+    private static let previewHint = "Tap a channel in the guide to preview it here."
+    private static let guideHint = "Tap a channel in the guide to preview it, and tap it again to watch full screen."
+    #endif
+
     // MARK: Details
 
     @ViewBuilder
@@ -71,7 +80,7 @@ struct LiveGuideHeader: View {
             VStack(alignment: .leading, spacing: 10) {
                 Text(store.title(for: model.liveScope, model: model))
                     .font(.largeTitle.weight(.bold))
-                Text("Choose a channel in the guide to preview it. Double-click, or press Return, to watch full screen.")
+                Text(Self.guideHint)
                     .font(.callout)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
