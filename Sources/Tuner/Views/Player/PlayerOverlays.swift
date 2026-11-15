@@ -324,7 +324,7 @@ struct PlayerChannelBanner: View {
 
 // MARK: - Stream speed
 
-/// The stream's current download speed ("↓ 8.4 Mbps") in a glass capsule (Settings → Playback → Stream speed): beside
+/// The stream's current download speed ("↓ 1.2 MB/s") in a glass capsule (Settings → Playback → Stream speed): beside
 /// the top bar's buttons, and with "Always" also on its own while they're hidden (`PlayerHost`). Hidden while the
 /// engine can't tell (local files, nothing arriving yet).
 struct PlayerStreamSpeed: View {
@@ -348,11 +348,12 @@ struct PlayerStreamSpeed: View {
         }
     }
 
-    /// Megabits per second, as internet speeds are quoted ("8.4 Mbps", "850 kbps").
+    /// Megabytes per second, like a download ("1.2 MB/s", "850 KB/s").
     static func format(_ bytesPerSecond: Double) -> String {
-        let bits = bytesPerSecond * 8
-        if bits >= 1_000_000 { return String(format: bits >= 100_000_000 ? "%.0f Mbps" : "%.1f Mbps", bits / 1_000_000) }
-        return String(format: "%.0f kbps", bits / 1000)
+        if bytesPerSecond >= 1_000_000 {
+            return String(format: bytesPerSecond >= 100_000_000 ? "%.0f MB/s" : "%.1f MB/s", bytesPerSecond / 1_000_000)
+        }
+        return String(format: "%.0f KB/s", bytesPerSecond / 1000)
     }
 }
 
