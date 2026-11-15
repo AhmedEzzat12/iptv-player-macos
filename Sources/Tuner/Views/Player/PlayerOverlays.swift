@@ -10,19 +10,23 @@ struct PlayerStatusOverlay: View {
     let size: CGSize
     /// "Close" on the failure card (live only).
     var onClose: (() -> Void)?
+    /// The player's controls are up: their play button shows the spinner, so the overlay doesn't draw another.
+    var controlsShown = false
 
     var body: some View {
         let density = PlayerOverlayDensity(size)
         ZStack {
             switch slot.phase {
             case .loading:
-                PlayerConnectingView(slot: slot, density: density)
+                PlayerConnectingView(slot: slot, density: density, controlsShown: controlsShown)
                     .allowsHitTesting(false)
                     .transition(.opacity)
             case .buffering:
-                PlayerBufferingView(message: slot.statusMessage, density: density)
-                    .allowsHitTesting(false)
-                    .transition(.opacity)
+                if !controlsShown || slot.statusMessage != nil {
+                    PlayerBufferingView(message: slot.statusMessage, density: density)
+                        .allowsHitTesting(false)
+                        .transition(.opacity)
+                }
             case .failed(let message):
                 PlayerFailureCard(slot: slot, message: message, density: density, onClose: onClose)
                     .transition(.scale(scale: 0.96).combined(with: .opacity))
@@ -64,14 +68,16 @@ enum PlayerOverlayDensity {
     var isRegular: Bool { self == .regular }
 }
 
+/// Opening a stream: blurred artwork (finite media) and a spinner, no text. With the controls up the spinner is in
+/// the play button instead. Failover/reconnect messages still show.
 private struct PlayerConnectingView: View {
     let slot: PlayerSlot
     let density: PlayerOverlayDensity
+    let controlsShown: Bool
 
     var body: some View {
         let item = slot.item
         ZStack {
-            // Finite media: blurred artwork while the stream opens.
             if density.isRegular, let item, !item.isLive, let url = item.artworkURL {
                 RemoteImage(url: url, contentMode: .fill) { Color.clear }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -79,30 +85,28 @@ private struct PlayerConnectingView: View {
                     .opacity(0.35)
                     .clipped()
             }
-            VStack(spacing: density.isRegular ? 14 : 8) {
-                if density.isRegular, let channel = item?.channel {
-                    ChannelLogo(url: channel.logoURL, name: channel.displayName, size: 48)
-                }
-                ProgressView()
-                    .controlSize(density == .regular ? .regular : .small)
-                if density != .tiny {
-                    VStack(spacing: 3) {
-                        Text(slot.statusMessage ?? "Connecting…")
-                            .font(density.isRegular ? .headline : .caption.weight(.semibold))
-                        if let title = item?.title {
-                            Text(title)
-                                .font(density.isRegular ? .callout : .caption2)
-                                .foregroundStyle(.white.opacity(0.65))
-                        }
-                    }
-                    .lineLimit(1)
-                    .multilineTextAlignment(.center)
-                }
+            if let message = slot.statusMessage {
+                PlayerStatusCapsule(message: message, density: density)
+            } else if !controlsShown {
+                PlayerSpinner(density: density)
+                    .transition(.opacity)
             }
-            .padding(density.isRegular ? 20 : 8)
-            .frame(maxWidth: density.isRegular ? 380 : 240)
         }
         .foregroundStyle(.white)
+        .animation(.easeInOut(duration: 0.2), value: controlsShown)
+    }
+}
+
+/// The small glass spinner over the video (opening, buffering).
+private struct PlayerSpinner: View {
+    let density: PlayerOverlayDensity
+
+    var body: some View {
+        ProgressView()
+            .controlSize(density == .regular ? .regular : .small)
+            .tint(.white)
+            .padding(density == .regular ? 14 : 8)
+            .playerGlass(in: Circle())
     }
 }
 
@@ -117,10 +121,7 @@ private struct PlayerBufferingView: View {
             if let message {
                 PlayerStatusCapsule(message: message, density: density)
             } else {
-                ProgressView()
-                    .controlSize(density == .regular ? .regular : .small)
-                    .padding(density == .regular ? 14 : 8)
-                    .playerGlass(in: Circle())
+                PlayerSpinner(density: density)
             }
         }
         .opacity(visible || message != nil ? 1 : 0)

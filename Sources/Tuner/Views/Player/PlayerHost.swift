@@ -240,7 +240,7 @@ struct PlayerHost: View {
         ZStack(alignment: .topLeading) {
             PlayerVideoOverlay(slot: player.main, size: mainRect.size,
                                statusInsets: EdgeInsets(top: coveredTop, leading: 0, bottom: coveredBottom, trailing: 0),
-                               chrome: chrome, onClose: { model.stopPlayback() })
+                               chrome: chrome, chromeShown: chromeShown, onClose: { model.stopPlayback() })
                 .frame(width: mainRect.width, height: mainRect.height)
                 .position(x: mainRect.midX, y: mainRect.midY)
 

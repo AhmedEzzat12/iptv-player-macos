@@ -11,6 +11,8 @@ struct PlayerVideoOverlay: View {
     /// Area covered by the chrome (top bar, control panel); status cards stay out of it.
     var statusInsets = EdgeInsets()
     let chrome: PlayerChromeController
+    /// The controls are showing (their play button then carries the loading spinner).
+    var chromeShown = false
     let onClose: () -> Void
     #if !os(macOS)
     /// Touch: the previous tap (for YouTube-style double tap to seek) and the seek indicator.
@@ -45,7 +47,8 @@ struct PlayerVideoOverlay: View {
 
             if slot.item != nil {
                 let statusHeight = max(0, size.height - statusInsets.top - statusInsets.bottom)
-                PlayerStatusOverlay(slot: slot, size: CGSize(width: size.width, height: statusHeight), onClose: onClose)
+                PlayerStatusOverlay(slot: slot, size: CGSize(width: size.width, height: statusHeight), onClose: onClose,
+                                    controlsShown: chromeShown)
                     .padding(.top, statusInsets.top)
                     .padding(.bottom, statusInsets.bottom)
             }

@@ -412,6 +412,47 @@ extension View {
     }
 }
 
+/// The play/pause button's glyph: a spinner while the stream opens or buffers (as in the TV app), so the loading
+/// state lives in the button instead of a card over the video.
+struct PlayerPlayPauseGlyph: View {
+    let slot: PlayerSlot
+    let symbol: String
+    /// Buffering shows the spinner only after a moment, so brief hiccups don't flicker the button (as the overlay's
+    /// buffering spinner); opening shows it at once.
+    @ViewState private var bufferingLong = false
+
+    var body: some View {
+        Group {
+            if slot.phase == .loading || (slot.phase == .buffering && bufferingLong) {
+                ProgressView()
+                    .tint(.white)
+                    .transition(.opacity)
+            } else {
+                Image(systemName: symbol)
+                    .contentTransition(.symbolEffect(.replace))
+            }
+        }
+        .task(id: slot.phase == .buffering) {
+            bufferingLong = false
+            guard slot.phase == .buffering else { return }
+            try? await Task.sleep(for: .milliseconds(600))
+            guard !Task.isCancelled else { return }
+            withAnimation(.easeIn(duration: 0.2)) { bufferingLong = true }
+        }
+    }
+}
+
+extension PlayerSlot {
+    /// A failure card or (finite media) the end card is up in the middle of the video.
+    var showsStatusCard: Bool {
+        switch phase {
+        case .failed: true
+        case .ended: item?.isLive == false
+        default: false
+        }
+    }
+}
+
 /// Large tappable glass circle (Apple TV player look).
 struct PlayerGlassButtonStyle: ButtonStyle {
     var size: CGFloat = 40

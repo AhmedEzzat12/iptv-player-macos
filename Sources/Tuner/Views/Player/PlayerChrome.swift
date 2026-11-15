@@ -404,8 +404,7 @@ struct PlayerControlPanel: View {
                 if failed { slot.retry() } else { slot.togglePause() }
                 chrome.touch()
             } label: {
-                Image(systemName: playSymbol)
-                    .contentTransition(.symbolEffect(.replace))
+                PlayerPlayPauseGlyph(slot: slot, symbol: playSymbol)
             }
             .buttonStyle(PlayerGlassButtonStyle(size: compact ? 46 : 58))
             .help(failed ? playTitle : "\(playTitle) (Space)")

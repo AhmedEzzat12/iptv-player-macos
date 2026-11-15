@@ -28,8 +28,7 @@ struct PlayerCenterTransport: View {
                     if isFailed { slot.retry() } else { slot.togglePause() }
                     chrome.touch()
                 } label: {
-                    Image(systemName: playSymbol)
-                        .contentTransition(.symbolEffect(.replace))
+                    PlayerPlayPauseGlyph(slot: slot, symbol: playSymbol)
                 }
                 .buttonStyle(PlayerGlassButtonStyle(size: 76))
                 .accessibilityLabel(playTitle)
@@ -54,9 +53,9 @@ struct PlayerCenterTransport: View {
             chrome.touch()
         } label: {
             if spins < 0 {
-                Image(systemName: symbol).symbolEffect(.rotate.counterClockwise.wholeSymbol, options: .speed(1.6), value: backTaps)
+                Image(systemName: symbol).symbolEffect(.rotate.counterClockwise.wholeSymbol, options: .speed(3), value: backTaps)
             } else if spins > 0 {
-                Image(systemName: symbol).symbolEffect(.rotate.clockwise.wholeSymbol, options: .speed(1.6), value: forwardTaps)
+                Image(systemName: symbol).symbolEffect(.rotate.clockwise.wholeSymbol, options: .speed(3), value: forwardTaps)
             } else {
                 Image(systemName: symbol)
             }

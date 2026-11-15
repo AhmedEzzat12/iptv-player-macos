@@ -41,9 +41,12 @@ struct PlayerPhoneChrome: View {
                 // The episode list takes the screen's side or height; the transport and timeline step aside
                 // (tapping the video closes the list).
                 if !model.player.isEpisodeListOpen {
-                    PlayerCenterTransport(slot: slot, chrome: chrome)
-                        .scaleEffect(isShown ? 1 : 0.86)
-                        .position(x: stageSize.width / 2, y: stageSize.height / 2)
+                    // The failure and end cards sit in the middle with their own buttons: the transport makes way.
+                    if !slot.showsStatusCard {
+                        PlayerCenterTransport(slot: slot, chrome: chrome)
+                            .scaleEffect(isShown ? 1 : 0.86)
+                            .position(x: stageSize.width / 2, y: stageSize.height / 2)
+                    }
 
                     PlayerPhoneBottomBlock(slot: slot, item: item, chrome: chrome, size: Self.control)
                         .padding(.bottom, 12)
