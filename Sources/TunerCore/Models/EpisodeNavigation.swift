@@ -43,3 +43,18 @@ public enum UpNextCountdown {
         return Int(remaining.rounded(.up))
     }
 }
+
+/// Finite media whose stream gives out just before the end. Provider files often report a duration a few seconds
+/// longer than the picture actually runs, so the last frame stays up, no "ended" ever arrives and the Up Next
+/// countdown freezes. Stuck this close to the end counts as the end (autoplay then starts the next episode).
+public enum EndOfMediaStall {
+    /// How close to the reported end a stall counts as the end.
+    public static let window: Double = 15
+    /// How long playback must stop advancing there.
+    public static let patience: TimeInterval = 3
+
+    public static func hasEnded(position: Double?, duration: Double?, stalledFor: TimeInterval) -> Bool {
+        guard let position, let duration, position.isFinite, duration.isFinite, duration > window * 2 else { return false }
+        return duration - position <= window && stalledFor >= patience
+    }
+}

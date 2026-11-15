@@ -48,6 +48,11 @@ Apple frameworks plus SQLite and libmpv.
   plays, a failure or end while closed, or the timeout closes it. Not for live TV, local files, AirPlay, the bridge
   or a running sleep timer. The kept stream still holds its connection (`warmItem`), so on single-connection
   accounts it's only kept when no download is waiting, and downloads keep waiting while it's held.
+  It isn't dropped when the iPhone app goes to the background (the owner's choice): if iOS closed the connection
+  meanwhile, reopening fails over to the normal reconnect.
+- **A stall at the very end is the end** (`EndOfMediaStall`): provider files often report a few seconds more than the
+  picture runs, so neither engine ever reports the end and the Up Next countdown froze on the last frame. Playback
+  that stops advancing for 3 s within the last 15 s (not paused) finishes the item, so autoplay goes on.
 - **Seeking feels immediate**: ±10 s and scrubber seeks move the time and scrubber at once (`seekGoal`; the engines
   only report the new position on a later 0.5 s poll), and quick taps add up from the previous target.
 - **Loading** has no text: the play button turns into a spinner while the stream opens or buffers (TV app); with the

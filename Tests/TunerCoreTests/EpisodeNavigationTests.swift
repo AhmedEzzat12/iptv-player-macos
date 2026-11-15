@@ -78,3 +78,22 @@ struct UpNextCountdownTests {
         #expect(UpNextCountdown.secondsLeft(position: 22, duration: 30, countdown: 10) == 8)
     }
 }
+
+@Suite("End-of-media stall")
+struct EndOfMediaStallTests {
+    @Test func stuckInTheLastSecondsCountsAsTheEnd() {
+        #expect(EndOfMediaStall.hasEnded(position: 1312, duration: 1320, stalledFor: 3))
+        #expect(EndOfMediaStall.hasEnded(position: 1305, duration: 1320, stalledFor: 10))
+    }
+
+    @Test func notWhileStillAdvancingOrFarFromTheEnd() {
+        #expect(!EndOfMediaStall.hasEnded(position: 1312, duration: 1320, stalledFor: 1)) // a short hiccup
+        #expect(!EndOfMediaStall.hasEnded(position: 1200, duration: 1320, stalledFor: 30)) // ordinary buffering
+    }
+
+    @Test func notForUnknownDurationsOrShortClips() {
+        #expect(!EndOfMediaStall.hasEnded(position: 1312, duration: nil, stalledFor: 10))
+        #expect(!EndOfMediaStall.hasEnded(position: 5, duration: .infinity, stalledFor: 10))
+        #expect(!EndOfMediaStall.hasEnded(position: 20, duration: 25, stalledFor: 10))
+    }
+}

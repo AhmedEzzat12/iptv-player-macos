@@ -127,9 +127,9 @@ final class PlayerSlot: Identifiable {
     private(set) var warmItem: PlaybackItem?
     /// Set by the app: whether a closed item may keep its connection open.
     @ObservationIgnored var canKeepWarm: ((PlaybackItem) -> Bool)?
-    #if !os(macOS)
-    @ObservationIgnored private var backgroundObserver: NSObjectProtocol?
-    #endif
+    /// Finite media: the last position seen and when it last moved (`EndOfMediaStall`).
+    @ObservationIgnored private var finiteLastPosition: Double?
+    @ObservationIgnored private var finiteLastAdvance = Date()
     /// How long a closed movie or episode stays ready to continue.
     static let keepWarmFor: Duration = .seconds(120)
 
@@ -147,15 +147,6 @@ final class PlayerSlot: Identifiable {
         self.id = id
         self.services = services
         self.volume = min(max(services.prefs.volume, 0), Self.maxVolume)
-        #if !os(macOS)
-        // iOS suspends the app soon after it leaves the screen (closing the kept stream's connection, and stopping its
-        // expiry timer): let a kept-warm stream go rather than resume a dead one later.
-        backgroundObserver = NotificationCenter.default.addObserver(
-            forName: UIApplication.didEnterBackgroundNotification, object: nil, queue: .main
-        ) { [weak self] _ in
-            MainActor.assumeIsolated { self?.discardParked() }
-        }
-        #endif
     }
 
     var isPlaying: Bool { phase == .playing || phase == .buffering }
@@ -488,6 +479,8 @@ final class PlayerSlot: Identifiable {
         if let ch = item.channel, item.isLive { failoverTried.insert(ch.id) }
         triedKinds = []
         engineMemoryPending = nil
+        finiteLastPosition = nil
+        finiteLastAdvance = Date()
         userPaused = false
         engineLoaded = false
         snapshot = EngineSnapshot()
@@ -856,6 +849,8 @@ final class PlayerSlot: Identifiable {
         resetForNewItem(p.item)
         failureHandled = false
         lastHTTPStatus = nil
+        finiteLastPosition = nil
+        finiteLastAdvance = Date()
         userPaused = false
         engineLoaded = true
         audioMovedToMPV = p.audioMovedToMPV
@@ -926,7 +921,7 @@ final class PlayerSlot: Identifiable {
                 let newPhase: Phase = userPaused ? .paused : (s.isBuffering ? .buffering : .playing)
                 if newPhase != phase { phase = newPhase }
             }
-            if s.reachedEnd, item?.isLive == false, engineLoaded {
+            if item?.isLive == false, engineLoaded, s.reachedEnd || stalledAtEnd(s) {
                 finish()
                 return
             }
@@ -937,6 +932,20 @@ final class PlayerSlot: Identifiable {
         if ticks % 2 == 0 { watchdog() }
         if ticks % 6 == 0 { refreshTracks() }
         if ticks % 20 == 0 { saveProgress() }
+    }
+
+    /// The stream gave out in the last seconds of a movie or episode (see `EndOfMediaStall`). Not while paused.
+    private func stalledAtEnd(_ s: EngineSnapshot) -> Bool {
+        let now = Date()
+        if userPaused || s.position != finiteLastPosition {
+            finiteLastPosition = s.position
+            finiteLastAdvance = now
+            return false
+        }
+        let stalled = now.timeIntervalSince(finiteLastAdvance)
+        guard EndOfMediaStall.hasEnded(position: s.position, duration: s.duration, stalledFor: stalled) else { return false }
+        Self.log.info("Treating a stall \(Int((s.duration ?? 0) - (s.position ?? 0))) s before the end as the end")
+        return true
     }
 
     private func watchdog() {
