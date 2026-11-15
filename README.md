@@ -81,7 +81,8 @@ Blender Foundation open movies (CC BY). No provider content is shown.</sub>
 - **Player:** AVFoundation first (HLS, MP4; PiP, AirPlay), automatic libmpv fallback for raw MPEG-TS/MKV and
   other formats; stall watchdog with failover to duplicate channels and reconnect; audio/subtitle tracks; stats;
   the stream's current download speed at the top of the player, always, with the buttons, or off (Settings →
-  Playback → Stream speed).
+  Playback → Stream speed). Closing a movie or episode keeps its stream ready for 2 minutes, so reopening it
+  continues instantly from what's already buffered.
 - **AirPlay:** send video to an Apple TV or AirPlay display from the player's top bar. Streams that were opened
   with mpv are reopened in Apple's player automatically when their format allows (Xtream live via HLS, MP4,
   HLS). Formats AirPlay can't take directly (MKV, raw TS, HEVC in TS) are re-wrapped on the Mac by ffmpeg

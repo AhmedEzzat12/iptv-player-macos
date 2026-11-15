@@ -389,6 +389,13 @@ final class AppModel {
         slot.beforeLoad = { [weak self] item in
             await self?.freeConnectionForPlayback(item)
         }
+        // A closed movie/episode keeps its stream open for a moment (quick reopen); single-connection accounts only
+        // when no download is waiting for that connection.
+        slot.canKeepWarm = { [weak self] item in
+            guard let self, let sourceId = item.sourceId,
+                  self.sources.first(where: { $0.id == sourceId })?.maxConnections == 1 else { return true }
+            return !self.downloadItems.contains(where: \.isPending)
+        }
     }
 
     private func mainItemChanged(_ item: PlaybackItem?) {
@@ -1117,7 +1124,9 @@ final class AppModel {
     /// Downloads wait while the player streams from an account that allows only one connection (the provider would
     /// otherwise refuse the stream or cut the download).
     private var downloadsShouldSuspend: Bool {
-        let streaming = Set(player.slots.compactMap(networkSourceId))
+        // A kept-warm stream still holds its connection.
+        let warm = player.slots.compactMap { slot in slot.warmItem?.sourceId }
+        let streaming = Set(player.slots.compactMap(networkSourceId) + warm)
         guard !streaming.isEmpty else { return false }
         return sources.contains { streaming.contains($0.id) && $0.maxConnections == 1 }
     }

@@ -116,12 +116,46 @@ final class PlayerSlot: Identifiable {
     @ObservationIgnored private var failureHandled = false
     @ObservationIgnored private var serverErrorRetries = 0
     @ObservationIgnored private var lastHTTPStatus: Int?
+    /// Where the last seek is headed. Shown at once and used as the base for the next ±10 s, so quick taps add up
+    /// and the time moves immediately (engines only report the new position on a later poll, after the seek ran).
+    @ObservationIgnored private var seekGoal: (position: Double, until: Date)?
+    /// A movie or episode just closed, kept open (paused) for a while: reopening it continues from what's buffered.
+    @ObservationIgnored private var parked: Parked?
+    @ObservationIgnored private var parkExpiry: Task<Void, Never>?
+    /// The item kept warm (observed, so downloads on single-connection accounts keep waiting while it holds the
+    /// connection).
+    private(set) var warmItem: PlaybackItem?
+    /// Set by the app: whether a closed item may keep its connection open.
+    @ObservationIgnored var canKeepWarm: ((PlaybackItem) -> Bool)?
+    #if !os(macOS)
+    @ObservationIgnored private var backgroundObserver: NSObjectProtocol?
+    #endif
+    /// How long a closed movie or episode stays ready to continue.
+    static let keepWarmFor: Duration = .seconds(120)
+
+    private struct Parked {
+        let item: PlaybackItem
+        let stream: PlayableStream?
+        let snapshot: EngineSnapshot
+        let audioTracks: [MediaTrack]
+        let subtitleTracks: [MediaTrack]
+        let audioMovedToMPV: Bool
+    }
 
 
     init(id: Int, services: PlayerServices) {
         self.id = id
         self.services = services
         self.volume = min(max(services.prefs.volume, 0), Self.maxVolume)
+        #if !os(macOS)
+        // iOS suspends the app soon after it leaves the screen (closing the kept stream's connection, and stopping its
+        // expiry timer): let a kept-warm stream go rather than resume a dead one later.
+        backgroundObserver = NotificationCenter.default.addObserver(
+            forName: UIApplication.didEnterBackgroundNotification, object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.discardParked() }
+        }
+        #endif
     }
 
     var isPlaying: Bool { phase == .playing || phase == .buffering }
@@ -135,14 +169,26 @@ final class PlayerSlot: Identifiable {
     }
 
     func stop() {
+        // Nothing playing (e.g. a second stop as the player closes): leave a kept-warm stream alone.
+        guard item != nil || parked == nil else { return }
         saveProgress(force: true)
+        let keepWarm = canPark
+        let movedToMPV = audioMovedToMPV
         audioMovedToMPV = false
         endBridge()
         generation += 1
         loadTask?.cancel()
         retryTask?.cancel()
         stopPolling()
-        engine?.stop()
+        seekGoal = nil
+        if keepWarm, let item {
+            engine?.setPaused(true)
+            park(Parked(item: item, stream: stream, snapshot: snapshot, audioTracks: audioTracks,
+                        subtitleTracks: subtitleTracks, audioMovedToMPV: movedToMPV))
+        } else {
+            discardParked()
+            engine?.stop()
+        }
         setSleepTimer(nil) // a manual stop cancels it (after the engine stopped, so the fade's reset can't blip)
         item = nil
         stream = nil
@@ -182,18 +228,39 @@ final class PlayerSlot: Identifiable {
     }
 
     func seek(by delta: Double) {
-        if item?.isLive == false, let from = snapshot.position { onSeek?(from, max(0, from + delta)) }
+        let from = currentSeekBase
         if isBridged, item?.isLive == false {
-            seek(to: max(0, (snapshot.position ?? 0) + delta))
+            seek(to: max(0, (from ?? 0) + delta)) // reports the seek and shows the goal
             return
+        }
+        if item?.isLive == false, let from {
+            var to = max(0, from + delta)
+            if let duration = snapshot.duration, duration > 0 { to = min(to, duration) }
+            onSeek?(from, to)
+            showSeekGoal(to)
         }
         engine?.seek(by: delta)
         lastProgressAt = Date()
     }
 
+    /// The position a relative seek starts from: the previous seek's target while it is still running.
+    private var currentSeekBase: Double? {
+        if let goal = seekGoal, goal.until > Date() { return goal.position }
+        return snapshot.position
+    }
+
+    /// Moves the time and scrubber to `position` now, before the engine reports it.
+    private func showSeekGoal(_ position: Double) {
+        seekGoal = (position, Date().addingTimeInterval(1.5))
+        snapshot.position = position
+    }
+
     func seek(to seconds: Double) {
         lastProgressAt = Date()
-        if item?.isLive == false, let from = snapshot.position { onSeek?(from, seconds) }
+        if item?.isLive == false, let from = currentSeekBase {
+            onSeek?(from, seconds)
+            showSeekGoal(seconds)
+        }
         if isBridged, let item, !item.isLive {
             // Inside what the bridge has already re-wrapped: seek locally; beyond it: restart there.
             let relative = seconds - bridgeOffset
@@ -391,6 +458,9 @@ final class PlayerSlot: Identifiable {
     }
 
     func shutdown() {
+        parked = nil
+        warmItem = nil
+        parkExpiry?.cancel()
         saveProgress(force: true)
         endBridge()
         stopPolling()
@@ -401,6 +471,12 @@ final class PlayerSlot: Identifiable {
     // MARK: - Loading & routing
 
     private func start(_ item: PlaybackItem, startAt: Double?, isAutomatic: Bool, forcedKind: EngineKind? = nil) {
+        if !isAutomatic, forcedKind == nil, let parked, parked.item.id == item.id {
+            resume(parked, startAt: startAt)
+            return
+        }
+        discardParked()
+        seekGoal = nil
         if !isAutomatic { saveProgress(force: true) }
         generation += 1
         loadTask?.cancel()
@@ -408,13 +484,7 @@ final class PlayerSlot: Identifiable {
         // Close the current stream before requesting the next one: single-connection accounts would
         // otherwise see two streams for a moment and the provider refuses the new one.
         engine?.stop()
-        if !isAutomatic { serverErrorRetries = 0 }
-        if !isAutomatic {
-            originalChannel = item.channel
-            failoverTried = []
-            retryCount = 0
-            statusMessage = nil
-        }
+        if !isAutomatic { resetForNewItem(item) }
         if let ch = item.channel, item.isLive { failoverTried.insert(ch.id) }
         triedKinds = []
         engineMemoryPending = nil
@@ -430,6 +500,15 @@ final class PlayerSlot: Identifiable {
         pendingStartAt = startAt
         if changed { onItemChange?(item) }
         load(item, preferring: forcedKind)
+    }
+
+    /// Retry/failover bookkeeping starts over for an item the user chose (not for automatic reloads).
+    private func resetForNewItem(_ item: PlaybackItem) {
+        serverErrorRetries = 0
+        originalChannel = item.channel
+        failoverTried = []
+        retryCount = 0
+        statusMessage = nil
     }
 
     private func load(_ item: PlaybackItem, preferring forced: EngineKind?) {
@@ -549,6 +628,14 @@ final class PlayerSlot: Identifiable {
     // MARK: - Engine events
 
     private func handle(_ event: EngineEvent) {
+        // A kept-warm engine that fails or ends while closed is simply let go (reopening then loads afresh).
+        guard parked == nil else {
+            switch event {
+            case .failed, .ended: discardParked()
+            default: break
+            }
+            return
+        }
         switch event {
         case .loaded:
             engineLoaded = true
@@ -714,6 +801,87 @@ final class PlayerSlot: Identifiable {
         onEnded?(item)
     }
 
+    // MARK: - Keeping a closed stream warm
+
+    /// Closing a movie or episode keeps its stream open, paused, for `keepWarmFor`: opening it again (back to the
+    /// show, play) continues at once from the buffered data instead of resolving, reconnecting and buffering again.
+    /// Not for live TV (it would resume in the past), local files, AirPlay, Picture in Picture (its window would stay
+    /// up with a playable player), the AirPlay bridge or the sleep timer; the
+    /// app decides for each account (single-connection accounts only when no download is waiting).
+    private var canPark: Bool {
+        guard let item, !item.isLive, engine != nil, engineLoaded, !isBridged, !isAirPlayActive,
+              !isPictureInPictureActive, sleepTimer == nil,
+              stream?.url.isFileURL == false // files reopen instantly anyway
+        else { return false }
+        switch phase {
+        case .playing, .paused, .buffering: break
+        default: return false
+        }
+        return canKeepWarm?(item) ?? false
+    }
+
+    private func park(_ p: Parked) {
+        parked = p
+        warmItem = p.item
+        parkExpiry?.cancel()
+        parkExpiry = Task { [weak self] in
+            try? await Task.sleep(for: Self.keepWarmFor)
+            guard !Task.isCancelled else { return }
+            self?.discardParked()
+        }
+        Self.log.info("Kept \(p.item.id, privacy: .public) warm")
+    }
+
+    /// Closes a kept-warm stream (it expired, failed, or something else is about to play).
+    private func discardParked() {
+        parkExpiry?.cancel()
+        parkExpiry = nil
+        guard let p = parked else { return }
+        Self.log.info("Closed the kept-warm \(p.item.id, privacy: .public)")
+        parked = nil
+        warmItem = nil
+        if item == nil { engine?.stop() }
+    }
+
+    /// Reopens a kept-warm item: same engine, same buffer, playing again where it was (or at `startAt` when that's
+    /// somewhere else, e.g. Play from Beginning).
+    private func resume(_ p: Parked, startAt: Double?) {
+        parkExpiry?.cancel()
+        parkExpiry = nil
+        parked = nil
+        warmItem = nil
+        generation += 1
+        loadTask?.cancel()
+        retryTask?.cancel()
+        resetForNewItem(p.item)
+        failureHandled = false
+        lastHTTPStatus = nil
+        userPaused = false
+        engineLoaded = true
+        audioMovedToMPV = p.audioMovedToMPV
+        item = p.item
+        stream = p.stream
+        snapshot = p.snapshot
+        audioTracks = p.audioTracks
+        subtitleTracks = p.subtitleTracks
+        currentProgram = nil
+        pendingStartAt = nil
+        loadStartedAt = Date()
+        lastProgressAt = Date()
+        lastPosition = nil
+        lastBufferedEnd = nil
+        phase = .playing
+        onItemChange?(p.item)
+        applyVolume()
+        applyMute()
+        // The saved resume point can trail the parked position slightly; anything else (Play from Beginning) seeks.
+        if let startAt, startAt == 0 || abs(startAt - (p.snapshot.position ?? startAt)) > 5 { seek(to: startAt) }
+        engine?.setPaused(false)
+        startPolling()
+        onLoaded?()
+        Self.log.info("Continued \(p.item.id, privacy: .public) from the kept-warm stream")
+    }
+
     // MARK: - Polling & watchdog
 
     private func startPolling() {
@@ -740,6 +908,14 @@ final class PlayerSlot: Identifiable {
             if let b = s.bufferedEnd { s.bufferedEnd = b + bridgeOffset }
             if let d = bridgeDuration { s.duration = d } // event playlists report no duration
             if item?.isLive == false { s.isSeekable = true }
+        }
+        // (After the bridge offset: the goal is an absolute position.)
+        if let goal = seekGoal {
+            if goal.until > Date(), let p = s.position, abs(p - goal.position) > 3 {
+                s.position = goal.position
+            } else {
+                seekGoal = nil
+            }
         }
         if s != snapshot { snapshot = s }
         onPoll?()

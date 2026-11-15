@@ -296,6 +296,8 @@ Never against the real feed or your own keychain. Use a throwaway key and a loca
   `xcrun devicectl device capture screenshot --device <udid> --destination shot.png`. Picture in Picture, background
   audio, AirPlay and hardware decoding can only be checked on a device.
 - The simulator's display lags several seconds behind input: take a second screenshot before deciding a tap failed.
+- The Debug build installs as `app.antenna.player` (the store bundle id), not an older `app.tuner.ios.*` copy that
+  may still be on the simulator: launch that id, or you're testing old code.
 ## Testing the Mac App Store app (Antenna)
 
 The store build is the `TunerMac` scheme in `iOS/project.yml` (sandboxed, `TUNER_APP_STORE`, mpv linked in). Test it
@@ -342,6 +344,14 @@ that switches sections must not do anything extra.
 or `xcrun simctl spawn booted log show … --info` for the simulator. Play an mpv title (the MKV) and expect
 `Keep the screen on: true`, then pause or let it end and expect `false`. On the Mac, `pmset -g assertions` lists
 "… is playing video" while it's on.
+
+## Quick reopen (kept-warm stream)
+
+Start the test kit with `TESTKIT_VOD_RATE=400000`, play a movie, close it and open it again within 2 minutes. The
+server log shows no new request for the file on the reopen, playback continues where it was without a spinner, and
+the `PlayerSlot` log (`… --info --predicate 'category == "PlayerSlot"'`) says `Kept mv:… warm`, then
+`Continued mv:… from the kept-warm stream`. Play something else instead, or wait 2 minutes, and it logs
+`Closed the kept-warm …`. Live channels, local files and PiP/AirPlay playback are never kept.
 
 ## Testing iCloud sync
 

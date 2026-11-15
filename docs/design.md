@@ -42,6 +42,18 @@ Apple frameworks plus SQLite and libmpv.
   with a misleading EPERM). It runs under a `/bin/sh` watchdog that stops ffmpeg when the app's PID disappears
   (crash or force-quit), because macOS has no parent-death signal and an orphan would hold the provider connection.
 
+- **Quick reopen** (`PlayerSlot.park`): closing a movie or episode keeps its engine open, paused, for 2 minutes.
+  Opening the same title again (back to the show, Play/Resume) continues from the buffered data at once, with no new
+  resolve, connection or buffering; a different `startAt` (Play from Beginning) seeks inside it. Anything else that
+  plays, a failure or end while closed, or the timeout closes it. Not for live TV, local files, AirPlay, the bridge
+  or a running sleep timer. The kept stream still holds its connection (`warmItem`), so on single-connection
+  accounts it's only kept when no download is waiting, and downloads keep waiting while it's held.
+- **Seeking feels immediate**: ±10 s and scrubber seeks move the time and scrubber at once (`seekGoal`; the engines
+  only report the new position on a later 0.5 s poll), and quick taps add up from the previous target.
+- **Loading** has no text: the play button turns into a spinner while the stream opens or buffers (TV app); with the
+  controls hidden, a small spinner shows instead. Failover/reconnect messages still appear. On iPhone the centre
+  transport steps aside for the failure and end cards.
+
 ### Audio enhancements and sleep timer
 
 Dialogue Boost, Night Mode and Volume Levelling are global preferences (`dialogueBoost`, `nightMode`,
