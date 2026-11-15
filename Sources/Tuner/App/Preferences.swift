@@ -109,6 +109,10 @@ final class Preferences {
     var autoplayNextEpisode: Bool { didSet { set(autoplayNextEpisode, "autoplayNextEpisode") } }
     /// The stream's current download speed in the player.
     var streamSpeedDisplay: StreamSpeedDisplay { didSet { set(streamSpeedDisplay.rawValue, "streamSpeedDisplay") } }
+    /// Mac: the iPhone/iPad swipes, done by dragging with the mouse (off by default; touch screens always have them).
+    var mouseSwipes: Bool { didSet { set(mouseSwipes, "mouseSwipes") } }
+    /// Swipes on the full-screen player (down: close) and on Home's hero (sideways: next title).
+    var swipeGestures: Bool { TouchScreen.isAvailable || mouseSwipes }
     /// iPhone/iPad pull to refresh: a pull, and a pull held at the bottom for `pullHoldSeconds`.
     var pullAction: PullAction { didSet { set(pullAction.rawValue, "pullAction") } }
     var pullHoldAction: PullAction { didSet { set(pullHoldAction.rawValue, "pullHoldAction") } }
@@ -209,6 +213,7 @@ final class Preferences {
         resumePlayback = v("resumePlayback", true)
         autoplayNextEpisode = v("autoplayNextEpisode", true)
         streamSpeedDisplay = StreamSpeedDisplay(rawValue: v("streamSpeedDisplay", "")) ?? .withControls
+        mouseSwipes = v("mouseSwipes", false)
         pullAction = PullAction(rawValue: v("pullAction", "")) ?? .syncICloud
         pullHoldAction = PullAction(rawValue: v("pullHoldAction", "")) ?? .refreshPlaylists
         pullHoldSeconds = v("pullHoldSeconds", 2.0)

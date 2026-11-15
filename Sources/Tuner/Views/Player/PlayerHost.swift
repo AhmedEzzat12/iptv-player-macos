@@ -143,13 +143,15 @@ struct PlayerHost: View {
         let isFull = mode == .full
         let chromeShown = isFull && (chrome.isVisible || chromeHeld)
         let compact = compactRect(for: mode, safe: safe)
-        // Touch screens: the full-screen player is a card that follows a swipe down, shrinking as it goes (0…1).
-        let drag = isFull && self.compact ? min(max(dismissOffset / max(size.height, 1), 0), 1) : 0
+        // Swipes (touch screens; the Mac's mouse when turned on): the full-screen player is a card that follows a
+        // swipe down, shrinking as it goes (0…1).
+        let swipes = model.prefs.swipeGestures
+        let drag = isFull && swipes ? min(max(dismissOffset / max(size.height, 1), 0), 1) : 0
         let cardRadius: CGFloat = drag > 0 ? 36 * min(1, drag * 5) : 0
 
         ZStack(alignment: .topLeading) {
-            // Touch screens: what's behind the player shows through as the card is dragged away.
-            if self.compact {
+            // What's behind the player shows through as the card is dragged away.
+            if swipes {
                 Color.black
                     .opacity(isFull && !isClosing ? 1 - min(1, drag * 1.6) : 0)
                     .allowsHitTesting(false)
@@ -163,9 +165,9 @@ struct PlayerHost: View {
                 .opacity(isClosing ? 0 : 1)
         }
         .frame(width: size.width, height: size.height, alignment: .topLeading)
-        // Narrow touch screens: swipes anywhere on the full-screen player (the video's cell overlay sits above the
-        // stage, so this is on the whole stage, alongside the controls' own gestures).
-        .simultaneousGesture(swipeGesture(height: size.height), including: self.compact && isFull ? .all : .subviews)
+        // Swipes anywhere on the full-screen player (the video's cell overlay sits above the stage, so this is on the
+        // whole stage, alongside the controls' own gestures).
+        .simultaneousGesture(swipeGesture(height: size.height), including: swipes && isFull ? .all : .subviews)
         // iPhone: snappier, as in the TV app (the Mac keeps its slower window-sized move).
         .animation(self.compact ? .spring(response: 0.34, dampingFraction: 0.9) : .spring(response: 0.5, dampingFraction: 0.86),
                    value: mode)
@@ -353,10 +355,11 @@ struct PlayerHost: View {
 
     // MARK: - Swipes (touch screens)
 
-    /// YouTube-style swipes on the full-screen player. Down: in landscape, back to portrait; in portrait, close the
-    /// player (the video follows the finger; past a quarter of the height or a quick flick closes, otherwise it
-    /// springs back). Up in portrait: full screen (landscape). Mostly-horizontal drags (the scrubber) are ignored,
-    /// and so are drags while the episode list (which scrolls) is open.
+    /// YouTube-style swipes on the full-screen player. Down: on an iPhone in landscape, back to portrait; otherwise
+    /// close the player (the video follows the finger; past a quarter of the height or a quick flick closes,
+    /// otherwise it springs back). Up on an iPhone in portrait: full screen (landscape); the iPad keeps every
+    /// orientation, so there it only closes. Mostly-horizontal drags (the scrubber) are ignored, and so are drags
+    /// while the episode list (which scrolls) is open.
     private func swipeGesture(height: CGFloat) -> some Gesture {
         // Global coordinates: the stage moves with the finger, so a local translation would chase its own offset
         // (that feedback loop made the swipe stutter).
@@ -367,7 +370,7 @@ struct PlayerHost: View {
                 if dy > 0 {
                     // Landscape: a little give (the swipe returns to portrait); portrait: the card follows the finger.
                     dismissOffset = isLandscape ? min(dy * 0.3, 54) : dy
-                } else if !isLandscape {
+                } else if rotatesWithSwipes, !isLandscape {
                     // Up (to landscape): a rubber-band nudge.
                     dismissOffset = max(dy * 0.18, -28)
                 }
@@ -381,7 +384,7 @@ struct PlayerHost: View {
                     #if os(iOS)
                     if isLandscape {
                         if dy > 40 || flick > 140 { PlayerOrientation.setLandscape(false) }
-                    } else if dy < -40 || flick < -140 {
+                    } else if rotatesWithSwipes, dy < -40 || flick < -140 {
                         PlayerOrientation.setLandscape(true)
                     } else if dy > height * 0.22 || (dy > 30 && flick > height * 0.4) {
                         closing = true
@@ -398,7 +401,7 @@ struct PlayerHost: View {
             }
     }
 
-    /// Touch screens: leaves the full-screen player from wherever the card is. Live TV shrinks into the mini
+    /// Swipe down (or the close button): leaves the full-screen player from wherever the card is. Live TV shrinks into the mini
     /// player (it keeps playing); anything else slides down and fades, then stops.
     private func dismissFullScreen(height: CGFloat) {
         guard model.player.isFullWindow else { return }
@@ -423,9 +426,20 @@ struct PlayerHost: View {
         }
     }
 
+    /// The swipes also turn the player (iPhone). The iPad keeps every orientation: a swipe down there closes the
+    /// player whichever way it's held.
+    private var rotatesWithSwipes: Bool {
+        #if os(iOS)
+        PlayerOrientation.isPhone
+        #else
+        false
+        #endif
+    }
+
+    /// Landscape as far as the swipes go: only on an iPhone (above).
     private var isLandscape: Bool {
         #if os(iOS)
-        PlayerOrientation.isLandscape
+        rotatesWithSwipes && PlayerOrientation.isLandscape
         #else
         false
         #endif

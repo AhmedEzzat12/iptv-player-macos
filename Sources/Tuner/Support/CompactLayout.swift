@@ -12,3 +12,15 @@ extension EnvironmentValues {
         set { self[TunerCompactKey.self] = newValue }
     }
 }
+
+/// iPhone and iPad, whatever the layout: the swipes (the player down to close it, the Home hero sideways) are always
+/// on. The Mac has them only when Settings → Playback → Swipe with the mouse is on (`Preferences.swipeGestures`).
+enum TouchScreen {
+    static var isAvailable: Bool {
+        #if os(iOS)
+        true
+        #else
+        false
+        #endif
+    }
+}

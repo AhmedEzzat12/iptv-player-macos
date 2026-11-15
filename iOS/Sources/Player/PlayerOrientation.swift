@@ -13,7 +13,7 @@ enum PlayerOrientation {
     private(set) static var mask: UIInterfaceOrientationMask = .portrait
     private static var deviceObserver: NSObjectProtocol?
 
-    private static var isPhone: Bool { UIDevice.current.userInterfaceIdiom == .phone }
+    static var isPhone: Bool { UIDevice.current.userInterfaceIdiom == .phone }
 
     private static var scene: UIWindowScene? {
         UIApplication.shared.connectedScenes

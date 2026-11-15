@@ -629,7 +629,7 @@ private struct HomeHero: View {
             }
         }
         .clipped()
-        .simultaneousGesture(swipe, including: compact ? .all : .subviews)
+        .simultaneousGesture(swipe, including: model.prefs.swipeGestures ? .all : .subviews)
         .environment(\.colorScheme, .dark)
         .overlay(alignment: .bottom) { VODTheme.heroBottomFade }
         .onHover { hovering = $0 }
@@ -696,7 +696,7 @@ private struct HomeHero: View {
         .padding(.bottom, compact ? 52 : 40)
     }
 
-    /// Touch screens: swipe the hero sideways to change the featured title.
+    /// Touch screens (and the Mac's mouse, when turned on): swipe the hero sideways to change the featured title.
     private var swipe: some Gesture {
         DragGesture(minimumDistance: 24)
             .onEnded { value in

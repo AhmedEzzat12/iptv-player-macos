@@ -361,6 +361,16 @@ takes the drag): a quick deep pull and release must not refresh (no `player_api.
 and a pull held for the hold time must (`get_live_streams` and friends appear). Grab the hint with
 `xcrun simctl io booted screenshot` in a loop while the touch runs.
 
+## Swipes (iPad, and the Mac's mouse)
+
+- **iPad simulator:** build `TunerIOS` for an iPad and play a movie (`-TunerDebugPlayMovie`). A short drag down
+  springs back; a long one closes the player, in portrait and after `rotate` in landscape. On Home the hero moves on
+  by itself every 8 s, so check that a swipe to the right steps *back* a dot (only the swipe can do that).
+- **Mac:** in a scratch copy, `defaults write app.tuner.macos.scratch mouseSwipes -bool true` (or Settings →
+  Playback → Swipe with the mouse). Background `app_drag` raw input doesn't reach SwiftUI gestures in an inactive
+  app, so drive the drags with full-screen control (`left_mouse_down`, a few `mouse_move`s, `left_mouse_up`). The
+  hero stops rotating while the pointer is over it. With the setting off the same drags do nothing.
+
 ## Testing iCloud sync
 
 Sync only needs a folder both copies can read and write, so tests use a plain scratch folder instead of iCloud Drive

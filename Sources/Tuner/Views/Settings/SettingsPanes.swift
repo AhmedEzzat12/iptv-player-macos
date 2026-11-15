@@ -64,6 +64,13 @@ struct SettingsPlaybackPane: View {
                     Text("Stream speed")
                     Text("How fast the stream is downloading, shown at the top of the player.")
                 }
+                #if os(macOS)
+                // iPhone and iPad always have the swipes.
+                Toggle(isOn: $prefs.mouseSwipes) {
+                    Text("Swipe with the mouse")
+                    Text("As on iPhone and iPad: drag the full-screen player down to close it, and drag Home's featured title sideways for the next one.")
+                }
+                #endif
             }
 
             Section {
