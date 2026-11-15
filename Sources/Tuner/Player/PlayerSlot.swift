@@ -130,8 +130,8 @@ final class PlayerSlot: Identifiable {
     /// Finite media: the last position seen and when it last moved (`EndOfMediaStall`).
     @ObservationIgnored private var finiteLastPosition: Double?
     @ObservationIgnored private var finiteLastAdvance = Date()
-    /// How long a closed movie or episode stays ready to continue.
-    static let keepWarmFor: Duration = .seconds(120)
+    /// How long a closed movie or episode stays ready to continue (Settings → Playback; 0 = not kept).
+    private var keepWarmFor: Duration { .seconds(max(services.prefs.keepWarmMinutes, 0) * 60) }
 
     private struct Parked {
         let item: PlaybackItem
@@ -796,13 +796,15 @@ final class PlayerSlot: Identifiable {
 
     // MARK: - Keeping a closed stream warm
 
-    /// Closing a movie or episode keeps its stream open, paused, for `keepWarmFor`: opening it again (back to the
+    /// Closing a movie or episode keeps its stream open, paused, for `keepWarmFor` (the user's setting, read when it
+    /// closes): opening it again (back to the
     /// show, play) continues at once from the buffered data instead of resolving, reconnecting and buffering again.
     /// Not for live TV (it would resume in the past), local files, AirPlay, Picture in Picture (its window would stay
     /// up with a playable player), the AirPlay bridge or the sleep timer; the
     /// app decides for each account (single-connection accounts only when no download is waiting).
     private var canPark: Bool {
-        guard let item, !item.isLive, engine != nil, engineLoaded, !isBridged, !isAirPlayActive,
+        guard services.prefs.keepWarmMinutes > 0,
+              let item, !item.isLive, engine != nil, engineLoaded, !isBridged, !isAirPlayActive,
               !isPictureInPictureActive, sleepTimer == nil,
               stream?.url.isFileURL == false // files reopen instantly anyway
         else { return false }
@@ -817,8 +819,9 @@ final class PlayerSlot: Identifiable {
         parked = p
         warmItem = p.item
         parkExpiry?.cancel()
+        let keepFor = keepWarmFor
         parkExpiry = Task { [weak self] in
-            try? await Task.sleep(for: Self.keepWarmFor)
+            try? await Task.sleep(for: keepFor)
             guard !Task.isCancelled else { return }
             self?.discardParked()
         }

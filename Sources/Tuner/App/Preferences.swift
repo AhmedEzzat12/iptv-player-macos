@@ -115,6 +115,9 @@ final class Preferences {
     var pullHoldSeconds: Double { didSet { set(pullHoldSeconds, "pullHoldSeconds") } }
     /// Seconds the "Up Next" card counts down before the next episode starts; 0 = no card (starts right away).
     var upNextCountdown: Int { didSet { set(upNextCountdown, "upNextCountdown") } }
+    /// Minutes a closed movie or episode keeps its stream open, paused, so reopening it continues from the buffer;
+    /// 0 = closed right away (`PlayerSlot.park`).
+    var keepWarmMinutes: Int { didSet { set(keepWarmMinutes, "keepWarmMinutes") } }
     var volume: Double { didSet { set(volume, "volume") } }
     var catchupPaddingMinutes: Int { didSet { set(catchupPaddingMinutes, "catchupPaddingMinutes") } }
     /// Skip Intro / Skip Credits: a button (default), automatic, or off.
@@ -210,6 +213,7 @@ final class Preferences {
         pullHoldAction = PullAction(rawValue: v("pullHoldAction", "")) ?? .refreshPlaylists
         pullHoldSeconds = v("pullHoldSeconds", 2.0)
         upNextCountdown = v("upNextCountdown", 10)
+        keepWarmMinutes = v("keepWarmMinutes", 10)
         volume = v("volume", 100.0)
         catchupPaddingMinutes = v("catchupPaddingMinutes", 0)
         skipSegments = SkipMode(rawValue: v("skipSegments", "")) ?? .button

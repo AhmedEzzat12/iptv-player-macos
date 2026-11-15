@@ -85,6 +85,15 @@ struct SettingsPlaybackPane: View {
                     Text("Skip intro and credits")
                     Text(skipDetail(prefs.skipSegments))
                 }
+                Picker(selection: $prefs.keepWarmMinutes) {
+                    Text("Off").tag(0)
+                    ForEach([2, 5, 10, 30, 60], id: \.self) { Text("\($0) minutes").tag($0) }
+                } label: {
+                    Text("Keep closed titles ready")
+                    Text(prefs.keepWarmMinutes == 0
+                         ? "Closing a movie or episode closes its stream."
+                         : "Reopening a movie or episode you just closed continues at once from what's buffered. The stream stays connected meanwhile.")
+                }
                 SettingsNumberRow(title: "Catch-up padding", subtitle: "Start catch-up programs a little early.",
                                   value: $prefs.catchupPaddingMinutes, range: 0...30, unit: "min")
             } header: {
