@@ -1,4 +1,5 @@
 import SwiftUI
+import TunerCore
 
 extension View {
     /// iPhone/iPad: pull down and let go for one action, or keep holding the pull for a moment for another (by default
@@ -10,8 +11,9 @@ extension View {
 }
 
 /// The system pull-to-refresh fires as soon as its threshold is crossed, so this follows the scroll offset instead.
-/// Past `distance`, letting go runs the pull action; staying past it for `pullHoldSeconds` arms the hold action, so a
-/// quick, deep pull no longer refreshes every playlist by accident. Pulling back up before letting go cancels.
+/// Past the line, letting go runs the pull action. Holding there fills a ring (`PullCharge`: with time, faster the
+/// farther the pull), and a full ring arms the hold action, so a quick deep flick no longer refreshes every playlist
+/// by accident. Easing back drains it; pulling back up before letting go cancels.
 private struct PullToSync: ViewModifier {
     #if os(iOS)
     @Environment(AppModel.self) private var model
@@ -19,15 +21,12 @@ private struct PullToSync: ViewModifier {
     /// The scroll view's own top inset: 0 when the page runs under the status bar (Home's hero).
     @ViewState private var topInset: CGFloat = 1
     @ViewState private var dragging = false
-    /// When the pull went past `distance` (the hold is timed from here), and whether the hold has armed.
-    @ViewState private var heldSince: Date?
+    @ViewState private var charge = PullCharge()
+    /// Whether the full charge has armed the hold action (kept until the pull is let off or released).
     @ViewState private var holdArmed = false
-    @ViewState private var holdTimer: Task<Void, Never>?
+    /// Steps the charge each frame while the page is being pulled.
+    @ViewState private var ticker: Task<Void, Never>?
     @ViewState private var working: PullAction?
-
-    private static let distance: CGFloat = 80
-    /// A little give once past the line, so a finger that sags while holding doesn't restart the hold.
-    private static let keepDistance: CGFloat = 60
 
     func body(content: Content) -> some View {
         content
@@ -38,13 +37,12 @@ private struct PullToSync: ViewModifier {
                 -(geometry.contentOffset.y + geometry.contentInsets.top)
             } action: { _, new in
                 pull = max(0, new)
-                if dragging { followHold() }
             }
             .onScrollPhaseChange { old, new in
                 if new == .interacting {
                     dragging = true
                     resetHold()
-                    followHold()
+                    startTicker()
                 } else if old == .interacting {
                     dragging = false
                     let action = releaseAction
@@ -53,7 +51,7 @@ private struct PullToSync: ViewModifier {
                 }
             }
             .overlay(alignment: .top) { hint }
-            .sensoryFeedback(.selection, trigger: heldSince != nil)
+            .sensoryFeedback(.selection, trigger: charge.isPastLine)
             .sensoryFeedback(.impact(weight: .medium), trigger: holdArmed) { _, armed in armed }
     }
 
@@ -71,33 +69,36 @@ private struct PullToSync: ViewModifier {
         }
     }
 
-    /// Starts timing the hold once the pull passes the line; going back above it starts over.
-    private func followHold() {
-        if heldSince == nil {
-            guard pull >= Self.distance else { return }
-            heldSince = Date()
-            guard holdAction != nil else { return }
-            let seconds = max(0.5, model.prefs.pullHoldSeconds)
-            holdTimer = Task { @MainActor in
-                try? await Task.sleep(for: .seconds(seconds))
-                guard !Task.isCancelled, dragging, heldSince != nil else { return }
-                withAnimation(.smooth(duration: 0.2)) { holdArmed = true }
+    /// Advances the charge every frame while dragging; arms the hold action when it's full.
+    private func startTicker() {
+        ticker?.cancel()
+        ticker = Task { @MainActor in
+            var last = Date()
+            while !Task.isCancelled, dragging {
+                try? await Task.sleep(for: .milliseconds(16))
+                let now = Date()
+                let seconds = max(0.5, model.prefs.pullHoldSeconds)
+                charge.step(pull: Double(pull), dt: now.timeIntervalSince(last), holdSeconds: seconds)
+                last = now
+                if !charge.isPastLine {
+                    if holdArmed { withAnimation(.smooth(duration: 0.15)) { holdArmed = false } }
+                } else if charge.isFull, !holdArmed, holdAction != nil {
+                    withAnimation(.smooth(duration: 0.2)) { holdArmed = true }
+                }
             }
-        } else if pull < Self.keepDistance {
-            resetHold()
         }
     }
 
     private func resetHold() {
-        holdTimer?.cancel()
-        holdTimer = nil
-        heldSince = nil
+        ticker?.cancel()
+        ticker = nil
+        charge.reset()
         holdArmed = false
     }
 
     /// What letting go now does: the hold action once armed, the pull action past the line, else nothing.
     private var releaseAction: PullAction? {
-        guard heldSince != nil else { return nil }
+        guard charge.isPastLine else { return nil }
         return holdArmed ? holdAction : pullAction
     }
 
@@ -130,17 +131,17 @@ private struct PullToSync: ViewModifier {
         } else if dragging, pull > 24, pullAction != nil || holdAction != nil {
             if holdArmed, let holdAction {
                 label("Release to \(Self.verb(holdAction))") { icon(holdAction) }
-            } else if let heldSince {
+            } else if charge.isPastLine || charge.value > 0 {
                 label(pastLineText) {
                     if holdAction != nil {
-                        HoldRing(since: heldSince, seconds: max(0.5, model.prefs.pullHoldSeconds))
+                        HoldRing(progress: charge.value)
                     } else if let pullAction {
                         icon(pullAction)
                     }
                 }
             } else {
                 label(beforeLineText) { Image(systemName: "arrow.down") }
-                    .opacity(min(1, Double(pull / Self.distance)))
+                    .opacity(min(1, Double(pull) / PullCharge.line))
             }
         }
     }
@@ -195,23 +196,19 @@ private struct PullToSync: ViewModifier {
 }
 
 #if os(iOS)
-/// Fills as the hold time passes.
+/// The hold's charge (`PullCharge`), filling and draining with the pull.
 private struct HoldRing: View {
-    let since: Date
-    let seconds: Double
+    let progress: Double
 
     var body: some View {
-        TimelineView(.animation) { context in
-            let progress = min(1, context.date.timeIntervalSince(since) / seconds)
-            ZStack {
-                Circle().stroke(.secondary.opacity(0.35), lineWidth: 2.5)
-                Circle()
-                    .trim(from: 0, to: progress)
-                    .stroke(.primary, style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
-                    .rotationEffect(.degrees(-90))
-            }
-            .frame(width: 14, height: 14)
+        ZStack {
+            Circle().stroke(.secondary.opacity(0.35), lineWidth: 2.5)
+            Circle()
+                .trim(from: 0, to: progress)
+                .stroke(.primary, style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
+                .rotationEffect(.degrees(-90))
         }
+        .frame(width: 14, height: 14)
     }
 }
 #endif

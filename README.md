@@ -161,7 +161,7 @@ devices from Xcode, with a free Apple ID or a paid developer account.
 | Navigation | Sidebar | Tab bar (iPad: top bar that opens as a sidebar) |
 | Live TV | Guide grid with preview | iPhone: channel list with now/next; iPad: guide grid |
 | Player | Pointer-driven control panel, keyboard shortcuts | TV app–style touch layout (portrait and landscape): transport on the video, title and timeline below, Episodes / Next Episode pills; tap to show/hide, double-tap the sides to skip 10 s, swipe up for landscape, swipe down for portrait or to close; hardware volume |
-| Refresh | Toolbar / ⌘R | Pull down on Home, Movies, TV Shows or Live TV and let go to sync with iCloud; keep holding the pull (2 s) to refresh the playlists. Both actions and the hold time are in Settings → Guide & Library |
+| Refresh | Toolbar / ⌘R | Pull down on Home, Movies, TV Shows or Live TV and let go to sync with iCloud; keep holding the pull (about 2 s, quicker the farther you pull) to refresh the playlists. Both actions and the hold time are in Settings → Guide & Library |
 | Engines | AVFoundation, libmpv (Homebrew) fallback | AVFoundation, libmpv ([MPVKit](https://github.com/mpvkit/MPVKit)) fallback, built in |
 | Picture in Picture | AVFoundation streams | AVFoundation streams (MKV and other mpv-only formats: no PiP) |
 | AirPlay | All formats (ffmpeg re-wraps the rest) | AVFoundation streams; others via Screen Mirroring |

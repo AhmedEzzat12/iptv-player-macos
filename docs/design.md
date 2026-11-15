@@ -261,8 +261,10 @@ path off the main thread, sized to the view. One request per URL is shared by ev
 ### Pull to refresh (iPhone/iPad, `PullToSync`)
 
 - The system `refreshable` fires the moment its threshold is crossed, so it can't offer two actions. `PullToSync`
-  follows the scroll offset instead. Past 80 pt, letting go runs the pull action; staying past it (60 pt of give)
-  for the hold time arms the hold action, with a filling ring and a haptic. Pulling back up cancels.
+  follows the scroll offset instead. Past 80 pt, letting go runs the pull action. Holding there fills a ring
+  (`PullCharge`, TunerCore, tested): it charges with time, up to twice as fast the farther the pull (full speed at
+  200 pt), and drains when the pull eases back below 60 pt. A full ring arms the hold action (haptic). So the hold time
+  is reached at the line, half of it at full depth, and a quick deep flick still can't arm it. Pulling back up cancels.
 - It used to pick by distance (80 pt sync, 170 pt refresh), and quick deep pulls kept refreshing every playlist by
   accident; time can't be hit by accident.
 - Settings → Guide & Library (iOS only, not synced): pull action and hold action (Sync with iCloud, Refresh
