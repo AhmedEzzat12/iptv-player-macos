@@ -165,8 +165,33 @@ struct SettingsGuidePane: View {
             } header: {
                 Text("Automatic Refresh")
             } footer: {
+                #if os(macOS)
                 SettingsFooter("Playlists can override these in their own settings. Refresh any time with ⌘R.")
+                #else
+                SettingsFooter("Playlists can override these in their own settings.")
+                #endif
             }
+
+            #if os(iOS)
+            Section {
+                Picker("Pull and let go", selection: $prefs.pullAction) {
+                    ForEach(PullAction.allCases) { Text($0.title).tag($0) }
+                }
+                Picker("Pull and hold", selection: $prefs.pullHoldAction) {
+                    ForEach(PullAction.allCases) { Text($0.title).tag($0) }
+                }
+                Picker("Hold for", selection: $prefs.pullHoldSeconds) {
+                    ForEach([1.0, 1.5, 2, 3, 4, 5], id: \.self) { seconds in
+                        Text(seconds == 1 ? "1 second" : "\(seconds.formatted()) seconds").tag(seconds)
+                    }
+                }
+                .disabled(prefs.pullHoldAction == .nothing)
+            } header: {
+                Text("Pull to Refresh")
+            } footer: {
+                SettingsFooter("Pull down on Home, Movies, TV Shows or Live TV. Keep holding the pull for the second action; pull back up to cancel.")
+            }
+            #endif
 
             Section("Reminders") {
                 Picker("Remind me", selection: $prefs.reminderLeadMinutes) {

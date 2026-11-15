@@ -353,6 +353,13 @@ the `PlayerSlot` log (`… --info --predicate 'category == "PlayerSlot"'`) says 
 `Continued mv:… from the kept-warm stream`. Play something else instead, or wait 2 minutes, and it logs
 `Closed the kept-warm …`. Live channels, local files and PiP/AirPlay playback are never kept.
 
+## Pull to refresh (iPhone/iPad)
+
+In the simulator, drive it with the simulator tool's `touch_path`, starting below Home's hero (the hero carousel
+takes the drag): a quick deep pull and release must not refresh (no `player_api.php` requests in the test kit log),
+and a pull held for the hold time must (`get_live_streams` and friends appear). Grab the hint with
+`xcrun simctl io booted screenshot` in a loop while the touch runs.
+
 ## Testing iCloud sync
 
 Sync only needs a folder both copies can read and write, so tests use a plain scratch folder instead of iCloud Drive

@@ -258,6 +258,16 @@ placeholder flash when scrolling back); bytes go to `ImageDiskCache` (TunerCore,
 file names are SHA-256 of the URL) whatever the server's caching headers say; decoding uses ImageIO's thumbnail
 path off the main thread, sized to the view. One request per URL is shared by every view asking for it.
 
+### Pull to refresh (iPhone/iPad, `PullToSync`)
+
+- The system `refreshable` fires the moment its threshold is crossed, so it can't offer two actions. `PullToSync`
+  follows the scroll offset instead. Past 80 pt, letting go runs the pull action; staying past it (60 pt of give)
+  for the hold time arms the hold action, with a filling ring and a haptic. Pulling back up cancels.
+- It used to pick by distance (80 pt sync, 170 pt refresh), and quick deep pulls kept refreshing every playlist by
+  accident; time can't be hit by accident.
+- Settings → Guide & Library (iOS only, not synced): pull action and hold action (Sync with iCloud, Refresh
+  playlists, Nothing) and hold time (1–5 s, default 2 s). iCloud counts as Nothing while sync is off.
+
 ### Sync between devices (iCloud Drive folder)
 
 **Why not CloudKit:** the iPhone app is signed with a free Personal Team and the Mac app is ad-hoc/Developer ID signed

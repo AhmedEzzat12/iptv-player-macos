@@ -17,7 +17,6 @@ enum EngineChoice: String, CaseIterable, Identifiable, Codable {
     }
 }
 
-/// How episode cards show their picture (episode stills can spoil plot points).
 /// Where the player shows the stream's download speed (Settings → Playback).
 enum StreamSpeedDisplay: String, CaseIterable, Identifiable, Codable {
     /// Always on screen, also while the player's buttons are hidden.
@@ -36,6 +35,24 @@ enum StreamSpeedDisplay: String, CaseIterable, Identifiable, Codable {
     }
 }
 
+/// What pulling down a page does on iPhone/iPad (a pull, or a pull held for `pullHoldSeconds`; Settings → Guide &
+/// Library).
+enum PullAction: String, CaseIterable, Identifiable, Codable {
+    case syncICloud
+    case refreshPlaylists
+    case nothing
+
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .syncICloud: "Sync with iCloud"
+        case .refreshPlaylists: "Refresh playlists"
+        case .nothing: "Nothing"
+        }
+    }
+}
+
+/// How episode cards show their picture (episode stills can spoil plot points).
 enum EpisodeThumbnailStyle: String, CaseIterable, Identifiable, Codable {
     /// The episode's own still (provider image, else online metadata), like the TV app.
     case show
@@ -92,6 +109,10 @@ final class Preferences {
     var autoplayNextEpisode: Bool { didSet { set(autoplayNextEpisode, "autoplayNextEpisode") } }
     /// The stream's current download speed in the player.
     var streamSpeedDisplay: StreamSpeedDisplay { didSet { set(streamSpeedDisplay.rawValue, "streamSpeedDisplay") } }
+    /// iPhone/iPad pull to refresh: a pull, and a pull held at the bottom for `pullHoldSeconds`.
+    var pullAction: PullAction { didSet { set(pullAction.rawValue, "pullAction") } }
+    var pullHoldAction: PullAction { didSet { set(pullHoldAction.rawValue, "pullHoldAction") } }
+    var pullHoldSeconds: Double { didSet { set(pullHoldSeconds, "pullHoldSeconds") } }
     /// Seconds the "Up Next" card counts down before the next episode starts; 0 = no card (starts right away).
     var upNextCountdown: Int { didSet { set(upNextCountdown, "upNextCountdown") } }
     var volume: Double { didSet { set(volume, "volume") } }
@@ -185,6 +206,9 @@ final class Preferences {
         resumePlayback = v("resumePlayback", true)
         autoplayNextEpisode = v("autoplayNextEpisode", true)
         streamSpeedDisplay = StreamSpeedDisplay(rawValue: v("streamSpeedDisplay", "")) ?? .withControls
+        pullAction = PullAction(rawValue: v("pullAction", "")) ?? .syncICloud
+        pullHoldAction = PullAction(rawValue: v("pullHoldAction", "")) ?? .refreshPlaylists
+        pullHoldSeconds = v("pullHoldSeconds", 2.0)
         upNextCountdown = v("upNextCountdown", 10)
         volume = v("volume", 100.0)
         catchupPaddingMinutes = v("catchupPaddingMinutes", 0)
