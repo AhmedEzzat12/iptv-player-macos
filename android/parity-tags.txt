@@ -1,0 +1,4 @@
+# android/parity-tags.txt
+# Tag commits that missed their Android trailer.
+# Format: <40-char-sha> todo|deferred|n/a <text>
+# Lines starting with # are comments.

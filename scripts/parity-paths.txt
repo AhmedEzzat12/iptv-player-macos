@@ -1,0 +1,4 @@
+Sources/
+iOS/Sources/
+AppStore/Mac/Sources/
+Tests/TunerCoreTests/

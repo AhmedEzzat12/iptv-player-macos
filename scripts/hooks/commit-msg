@@ -1,0 +1,84 @@
+#!/bin/bash
+# Android parity: every commit that changes app code says what it means for the Android app (Google TV).
+# Enable once per clone: git config core.hooksPath scripts/hooks
+# Spec: docs/superpowers/specs/google-tv/E-parity-tooling.md. Tests: scripts/hooks/test-commit-msg.sh
+set -euo pipefail
+
+MSG_FILE="$1"
+cd "$(git rev-parse --show-toplevel)"
+
+# Merges, fixups and squashes are judged by the commits they carry.
+if git rev-parse -q --verify MERGE_HEAD >/dev/null; then exit 0; fi
+# Git strips comment lines after this hook runs, so ignore them here too.
+MESSAGE="$(/usr/bin/grep -v '^#' "$MSG_FILE" || true)"
+case "$MESSAGE" in
+  "fixup! "* | "squash! "* | "amend! "*) exit 0 ;;
+esac
+
+CHANGED="$(git diff --cached --name-only --diff-filter=ACMRD)"
+
+# First changed file under a tagged path (scripts/parity-paths.txt), or empty.
+TRIGGER=""
+if [ -n "$CHANGED" ]; then
+  while IFS= read -r file; do
+    while IFS= read -r prefix; do
+      case "$prefix" in "" | "#"*) continue ;; esac
+      case "$file" in "$prefix"*) TRIGGER="$file"; break 2 ;; esac
+    done < scripts/parity-paths.txt
+  done <<< "$CHANGED"
+fi
+
+if [ -n "$TRIGGER" ]; then
+  TRAILERS="$(printf '%s\n' "$MESSAGE" | /usr/bin/grep -E '^Android:' || true)"
+  COUNT=0
+  [ -n "$TRAILERS" ] && COUNT="$(printf '%s\n' "$TRAILERS" | /usr/bin/wc -l | tr -d ' ')"
+  if [ "$COUNT" -ne 1 ]; then
+    cat >&2 <<EOF
+This commit changes app code (e.g. $TRIGGER) but has $( [ "$COUNT" -eq 0 ] && echo "no Android trailer" || echo "$COUNT Android trailers" ).
+Add exactly one line at the end of the message:
+  Android: ported            (android/ changes are in this commit)
+  Android: todo <what to port>
+  Android: deferred <feature Android doesn't have yet>
+  Android: n/a <why it's Apple-only>
+See CLAUDE.md → "Android follows the Apple apps".
+EOF
+    exit 1
+  fi
+  if ! printf '%s\n' "$TRAILERS" | /usr/bin/grep -qE '^Android: (ported|todo .{10,}|deferred .+|n/a .+)$'; then
+    cat >&2 <<EOF
+Invalid Android trailer: $TRAILERS
+Use one of:
+  Android: ported
+  Android: todo <what to port, at least 10 characters>
+  Android: deferred <feature>
+  Android: n/a <why it's Apple-only>
+EOF
+    exit 1
+  fi
+  if [ "$TRAILERS" = "Android: ported" ] && ! printf '%s\n' "$CHANGED" | /usr/bin/grep -q '^android/'; then
+    echo "\"Android: ported\" needs android/ changes in the same commit. Use \"Android: todo <what>\" instead." >&2
+    exit 1
+  fi
+fi
+
+# Ports: <sha>[, <sha>…] and Ports-skipped: <sha> <why> must name real commits.
+check_sha() {
+  if ! git rev-parse -q --verify "$1^{commit}" >/dev/null; then
+    echo "Unknown commit in a Ports trailer: $1" >&2
+    exit 1
+  fi
+}
+while IFS= read -r line; do
+  case "$line" in
+    "Ports: "*)
+      list="${line#Ports: }"
+      for sha in $(printf '%s' "$list" | tr ',' ' '); do check_sha "$sha"; done
+      ;;
+    "Ports-skipped: "*)
+      rest="${line#Ports-skipped: }"
+      check_sha "${rest%% *}"
+      ;;
+  esac
+done <<< "$MESSAGE"
+
+exit 0
