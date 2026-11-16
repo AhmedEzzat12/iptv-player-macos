@@ -145,7 +145,7 @@ Initial focus: the first card of Continue Watching if present, else the hero's P
 - Top: page title, then a chip row: the pinned categories (from `pinnedCategoryIds`), then menu chips from
   `CategoryGrouping` (Featured, Languages & Countries, Platforms, Genres, By Year, Sports, Kids, Quality, More;
   each opens a vertical list of its categories), then **Categories…** (organiser: pin/unpin, hide/show; name style
-  English/Arabic/full = `categoryNameStyle`).
+  Automatic / Arabic / Original = `categoryNameStyle`).
 - Grid: posters (2:3, 6 per row at 1920 dp), paged 120 at a time with `movies(categoryId, sort, limit, offset)`;
   sort menu (Recently Added default, Name, Year, Rating, Provider order = `vodSort`).
 - Initial focus: first poster.

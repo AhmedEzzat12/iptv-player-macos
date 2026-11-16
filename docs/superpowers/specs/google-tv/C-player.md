@@ -162,7 +162,9 @@ Port exactly (`PlayerSlot.watchdog`, `streamDied`):
 - **Quick reopen** (`keepWarmMinutes`, default 10 on Apple; **default 2 on TV**: TV boxes have little RAM): closing a
   movie/episode keeps its engine paused; reopening the same item continues from the buffer (a different `startAt`
   seeks). Not for live TV, local files or catchup. Anything else that plays, a failure/end while parked, or the
-  timeout closes it. On single-connection accounts (`maxConnections == 1`) don't park.
+  timeout closes it. Swift parks on single-connection accounts only while no download is waiting
+  (`AppModel`); Android has no downloads in v1, so it always parks (the kept stream is closed before anything else
+  opens, so it never holds a second connection).
 
 ## Skip Intro / Credits
 

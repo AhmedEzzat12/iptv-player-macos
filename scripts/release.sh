@@ -68,6 +68,10 @@ export SPARKLE_PUBLIC_KEY="$("$SPARKLE_BIN/generate_keys" -p)"
 export BUILD_NUMBER="$(git rev-list --count HEAD)"
 
 scripts/test.sh
+# How far the Android app (Google TV) trails the Apple apps. Informational only: never blocks a release.
+if [[ -f android/PARITY_BASE ]]; then
+  echo "Android backlog: $(scripts/android-backlog.sh | tail -1 | sed 's/^Summary: //')" || true
+fi
 # The iPhone/iPad app shares the sources: never tag a commit that breaks it. Needs Xcode + XcodeGen;
 # SKIP_IOS_CHECK=1 skips it (e.g. on a Mac without Xcode).
 if [[ "${SKIP_IOS_CHECK:-}" != "1" ]]; then

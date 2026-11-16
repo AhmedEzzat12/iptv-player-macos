@@ -28,7 +28,7 @@ scripts/build-app.sh release    # build/Tuner.app (version from VERSION, build n
 
 - `TunerCore` is UI-free, Swift 6 strict concurrency, and tested. Put logic there with tests; keep the app target
   (`Tuner`, Swift 5 language mode) thin. Use `@ViewState` (alias of `@State`) like the rest of the app.
-- Database changes are new GRDB migrations appended in `AppDatabase.migrator` (v1…v5 exist); never edit old ones.
+- Database changes are new GRDB migrations appended in `AppDatabase.migrator` (v1…v9 exist); never edit old ones.
 - Match the surrounding code's style and comment density. Logging: `Logger(subsystem: "app.tuner.macos", category: …)`.
 - Shell quirks on the maintainer's Mac: use `/usr/bin/log` (zsh has a `log` builtin) and `/usr/bin/grep` / `/bin/ls`
   when output matters; use `ffmpeg -nostdin` inside `while read` loops.
@@ -56,6 +56,24 @@ scripts/build-app.sh release    # build/Tuner.app (version from VERSION, build n
   `MPVKit-GPL`), list new bundled libraries in `Acknowledgements.swift`, declare new required-reason APIs in
   `iOS/Resources/PrivacyInfo.xcprivacy`, and keep other services' names (Netflix…) out of the UI.
 - Tuner's own code is under PolyForm Noncommercial (`LICENSE.md`); the owner sells it, others may not.
+
+## Android follows the Apple apps (Google TV app in `android/`)
+
+Design: `docs/superpowers/specs/2026-11-15-google-tv-design.md` and `google-tv/` appendices (Swift is the reference;
+deliberate differences live in `docs/android-parity.md`).
+
+- Commits touching `Sources/`, `iOS/Sources/`, `AppStore/Mac/Sources/` or `Tests/TunerCoreTests/` end with exactly
+  one trailer line (before `Co-Authored-By`): `Android: ported` (android/ changed in the same commit),
+  `Android: todo <what to port>`, `Android: deferred <feature Android doesn't have yet>` or `Android: n/a <why it's
+  Apple-only>`. Describe the behaviour in the body so it can be ported without you. `scripts/hooks/commit-msg` checks
+  it (enable once: `git config core.hooksPath scripts/hooks`). Missed one after pushing? Add a line to
+  `android/parity-tags.txt`.
+- A logic fix in a vector area (see `Tests/Vectors/README.md`) adds a case with `"expected": null` and runs
+  `TUNER_VECTORS_REGENERATE=1 scripts/test.sh --filter VectorTests`. Never edit `expected` by hand.
+- Android commits that port a change say `Ports: <sha>` (or `Ports-skipped: <sha> <why>`).
+  `scripts/android-backlog.sh` lists what's outstanding.
+- Android builds use the latest stable JDK by its SDKMAN version path (never `candidates/java/current`, which is
+  JDK 8 here): `android/scripts/env.sh` sets it. Test only `scratch` builds on the owner's TV, never their own copy.
 
 ## Testing the app end to end
 

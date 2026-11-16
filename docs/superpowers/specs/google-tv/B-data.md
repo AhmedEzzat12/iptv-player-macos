@@ -7,7 +7,8 @@ Part of the Google TV design (`../2026-11-15-google-tv-design.md`). Swift refere
 ## Database setup
 
 - One SQLite file `tuner.sqlite` in the app's private files dir (`context.filesDir`), opened with Room.
-- WAL (Room default on API 28+), `PRAGMA synchronous = NORMAL`, `temp_store = MEMORY`, `cache_size = -32000`
+- WAL set explicitly (`setJournalMode(JournalMode.WRITE_AHEAD_LOGGING)`: Room's automatic mode picks TRUNCATE on
+  low-RAM devices, which includes many TV boxes), `PRAGMA synchronous = NORMAL`, `temp_store = MEMORY`, `cache_size = -32000`
   (Swift sets these in `prepareDatabase`; set them in a `RoomDatabase.Callback.onOpen`). Foreign keys on.
 - Room schema export on (`room.schemaLocation` = `android/data/schemas`), committed, so migrations are reviewable.
 - Version 1 of the Android schema = the tables below. Later changes are new Room migrations; never edit old ones

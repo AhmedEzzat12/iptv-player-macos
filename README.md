@@ -250,6 +250,19 @@ iOS/scripts/check-build.sh      # the iPhone/iPad app still compiles (Xcode + Xc
 
 `docs/testing.md` describes the local test kit: synthetic channels, a mock Xtream server and a live guide.
 
+### Android parity (Google TV app in progress)
+
+A Google TV version is being built in `android/` (design: `docs/superpowers/specs/2026-11-15-google-tv-design.md`).
+Commits that change app code end with one `Android:` line saying what they mean for it (`ported`, `todo <what>`,
+`deferred <feature>`, `n/a <why>`). Enable the check once per clone, and see what's outstanding:
+
+```bash
+git config core.hooksPath scripts/hooks
+scripts/android-backlog.sh
+```
+
+`Tests/Vectors/` holds test cases both ports must pass (see its README).
+
 ## Releasing
 
 One version for both apps: `VERSION` (e.g. `1.2.0`) is the marketing version of the Mac and the iPhone/iPad app,

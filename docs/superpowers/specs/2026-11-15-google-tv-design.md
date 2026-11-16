@@ -72,7 +72,8 @@ These come in later versions, ported from `TunerCore` the same way.
 - The Apple apps remain the reference. Later Apple features and fixes reach Android through the tag-and-batch
   mechanism in "Following Apple changes" **(owner)**.
 - Build machine: the maintainer's Mac. JDKs come from SDKMAN (`/opt/homebrew/opt/sdkman-cli/libexec/candidates/java/`;
-  17.0.16-tem and 25.0.1-tem are installed today, the newest stable JDK isn't yet); Gradle and adb are installed via
+  8.0.462-zulu, 8.0.472-amzn, 11.0.29-tem, 17.0.16-tem and 25.0.1-tem are installed, and `current` points at JDK 8: always
+  use a named version path, never `current`; the newest stable JDK isn't installed yet); Gradle and adb are installed via
   Homebrew. The build uses the latest stable JDK (see Decisions → JDK). The Android SDK isn't
   installed in the default location yet; the builder installs the command-line SDK and a Google TV emulator image.
 - **Test hardware: the owner's TCL TV with Google TV** **(owner)**, reached with `adb connect <tv-ip>` (Developer
@@ -167,9 +168,10 @@ Port with tests (each Swift test case in these areas gets a Kotlin counterpart; 
 - `CloudSync/SourceFingerprint` only (for sync-ready ids).
 
 Also port the end-of-media rule (`EndOfMediaStall`: stopped advancing for 3 s within the last 15 s, not paused,
-means finished) and `EngineMemory` (30 days, per channel/movie/episode, episode marks its show). These, like
-`PlayerSlot`, live in the Apple app target (`Sources/Tuner/Player/`), not in `TunerCore`, and have no Swift tests:
-port them from that code and write new tests for them in `player`.
+means finished). It lives in `TunerCore` (`Models/EpisodeNavigation.swift`) with tests in
+`EpisodeNavigationTests.swift`, so it goes to `core` with those tests. `PlayerSlot` and `EngineMemory` (30 days, per
+channel/movie/episode, episode marks its show) live in the Apple app target (`Sources/Tuner/Player/`) and have no
+Swift tests: port them from that code and write new tests for them in `player`.
 
 ### Keeping the two in step
 
@@ -266,9 +268,12 @@ In the same change that adds `android/`, a section along these lines:
 
 ### Changes outside `android/` this needs
 
-The Apple apps' code doesn't change, but these do: `scripts/hooks/commit-msg` (new), `scripts/android-backlog.sh`
-(new), a printed line in `scripts/release.sh`, `Tests/Vectors/` and `VectorTests.swift` (new, test-only), `CLAUDE.md`
-and README. They land in phase 1, so tagging starts on the day the port starts.
+The Apple apps' code doesn't change, but these do. Phase 1: `scripts/parity-paths.txt`, `scripts/hooks/commit-msg`
+and `test-commit-msg.sh`, `scripts/android-backlog.sh` (+ `.py`, `test-android-backlog.sh`), a printed line in
+`scripts/release.sh`, a hook warning in `scripts/test.sh`, `Tests/Vectors/` (+ README) and `VectorTests.swift`
+(test-only), `docs/android-parity.md`, `docs/android-devices.md`, `CLAUDE.md` and README. Phase 4: new test-kit
+media (`scripts/testkit/make_media.sh`, `server.py` catalog) without changing what Apple test flows rely on.
+Tagging starts on the day the port starts.
 
 ## Player
 
@@ -313,7 +318,7 @@ from the drawer exits the app (with no confirmation dialog, per Google's TV guid
   `RecognizerIntent`), results for channels, what's on, movies and shows, recent searches.
 - **Settings:** Playlists (add, edit, refresh, remove), Guide (extra XMLTV feeds, time shift), Playback (engine
   preference, Up Next countdown, resume), Metadata (Cinemeta / TMDB key, episode pictures), Appearance (category
-  names English/Arabic/full), About (version, licences, "you're responsible for your playlists").
+  names: Automatic / Arabic / Original, `categoryNameStyle`), About (version, licences, "you're responsible for your playlists").
 - **First run:** Welcome screen with "Add a playlist" (QR setup) as the main action.
 
 Visual style: the Apple apps' layout and hierarchy (hero, shelves, glass-like player chrome, accent colour), drawn

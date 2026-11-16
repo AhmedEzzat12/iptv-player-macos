@@ -91,8 +91,12 @@ warns).
 ## `scripts/android-backlog.sh`
 
 ```
-usage: scripts/android-backlog.sh [--all] [--json] [--since <sha>]
+usage: scripts/android-backlog.sh [--all] [--json] [--since <sha>] [--check]
 ```
+
+Implemented as a bash wrapper around `scripts/android-backlog.py` (Python 3 standard library, runs on macOS's
+`/usr/bin/python3` 3.9): JSON output and git parsing are simpler and safer there than in bash 3.2. Tests:
+`scripts/test-android-backlog.sh`.
 
 Algorithm:
 
