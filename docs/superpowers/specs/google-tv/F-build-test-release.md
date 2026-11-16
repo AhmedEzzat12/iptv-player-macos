@@ -8,7 +8,9 @@ Part of the Google TV design (`../2026-11-15-google-tv-design.md`).
   `export JAVA_HOME=/opt/homebrew/opt/sdkman-cli/libexec/candidates/java/<that version>` in every build command and
   script (never rely on a system JDK; `current` points at an old JDK 8 on this Mac). `android/scripts/env.sh`
   exports it and is sourced by the other scripts. Fallback rule in the design (newest JDK the chain supports).
-- **Android SDK**: command-line tools into `~/Library/Android/sdk` (`ANDROID_HOME`), packages: `platform-tools`,
+- **Android SDK**: the Homebrew `android-commandlinetools` cask, SDK root `/opt/homebrew/share/android-commandlinetools`
+  (`ANDROID_HOME`, set by `android/scripts/env.sh`); installed 2026-11-16: `platforms;android-37.0`,
+  `build-tools;37.0.0`, `emulator`, `system-images;android-36;google-tv;arm64-v8a`. Packages: `platform-tools`,
   `platforms;android-<targetSdk>`, `build-tools;<latest>`, `emulator`, `system-images;android-<targetSdk>;google-tv;arm64-v8a`
   (Apple silicon host). `adb` is already on PATH from Homebrew; use the SDK's `platform-tools/adb` in scripts so the
   versions match.
@@ -20,8 +22,9 @@ Part of the Google TV design (`../2026-11-15-google-tv-design.md`).
   tests), kotlinx-serialization-json, kotlinx-coroutines, Coil 3 (`coil-compose`, `coil-network-okhttp`),
   `androidx.tvprovider`, ZXing `core` (QR), JUnit 5 (core), JUnit 4 + Robolectric + Turbine (Android modules),
   Compose UI test.
-- **Kotlin**: `explicitApi()` off, `allWarningsAsErrors` on in `core`, `-Xjvm-default=all`. `jvmToolchain` = the JDK
-  above; `jvmTarget`/`compileOptions` = the highest level AGP/D8 accept.
+- **Kotlin**: `explicitApi()` off, `allWarningsAsErrors` on in `core`, `-Xjvm-default=all`. The build runs on
+  the JDK above; `jvmTarget`/`compileOptions` = the highest level Kotlin and D8 accept (26 as of 2026-11-16, in
+  `android/buildSrc/.../TunerBuild.kt`).
 - **Android config**: `minSdk 28`, `compileSdk`/`targetSdk` = Play's current requirement; `applicationId
   app.antenna.player`; `versionCode` = `git rev-list --count HEAD` on `main` (computed in Gradle from git; fall
   back to 1 outside a git checkout); `versionName` from a new `android/VERSION` file (starts `1.0.0`; the Android app
