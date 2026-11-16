@@ -298,6 +298,17 @@ struct HTTPRobustnessTests {
         #expect(value["user_info"] != nil)
     }
 
+    /// Panels sometimes send "nan", "inf" or absurd numbers in numeric fields; reading them must not crash.
+    @Test func nonFiniteAndHugeNumericStringsReadAsNil() throws {
+        let obj = try #require(JSONObject(["a": "nan", "b": "inf", "c": "-Infinity", "d": "1e30", "e": "3.7", "f": "42"]))
+        #expect(obj.int("a") == nil)
+        #expect(obj.int("b") == nil)
+        #expect(obj.int("c") == nil)
+        #expect(obj.int("d") == nil)
+        #expect(obj.int("e") == 3)
+        #expect(obj.int("f") == 42)
+    }
+
     @Test func htmlPageIsRejectedWithPreview() {
         let page = Data("<html><body>Too many requests</body></html>".utf8)
         #expect(HTTPClient.parseJSONLeniently(page) == nil)

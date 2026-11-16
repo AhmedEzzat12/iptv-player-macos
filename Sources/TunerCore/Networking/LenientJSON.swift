@@ -30,7 +30,8 @@ public struct JSONObject: @unchecked Sendable {
         case let n as NSNumber: return n.intValue
         case let s as String:
             let t = s.trimmingCharacters(in: .whitespaces)
-            return Int(t) ?? Double(t).map { Int($0) }
+            // Truncate "3.7" to 3, but "nan", "inf" or "1e30" are nil: `Int(Double)` traps on them.
+            return Int(t) ?? Double(t).flatMap { Int(exactly: $0.rounded(.towardZero)) }
         default: return nil
         }
     }
