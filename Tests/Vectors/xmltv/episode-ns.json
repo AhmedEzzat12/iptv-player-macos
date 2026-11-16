@@ -1,0 +1,106 @@
+{
+  "cases" : [
+    {
+      "expected" : {
+        "result" : "S02E05"
+      },
+      "input" : "1.4.",
+      "name" : "1.4."
+    },
+    {
+      "expected" : {
+        "result" : "S02E05"
+      },
+      "input" : "1.4.0/1",
+      "name" : "1.4.0/1"
+    },
+    {
+      "expected" : {
+        "result" : "S01E01"
+      },
+      "input" : "0.0.",
+      "name" : "0.0."
+    },
+    {
+      "expected" : {
+        "result" : "E4"
+      },
+      "input" : "/.3.",
+      "name" : "/.3."
+    },
+    {
+      "expected" : {
+        "result" : "S03E11"
+      },
+      "input" : "2/5.10/20.",
+      "name" : "2/5.10/20."
+    },
+    {
+      "expected" : {
+        "result" : "S4"
+      },
+      "input" : "3..",
+      "name" : "3.."
+    },
+    {
+      "expected" : {
+        "result" : null
+      },
+      "input" : "..",
+      "name" : ".."
+    },
+    {
+      "expected" : {
+        "result" : null
+      },
+      "input" : "1",
+      "name" : "1"
+    },
+    {
+      "expected" : {
+        "result" : null
+      },
+      "input" : "a.b.",
+      "name" : "a.b."
+    },
+    {
+      "expected" : {
+        "result" : "S02E03"
+      },
+      "input" : "1 . 2 .",
+      "name" : "1 . 2 ."
+    },
+    {
+      "expected" : {
+        "result" : "S02E03"
+      },
+      "input" : "01.02.",
+      "name" : "01.02."
+    },
+    {
+      "expected" : {
+        "result" : "E5"
+      },
+      "input" : ".4.",
+      "name" : ".4."
+    },
+    {
+      "expected" : {
+        "result" : null
+      },
+      "input" : "",
+      "name" : "empty"
+    },
+    {
+      "expected" : {
+        "result" : "S02E03"
+      },
+      "input" : " 1.2",
+      "name" : " 1.2"
+    }
+  ],
+  "function" : "XMLTVDate.formatXMLTVNS",
+  "generatedBy" : "swift",
+  "shape" : "string -> {result: string|null}",
+  "swiftCommit" : "da1d9f0"
+}

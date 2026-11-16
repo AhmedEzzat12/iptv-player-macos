@@ -6,6 +6,8 @@ import app.tuner.core.parsing.CatchupURLBuilder
 import app.tuner.core.parsing.ChannelNameNormalizer
 import app.tuner.core.parsing.M3UParser
 import app.tuner.core.parsing.TitleParser
+import app.tuner.core.parsing.XMLTVDate
+import app.tuner.core.parsing.XMLTVParser
 import app.tuner.core.parsing.StableID
 import app.tuner.core.providers.XtreamURLs
 import kotlinx.serialization.json.Json
@@ -96,6 +98,25 @@ class VectorTest {
             val r = TitleParser.episodeInfo(input.str())
             if (r == null) obj("found" to false)
             else obj("found" to true, "show" to r.show, "season" to r.season, "episode" to r.episode, "title" to r.title)
+        },
+        "XMLTVDate.parse" to { input ->
+            val d = XMLTVDate.parse(input.str())
+            if (d == null) obj("valid" to false) else obj("valid" to true, "epoch" to d.epochSecond)
+        },
+        "XMLTVDate.formatXMLTVNS" to { input -> obj("result" to XMLTVDate.formatXMLTVNS(input.str())) },
+        "XMLTVParser.parse" to { input ->
+            val events = mutableListOf<JsonElement>()
+            XMLTVParser.parse(input.str().toByteArray()) { e ->
+                events += when (e) {
+                    is XMLTVParser.Event.Channel -> obj("channel" to e.channel.id,
+                        "displayNames" to JsonArray(e.channel.displayNames.map { JsonPrimitive(it) }), "icon" to e.channel.iconURL)
+                    is XMLTVParser.Event.Programme -> with(e.programme) {
+                        obj("programme" to channel, "start" to start.epochSecond, "stop" to stop.epochSecond, "title" to title,
+                            "subtitle" to subtitle, "desc" to desc, "category" to category, "icon" to iconURL, "episode" to episode)
+                    }
+                }
+            }
+            JsonArray(events)
         },
         "XtreamClient.urls" to { input ->
             val o = input.jsonObject

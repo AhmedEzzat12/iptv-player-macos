@@ -1,0 +1,164 @@
+{
+  "cases" : [
+    {
+      "expected" : {
+        "epoch" : 1767268800,
+        "valid" : true
+      },
+      "input" : "20260101120000 +0000",
+      "name" : "20260101120000 +0000"
+    },
+    {
+      "expected" : {
+        "epoch" : 1767268800,
+        "valid" : true
+      },
+      "input" : "20260101140000 +0200",
+      "name" : "20260101140000 +0200"
+    },
+    {
+      "expected" : {
+        "epoch" : 1767261600,
+        "valid" : true
+      },
+      "input" : "20260101120000+0200",
+      "name" : "20260101120000+0200"
+    },
+    {
+      "expected" : {
+        "epoch" : 1767288600,
+        "valid" : true
+      },
+      "input" : "20260101120000 -0530",
+      "name" : "20260101120000 -0530"
+    },
+    {
+      "expected" : {
+        "epoch" : 1767272400,
+        "valid" : true
+      },
+      "input" : "202601011300",
+      "name" : "202601011300"
+    },
+    {
+      "expected" : {
+        "epoch" : 1767272400,
+        "valid" : true
+      },
+      "input" : "2026010113",
+      "name" : "2026010113"
+    },
+    {
+      "expected" : {
+        "epoch" : 1767225600,
+        "valid" : true
+      },
+      "input" : "20260101",
+      "name" : "20260101"
+    },
+    {
+      "expected" : {
+        "valid" : false
+      },
+      "input" : "2026010",
+      "name" : "2026010"
+    },
+    {
+      "expected" : {
+        "valid" : false
+      },
+      "input" : "garbage",
+      "name" : "garbage"
+    },
+    {
+      "expected" : {
+        "epoch" : 1767261600,
+        "valid" : true
+      },
+      "input" : "20260101120000 +02",
+      "name" : "20260101120000 +02"
+    },
+    {
+      "expected" : {
+        "epoch" : 1767268800,
+        "valid" : true
+      },
+      "input" : "20260101120000 Z",
+      "name" : "20260101120000 Z"
+    },
+    {
+      "expected" : {
+        "epoch" : 1772366400,
+        "valid" : true
+      },
+      "input" : "20260229120000 +0000",
+      "name" : "20260229120000 +0000"
+    },
+    {
+      "expected" : {
+        "epoch" : 1798761600,
+        "valid" : true
+      },
+      "input" : "20261301000000 +0000",
+      "name" : "20261301000000 +0000"
+    },
+    {
+      "expected" : {
+        "epoch" : 1767315600,
+        "valid" : true
+      },
+      "input" : "20260101250000 +0000",
+      "name" : "20260101250000 +0000"
+    },
+    {
+      "expected" : {
+        "epoch" : 0,
+        "valid" : true
+      },
+      "input" : "19700101000000 +0000",
+      "name" : "19700101000000 +0000"
+    },
+    {
+      "expected" : {
+        "epoch" : -1,
+        "valid" : true
+      },
+      "input" : "19691231235959 +0000",
+      "name" : "19691231235959 +0000"
+    },
+    {
+      "expected" : {
+        "epoch" : 1767265200,
+        "valid" : true
+      },
+      "input" : "20260101120000    +0100",
+      "name" : "20260101120000    +0100"
+    },
+    {
+      "expected" : {
+        "epoch" : 1767265200,
+        "valid" : true
+      },
+      "input" : "20260101120000 +01:00",
+      "name" : "20260101120000 +01:00"
+    },
+    {
+      "expected" : {
+        "valid" : false
+      },
+      "input" : "٢٠٢٦٠١٠١١٢٠٠٠٠",
+      "name" : "٢٠٢٦٠١٠١١٢٠٠٠٠"
+    },
+    {
+      "expected" : {
+        "valid" : false
+      },
+      "input" : "",
+      "name" : "empty"
+    }
+  ],
+  "function" : "XMLTVDate.parse",
+  "generatedBy" : "swift",
+  "shape" : "string -> {valid: false} | {valid: true, epoch}",
+  "swiftCommit" : "da1d9f0"
+}

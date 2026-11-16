@@ -127,6 +127,29 @@ struct VectorTests {
             guard let r = TitleParser.episodeInfo(try string(input)) else { return ["found": false] }
             return ["found": true, "show": r.show, "season": r.season, "episode": r.episode, "title": r.title as Any? ?? NSNull()] as [String: Any]
         },
+        "XMLTVDate.parse": { input in
+            guard let d = XMLTVDate.parse(try string(input)) else { return ["valid": false] }
+            return ["valid": true, "epoch": Int(d.timeIntervalSince1970)] as [String: Any]
+        },
+        "XMLTVDate.formatXMLTVNS": { input in
+            ["result": XMLTVDate.formatXMLTVNS(try string(input)) as Any? ?? NSNull()] as [String: Any]
+        },
+        "XMLTVParser.parse": { input in
+            var events: [[String: Any]] = []
+            func opt(_ v: Any?) -> Any { v ?? NSNull() }
+            try XMLTVParser.parse(Data(try string(input).utf8)) { event in
+                switch event {
+                case .channel(let c):
+                    events.append(["channel": c.id, "displayNames": c.displayNames, "icon": opt(c.iconURL)])
+                case .programme(let p):
+                    events.append(["programme": p.channel, "start": Int(p.start.timeIntervalSince1970),
+                                   "stop": Int(p.stop.timeIntervalSince1970), "title": p.title, "subtitle": opt(p.subtitle),
+                                   "desc": opt(p.desc), "category": opt(p.category), "icon": opt(p.iconURL),
+                                   "episode": opt(p.episode)])
+                }
+            }
+            return events
+        },
         "XtreamClient.urls": { input in
             let o = try object(input)
             let client = XtreamClient(base: try string(o["base"] as Any), username: try string(o["username"] as Any),

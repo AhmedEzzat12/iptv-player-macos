@@ -1,0 +1,229 @@
+{
+  "cases" : [
+    {
+      "expected" : [
+        {
+          "channel" : "a",
+          "displayNames" : [
+            "A & B"
+          ],
+          "icon" : "http://i/a.png"
+        },
+        {
+          "category" : null,
+          "desc" : "<b>raw</b> &amp; tail",
+          "episode" : null,
+          "icon" : null,
+          "programme" : "a",
+          "start" : 1767261600,
+          "stop" : 1767265200,
+          "subtitle" : null,
+          "title" : "T <1> AB😀&#xD800;&bogus;"
+        }
+      ],
+      "input" : "<tv><channel id=\"a\"><display-name>A &amp; B</display-name><display-name>  </display-name><icon src=\"http://i/a.png\"/><icon src=\"http://i/b.png\"/></channel><programme channel=\"a\" start=\"20260101100000 +0000\" stop=\"20260101110000 +0000\"><title>T &lt;1&gt; &#65;&#x42;&#x1F600;&#xD800;&bogus;</title><desc><![CDATA[<b>raw</b> &amp;]]> tail</desc></programme></tv>",
+      "name" : "entities and cdata"
+    },
+    {
+      "expected" : [
+        {
+          "category" : null,
+          "desc" : null,
+          "episode" : null,
+          "icon" : null,
+          "programme" : "c",
+          "start" : 1767261600,
+          "stop" : 1767265200,
+          "subtitle" : null,
+          "title" : "Second"
+        },
+        {
+          "category" : null,
+          "desc" : null,
+          "episode" : null,
+          "icon" : null,
+          "programme" : "c",
+          "start" : 1767265200,
+          "stop" : 1767268800,
+          "subtitle" : null,
+          "title" : ""
+        }
+      ],
+      "input" : "<tv><programme channel=\"c\" start=\"20260101100000\" stop=\"20260101110000\"><title></title><title>Second</title><title>Third</title></programme><programme channel=\"c\" start=\"20260101110000\" stop=\"20260101120000\"></programme></tv>",
+      "name" : "first title wins and empty title"
+    },
+    {
+      "expected" : [
+
+      ],
+      "input" : "<tv><programme channel=\"c\" start=\"20260101110000\" stop=\"20260101100000\"><title>Backwards</title></programme><programme start=\"20260101100000\" stop=\"20260101110000\"><title>No channel</title></programme><programme channel=\"c\" start=\"bad\" stop=\"20260101110000\"><title>Bad start</title></programme><programme channel=\"c\" start=\"20260101100000\" stop=\"20260101100000\"><title>Zero</title></programme></tv>",
+      "name" : "invalid programmes dropped"
+    },
+    {
+      "expected" : [
+        {
+          "category" : "Drama",
+          "desc" : null,
+          "episode" : null,
+          "icon" : null,
+          "programme" : "c",
+          "start" : 1767261600,
+          "stop" : 1767265200,
+          "subtitle" : null,
+          "title" : "After Credits"
+        }
+      ],
+      "input" : "<tv><programme channel=\"c\" start=\"20260101100000\" stop=\"20260101110000\"><credits><actor>X<role>Y</role></actor><credits>nested</credits></credits><title lang=\"en\">After Credits</title><rating><value>PG</value></rating><category>Drama</category><category>Second</category></programme></tv>",
+      "name" : "nested unknown elements"
+    },
+    {
+      "expected" : [
+        {
+          "category" : null,
+          "desc" : null,
+          "episode" : "S2 E5",
+          "icon" : null,
+          "programme" : "c",
+          "start" : 1767261600,
+          "stop" : 1767265200,
+          "subtitle" : null,
+          "title" : "E"
+        },
+        {
+          "category" : null,
+          "desc" : null,
+          "episode" : "E5",
+          "icon" : null,
+          "programme" : "c",
+          "start" : 1767265200,
+          "stop" : 1767268800,
+          "subtitle" : null,
+          "title" : "F"
+        }
+      ],
+      "input" : "<tv><programme channel=\"c\" start=\"20260101100000\" stop=\"20260101110000\"><title>E</title><episode-num system=\"xmltv_ns\">1.4.</episode-num><episode-num system=\"onscreen\">S2 E5</episode-num></programme><programme channel=\"c\" start=\"20260101110000\" stop=\"20260101120000\"><title>F</title><episode-num system=\"xmltv_ns\">.4.</episode-num><episode-num system=\"dd_progid\">EP1</episode-num></programme></tv>",
+      "name" : "episode systems"
+    },
+    {
+      "expected" : [
+        {
+          "channel" : "v",
+          "displayNames" : [
+
+          ],
+          "icon" : null
+        },
+        {
+          "category" : null,
+          "desc" : null,
+          "episode" : null,
+          "icon" : "http://i/p.png",
+          "programme" : "v",
+          "start" : 1767261600,
+          "stop" : 1767265200,
+          "subtitle" : null,
+          "title" : "Visible"
+        }
+      ],
+      "input" : "<?xml version=\"1.0\"?><!DOCTYPE tv SYSTEM \"x.dtd\"><!-- <channel id=\"hidden\"/> --><tv><channel id=\"v\"/><channel><display-name>No id</display-name></channel><channel id=\"\"></channel><programme channel=\"v\" start=\"20260101100000\" stop=\"20260101110000\"><!-- c --><title>Vis<!-- x -->ible</title><icon src=\"http://i/p.png\"></icon></programme></tv>",
+      "name" : "comments pis doctype"
+    },
+    {
+      "expected" : [
+        {
+          "channel" : "q1",
+          "displayNames" : [
+            "Q"
+          ],
+          "icon" : null
+        },
+        {
+          "category" : null,
+          "desc" : null,
+          "episode" : null,
+          "icon" : null,
+          "programme" : "q1",
+          "start" : 1767261600,
+          "stop" : 1767265200,
+          "subtitle" : "spaced",
+          "title" : "U"
+        }
+      ],
+      "input" : "<tv><channel id='q1'><display-name>Q</display-name></channel><programme channel=q1 start=20260101100000 stop='20260101110000'><title>U</title><sub-title>  spaced  </sub-title></programme></tv>",
+      "name" : "unquoted and single quoted attributes"
+    },
+    {
+      "expected" : [
+        {
+          "category" : null,
+          "desc" : "Line1\n  Line2",
+          "episode" : null,
+          "icon" : null,
+          "programme" : "c",
+          "start" : 1767261600,
+          "stop" : 1767265200,
+          "subtitle" : null,
+          "title" : "BeforeAfter"
+        }
+      ],
+      "input" : "<tv><programme channel=\"c\" start=\"20260101100000\" stop=\"20260101110000\"><title>Before<b>bold</b>After</title><desc>Line1\n  Line2  </desc></programme></tv>",
+      "name" : "nested element inside text"
+    },
+    {
+      "expected" : [
+        {
+          "category" : null,
+          "desc" : null,
+          "episode" : null,
+          "icon" : null,
+          "programme" : "c",
+          "start" : 1767261600,
+          "stop" : 1767265200,
+          "subtitle" : null,
+          "title" : ""
+        },
+        {
+          "category" : null,
+          "desc" : null,
+          "episode" : null,
+          "icon" : null,
+          "programme" : "c",
+          "start" : 1767265200,
+          "stop" : 1767268800,
+          "subtitle" : null,
+          "title" : "Next"
+        }
+      ],
+      "input" : "<tv><programme channel=\"c\" start=\"20260101100000\" stop=\"20260101110000\"/><programme channel=\"c\" start=\"20260101110000\" stop=\"20260101120000\"><title>Next</title></programme></tv>",
+      "name" : "self closing programme"
+    },
+    {
+      "expected" : [
+        {
+          "channel" : "ar",
+          "displayNames" : [
+            "قناة الجزيرة"
+          ],
+          "icon" : null
+        },
+        {
+          "category" : null,
+          "desc" : "Café — ©",
+          "episode" : null,
+          "icon" : null,
+          "programme" : "ar",
+          "start" : 1767250800,
+          "stop" : 1767254400,
+          "subtitle" : null,
+          "title" : "نشرة الأخبار"
+        }
+      ],
+      "input" : "<tv><channel id=\"ar\"><display-name>قناة الجزيرة</display-name></channel><programme channel=\"ar\" start=\"20260101100000 +0300\" stop=\"20260101110000 +0300\"><title>نشرة الأخبار</title><desc>Café — ©</desc></programme></tv>",
+      "name" : "unicode text"
+    }
+  ],
+  "function" : "XMLTVParser.parse",
+  "generatedBy" : "swift",
+  "shape" : "string (XML) -> [event]",
+  "swiftCommit" : "da1d9f0"
+}
