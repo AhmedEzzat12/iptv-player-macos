@@ -1,0 +1,348 @@
+{
+  "cases" : [
+    {
+      "expected" : {
+        "bool" : true,
+        "double" : 5,
+        "int" : 5,
+        "string" : "5"
+      },
+      "input" : {
+        "v" : 5
+      },
+      "name" : "int"
+    },
+    {
+      "expected" : {
+        "bool" : true,
+        "double" : -3,
+        "int" : -3,
+        "string" : "-3"
+      },
+      "input" : {
+        "v" : -3
+      },
+      "name" : "negative int"
+    },
+    {
+      "expected" : {
+        "bool" : true,
+        "double" : 1,
+        "int" : 1,
+        "string" : "1"
+      },
+      "input" : {
+        "v" : 1
+      },
+      "name" : "integral double"
+    },
+    {
+      "expected" : {
+        "bool" : true,
+        "double" : 1.5,
+        "int" : 1,
+        "string" : "1.5"
+      },
+      "input" : {
+        "v" : 1.5
+      },
+      "name" : "fraction"
+    },
+    {
+      "expected" : {
+        "bool" : false,
+        "double" : 0.25,
+        "int" : 0,
+        "string" : "0.25"
+      },
+      "input" : {
+        "v" : 0.25
+      },
+      "name" : "small fraction"
+    },
+    {
+      "expected" : {
+        "bool" : true,
+        "double" : 1798761600,
+        "int" : 1798761600,
+        "string" : "1798761600"
+      },
+      "input" : {
+        "v" : 1798761600
+      },
+      "name" : "big"
+    },
+    {
+      "expected" : {
+        "bool" : true,
+        "double" : 1000,
+        "int" : 1000,
+        "string" : "1000"
+      },
+      "input" : {
+        "v" : 1000
+      },
+      "name" : "exp"
+    },
+    {
+      "expected" : {
+        "bool" : false,
+        "double" : 42,
+        "int" : 42,
+        "string" : "42"
+      },
+      "input" : {
+        "v" : "42"
+      },
+      "name" : "string int"
+    },
+    {
+      "expected" : {
+        "bool" : false,
+        "double" : 42,
+        "int" : 42,
+        "string" : "42"
+      },
+      "input" : {
+        "v" : " 42 "
+      },
+      "name" : "string spaced"
+    },
+    {
+      "expected" : {
+        "bool" : false,
+        "double" : 3.7000000000000002,
+        "int" : 3,
+        "string" : "3.7"
+      },
+      "input" : {
+        "v" : "3.7"
+      },
+      "name" : "string double"
+    },
+    {
+      "expected" : {
+        "bool" : false,
+        "double" : 100,
+        "int" : 100,
+        "string" : "1e2"
+      },
+      "input" : {
+        "v" : "1e2"
+      },
+      "name" : "string exp"
+    },
+    {
+      "expected" : {
+        "bool" : false,
+        "double" : 7,
+        "int" : 7,
+        "string" : "+7"
+      },
+      "input" : {
+        "v" : "+7"
+      },
+      "name" : "string plus"
+    },
+    {
+      "expected" : {
+        "bool" : false,
+        "double" : -2,
+        "int" : -2,
+        "string" : "-2"
+      },
+      "input" : {
+        "v" : "-2"
+      },
+      "name" : "string negative"
+    },
+    {
+      "expected" : {
+        "bool" : false,
+        "double" : null,
+        "int" : null,
+        "string" : null
+      },
+      "input" : {
+        "v" : ""
+      },
+      "name" : "string empty"
+    },
+    {
+      "expected" : {
+        "bool" : false,
+        "double" : null,
+        "int" : null,
+        "string" : null
+      },
+      "input" : {
+        "v" : "   "
+      },
+      "name" : "string blank"
+    },
+    {
+      "expected" : {
+        "bool" : false,
+        "double" : null,
+        "int" : null,
+        "string" : "abc"
+      },
+      "input" : {
+        "v" : "abc"
+      },
+      "name" : "string word"
+    },
+    {
+      "expected" : {
+        "bool" : true,
+        "double" : null,
+        "int" : null,
+        "string" : "true"
+      },
+      "input" : {
+        "v" : "true"
+      },
+      "name" : "string true"
+    },
+    {
+      "expected" : {
+        "bool" : true,
+        "double" : null,
+        "int" : null,
+        "string" : "TRUE"
+      },
+      "input" : {
+        "v" : "TRUE"
+      },
+      "name" : "string TRUE"
+    },
+    {
+      "expected" : {
+        "bool" : true,
+        "double" : 1,
+        "int" : 1,
+        "string" : "1"
+      },
+      "input" : {
+        "v" : "1"
+      },
+      "name" : "string one"
+    },
+    {
+      "expected" : {
+        "bool" : false,
+        "double" : 0,
+        "int" : 0,
+        "string" : "0"
+      },
+      "input" : {
+        "v" : "0"
+      },
+      "name" : "string zero"
+    },
+    {
+      "expected" : {
+        "bool" : true,
+        "double" : 1,
+        "int" : 1,
+        "string" : "1"
+      },
+      "input" : {
+        "v" : true
+      },
+      "name" : "bool true"
+    },
+    {
+      "expected" : {
+        "bool" : false,
+        "double" : 0,
+        "int" : 0,
+        "string" : "0"
+      },
+      "input" : {
+        "v" : false
+      },
+      "name" : "bool false"
+    },
+    {
+      "expected" : {
+        "bool" : false,
+        "double" : null,
+        "int" : null,
+        "string" : null
+      },
+      "input" : {
+        "v" : null
+      },
+      "name" : "null"
+    },
+    {
+      "expected" : {
+        "bool" : false,
+        "double" : null,
+        "int" : null,
+        "string" : null
+      },
+      "input" : {
+        "v" : [
+          1
+        ]
+      },
+      "name" : "array"
+    },
+    {
+      "expected" : {
+        "bool" : false,
+        "double" : null,
+        "int" : null,
+        "string" : null
+      },
+      "input" : {
+        "v" : {
+          "a" : 1
+        }
+      },
+      "name" : "object"
+    },
+    {
+      "expected" : {
+        "bool" : false,
+        "double" : 16,
+        "int" : 16,
+        "string" : "0x10"
+      },
+      "input" : {
+        "v" : "0x10"
+      },
+      "name" : "string hex"
+    },
+    {
+      "expected" : {
+        "bool" : false,
+        "double" : 5,
+        "int" : 5,
+        "string" : "5"
+      },
+      "input" : {
+        "v" : "\t5"
+      },
+      "name" : "string with tab"
+    },
+    {
+      "expected" : {
+        "bool" : false,
+        "double" : null,
+        "int" : null,
+        "string" : "٥"
+      },
+      "input" : {
+        "v" : "٥"
+      },
+      "name" : "arabic digits"
+    }
+  ],
+  "function" : "JSONObject.accessors",
+  "generatedBy" : "swift",
+  "shape" : "{v: any} -> {string, int, double (non-finite as text), bool}",
+  "swiftCommit" : "fd41197"
+}

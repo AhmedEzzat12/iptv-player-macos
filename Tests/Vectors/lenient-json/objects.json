@@ -1,0 +1,111 @@
+{
+  "cases" : [
+    {
+      "expected" : [
+        "a",
+        "b"
+      ],
+      "input" : [
+        {
+          "id" : "a"
+        },
+        {
+          "id" : "b"
+        },
+        5,
+        "x"
+      ],
+      "name" : "array"
+    },
+    {
+      "expected" : [
+
+      ],
+      "input" : {
+
+      },
+      "name" : "empty object"
+    },
+    {
+      "expected" : [
+        "solo"
+      ],
+      "input" : {
+        "id" : "solo"
+      },
+      "name" : "single object"
+    },
+    {
+      "expected" : [
+        "one",
+        "two",
+        "ten"
+      ],
+      "input" : {
+        "1" : {
+          "id" : "one"
+        },
+        "2" : {
+          "id" : "two"
+        },
+        "10" : {
+          "id" : "ten"
+        }
+      },
+      "name" : "keyed"
+    },
+    {
+      "expected" : [
+        "?"
+      ],
+      "input" : {
+        "1" : {
+          "id" : "one"
+        },
+        "x" : {
+          "id" : "x"
+        }
+      },
+      "name" : "mixed keys"
+    },
+    {
+      "expected" : [
+        "?"
+      ],
+      "input" : {
+        "1" : {
+          "id" : "one"
+        },
+        "2" : 5
+      },
+      "name" : "keyed non objects"
+    },
+    {
+      "expected" : [
+
+      ],
+      "input" : null,
+      "name" : "null"
+    },
+    {
+      "expected" : [
+
+      ],
+      "input" : "s",
+      "name" : "string"
+    },
+    {
+      "expected" : [
+
+      ],
+      "input" : [
+
+      ],
+      "name" : "empty array"
+    }
+  ],
+  "function" : "LenientJSON.objects",
+  "generatedBy" : "swift",
+  "shape" : "any -> [id of each object]",
+  "swiftCommit" : "fd41197"
+}

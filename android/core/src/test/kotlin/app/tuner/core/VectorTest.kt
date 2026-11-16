@@ -118,6 +118,13 @@ class VectorTest {
             }
             JsonArray(events)
         },
+        "JSONObject.accessors" to { input ->
+            val o = app.tuner.core.net.LenientObject(input.jsonObject)
+            obj("string" to o.string("v"), "int" to o.int("v"), "double" to o.double("v"), "bool" to o.bool("v"))
+        },
+        "LenientJSON.objects" to { input ->
+            JsonArray(app.tuner.core.net.LenientJson.objects(input).map { JsonPrimitive(it.string("id") ?: "?") })
+        },
         "XtreamClient.urls" to { input ->
             val o = input.jsonObject
             val x = XtreamURLs(o.string("base")!!, o.string("username")!!, o.string("password")!!)

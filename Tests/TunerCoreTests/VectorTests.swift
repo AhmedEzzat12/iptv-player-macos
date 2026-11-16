@@ -150,6 +150,19 @@ struct VectorTests {
             }
             return events
         },
+        "JSONObject.accessors": { input in
+            // input: {"v": <raw JSON value>}; parsed the way the clients parse panel responses.
+            let data = try JSONSerialization.data(withJSONObject: try object(input), options: [.fragmentsAllowed])
+            let obj = try #require(JSONObject(try JSONSerialization.jsonObject(with: data)))
+            return ["string": obj.string("v") as Any? ?? NSNull(), "int": obj.int("v") as Any? ?? NSNull(),
+                    "double": obj.double("v").map { $0.isFinite ? $0 as Any : "\($0)" } ?? NSNull(),
+                    "bool": obj.bool("v")] as [String: Any]
+        },
+        "LenientJSON.objects": { input in
+            let data = try JSONSerialization.data(withJSONObject: ["v": input], options: [.fragmentsAllowed])
+            let root = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+            return LenientJSON.objects(root?["v"]).map { $0.string("id") ?? "?" }
+        },
         "XtreamClient.urls": { input in
             let o = try object(input)
             let client = XtreamClient(base: try string(o["base"] as Any), username: try string(o["username"] as Any),
