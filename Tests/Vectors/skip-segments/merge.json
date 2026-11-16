@@ -1,0 +1,285 @@
+{
+  "cases" : [
+    {
+      "expected" : [
+        {
+          "end" : 60,
+          "kind" : "intro",
+          "mayAutoSkip" : true,
+          "source" : "chapters",
+          "start" : 0
+        },
+        {
+          "end" : null,
+          "kind" : "credits",
+          "mayAutoSkip" : true,
+          "source" : "introDB",
+          "start" : 2200
+        }
+      ],
+      "input" : {
+        "candidates" : [
+          {
+            "end" : 90,
+            "kind" : "intro",
+            "mayAutoSkip" : true,
+            "source" : "theIntroDB",
+            "start" : 30
+          },
+          {
+            "end" : 60,
+            "kind" : "intro",
+            "mayAutoSkip" : true,
+            "source" : "chapters",
+            "start" : 0
+          },
+          {
+            "end" : null,
+            "kind" : "credits",
+            "mayAutoSkip" : true,
+            "source" : "introDB",
+            "start" : 2200
+          }
+        ],
+        "duration" : 2400
+      },
+      "name" : "chapters win"
+    },
+    {
+      "expected" : [
+        {
+          "end" : 80,
+          "kind" : "intro",
+          "mayAutoSkip" : true,
+          "source" : "introDB",
+          "start" : 10
+        },
+        {
+          "end" : null,
+          "kind" : "credits",
+          "mayAutoSkip" : false,
+          "source" : "learned",
+          "start" : 2100
+        }
+      ],
+      "input" : {
+        "candidates" : [
+          {
+            "end" : 700,
+            "kind" : "intro",
+            "mayAutoSkip" : true,
+            "source" : "theIntroDB",
+            "start" : 0
+          },
+          {
+            "end" : 8,
+            "kind" : "intro",
+            "mayAutoSkip" : true,
+            "source" : "theIntroDB",
+            "start" : 5
+          },
+          {
+            "end" : 80,
+            "kind" : "intro",
+            "mayAutoSkip" : true,
+            "source" : "introDB",
+            "start" : 10
+          },
+          {
+            "end" : null,
+            "kind" : "credits",
+            "mayAutoSkip" : true,
+            "source" : "theIntroDB",
+            "start" : 1000
+          },
+          {
+            "end" : null,
+            "kind" : "credits",
+            "mayAutoSkip" : false,
+            "source" : "learned",
+            "start" : 2100
+          }
+        ],
+        "duration" : 2400
+      },
+      "name" : "implausible dropped"
+    },
+    {
+      "expected" : [
+        {
+          "end" : 30,
+          "kind" : "recap",
+          "mayAutoSkip" : true,
+          "source" : "learned",
+          "start" : 0
+        },
+        {
+          "end" : 2400,
+          "kind" : "credits",
+          "mayAutoSkip" : true,
+          "source" : "introDB",
+          "start" : 2200
+        }
+      ],
+      "input" : {
+        "candidates" : [
+          {
+            "end" : 2403,
+            "kind" : "credits",
+            "mayAutoSkip" : true,
+            "source" : "theIntroDB",
+            "start" : 2200
+          },
+          {
+            "end" : 2401,
+            "kind" : "credits",
+            "mayAutoSkip" : true,
+            "source" : "introDB",
+            "start" : 2200
+          },
+          {
+            "end" : 30,
+            "kind" : "recap",
+            "mayAutoSkip" : true,
+            "source" : "learned",
+            "start" : 0
+          }
+        ],
+        "duration" : 2400
+      },
+      "name" : "beyond end and clamp"
+    },
+    {
+      "expected" : [
+        {
+          "end" : 1000,
+          "kind" : "intro",
+          "mayAutoSkip" : true,
+          "source" : "chapters",
+          "start" : 0
+        }
+      ],
+      "input" : {
+        "candidates" : [
+          {
+            "end" : 80,
+            "kind" : "intro",
+            "mayAutoSkip" : true,
+            "source" : "theIntroDB",
+            "start" : 20
+          },
+          {
+            "end" : null,
+            "kind" : "credits",
+            "mayAutoSkip" : true,
+            "source" : "theIntroDB",
+            "start" : 1000
+          },
+          {
+            "end" : 1000,
+            "kind" : "intro",
+            "mayAutoSkip" : true,
+            "source" : "chapters",
+            "start" : 0
+          }
+        ],
+        "duration" : null
+      },
+      "name" : "no duration"
+    },
+    {
+      "expected" : [
+        {
+          "end" : 80,
+          "kind" : "intro",
+          "mayAutoSkip" : true,
+          "source" : "theIntroDB",
+          "start" : 20
+        },
+        {
+          "end" : 150,
+          "kind" : "intro",
+          "mayAutoSkip" : true,
+          "source" : "theIntroDB",
+          "start" : 100
+        }
+      ],
+      "input" : {
+        "candidates" : [
+          {
+            "end" : 80,
+            "kind" : "intro",
+            "mayAutoSkip" : true,
+            "source" : "theIntroDB",
+            "start" : 20
+          },
+          {
+            "end" : 80,
+            "kind" : "intro",
+            "mayAutoSkip" : true,
+            "source" : "theIntroDB",
+            "start" : 20
+          },
+          {
+            "end" : 150,
+            "kind" : "intro",
+            "mayAutoSkip" : true,
+            "source" : "theIntroDB",
+            "start" : 100
+          }
+        ],
+        "duration" : 3000
+      },
+      "name" : "duplicates"
+    },
+    {
+      "expected" : [
+        {
+          "end" : 60,
+          "kind" : "intro",
+          "mayAutoSkip" : true,
+          "source" : "introDB",
+          "start" : 30
+        }
+      ],
+      "input" : {
+        "candidates" : [
+          {
+            "end" : 1560,
+            "kind" : "intro",
+            "mayAutoSkip" : true,
+            "source" : "chapters",
+            "start" : 1500
+          },
+          {
+            "end" : null,
+            "kind" : "credits",
+            "mayAutoSkip" : true,
+            "source" : "chapters",
+            "start" : 500
+          },
+          {
+            "end" : 60,
+            "kind" : "intro",
+            "mayAutoSkip" : true,
+            "source" : "introDB",
+            "start" : 30
+          },
+          {
+            "end" : null,
+            "kind" : "credits",
+            "mayAutoSkip" : true,
+            "source" : "introDB",
+            "start" : 2500
+          }
+        ],
+        "duration" : 3000
+      },
+      "name" : "chapter halves"
+    }
+  ],
+  "function" : "SkipSegments.merge",
+  "generatedBy" : "swift",
+  "shape" : "{candidates:[segment], duration?} -> [segment]",
+  "swiftCommit" : "7e778f1"
+}

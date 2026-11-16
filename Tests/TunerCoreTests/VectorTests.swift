@@ -170,6 +170,45 @@ struct VectorTests {
                     "yearLabel": opt(f.yearLabel), "latestYear": opt(f.latestYear),
                     "automatic": f.displayName(.automatic), "arabic": f.displayName(.arabic)] as [String: Any]
         },
+        "SkipSegments.classify": { input in
+            ["kind": SkipSegments.classify(chapterTitle: input as? String)?.rawValue as Any? ?? NSNull()] as [String: Any]
+        },
+        "SkipSegments.fromChapters": { input in
+            let o = try object(input)
+            let chapters = (o["chapters"] as? [[String: Any]] ?? []).map {
+                ChapterMark(title: $0["title"] as? String, start: $0["start"] as? Double ?? 0, end: $0["end"] as? Double)
+            }
+            return SkipSegments.fromChapters(chapters, duration: o["duration"] as? Double).map(segmentJSON)
+        },
+        "SkipSegments.merge": { input in
+            let o = try object(input)
+            let candidates = try (o["candidates"] as? [[String: Any]] ?? []).map(segment)
+            return SkipSegments.merge(candidates, duration: o["duration"] as? Double).map(segmentJSON)
+        },
+        "SkipTracker.run": { input in
+            // {segments, steps: [{op: update|seek|undo, position, duration?, mode?, autoSkipCredits?, segment?}]}
+            let o = try object(input)
+            var tracker = SkipTracker(segments: try (o["segments"] as? [[String: Any]] ?? []).map(segment))
+            var out: [Any] = []
+            for step in o["steps"] as? [[String: Any]] ?? [] {
+                let position = step["position"] as? Double ?? 0
+                let duration = step["duration"] as? Double
+                switch step["op"] as? String {
+                case "seek": tracker.userSeeked(to: position, duration: duration); out.append("seek")
+                case "undo":
+                    tracker.undoAutoSkip(try segment(step["segment"] as? [String: Any] ?? [:])); out.append("undo")
+                default:
+                    let r = tracker.update(position: position, duration: duration,
+                                           mode: SkipMode(rawValue: step["mode"] as? String ?? "button") ?? .button,
+                                           autoSkipCredits: step["autoSkipCredits"] as? Bool ?? false)
+                    var e: [String: Any] = ["prompt": NSNull(), "fresh": NSNull(), "autoSkip": NSNull()]
+                    if let p = r.prompt { e["prompt"] = p.segment.kind.rawValue; e["fresh"] = p.isFresh }
+                    if case .autoSkip(let seg) = r.action { e["autoSkip"] = seg.kind.rawValue }
+                    out.append(e)
+                }
+            }
+            return out
+        },
         "XtreamClient.urls": { input in
             let o = try object(input)
             let client = XtreamClient(base: try string(o["base"] as Any), username: try string(o["username"] as Any),
@@ -190,6 +229,20 @@ struct VectorTests {
     ]
 
     // MARK: - Helpers
+
+    static func segment(_ o: [String: Any]) throws -> SkipSegment {
+        guard let kind = SkipSegment.Kind(rawValue: o["kind"] as? String ?? ""),
+              let source = SkipSegment.Source(rawValue: o["source"] as? String ?? "") else {
+            throw BadInput(description: "bad segment \(o)")
+        }
+        return SkipSegment(kind: kind, start: o["start"] as? Double ?? 0, end: o["end"] as? Double, source: source,
+                           mayAutoSkip: o["mayAutoSkip"] as? Bool ?? true)
+    }
+
+    static func segmentJSON(_ s: SkipSegment) -> [String: Any] {
+        ["kind": s.kind.rawValue, "start": s.start, "end": s.end as Any? ?? NSNull(), "source": s.source.rawValue,
+         "mayAutoSkip": s.mayAutoSkip]
+    }
 
     struct BadInput: Error, CustomStringConvertible { let description: String }
 

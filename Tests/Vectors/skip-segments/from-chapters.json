@@ -1,0 +1,170 @@
+{
+  "cases" : [
+    {
+      "expected" : [
+        {
+          "end" : 90,
+          "kind" : "intro",
+          "mayAutoSkip" : true,
+          "source" : "chapters",
+          "start" : 0
+        },
+        {
+          "end" : null,
+          "kind" : "credits",
+          "mayAutoSkip" : true,
+          "source" : "chapters",
+          "start" : 2300
+        }
+      ],
+      "input" : {
+        "chapters" : [
+          {
+            "start" : 0,
+            "title" : "Intro"
+          },
+          {
+            "start" : 90,
+            "title" : "Chapter 2"
+          },
+          {
+            "start" : 2300,
+            "title" : "Credits"
+          }
+        ],
+        "duration" : 2400
+      },
+      "name" : "intro then story"
+    },
+    {
+      "expected" : [
+        {
+          "end" : 120,
+          "kind" : "intro",
+          "mayAutoSkip" : true,
+          "source" : "chapters",
+          "start" : 30
+        }
+      ],
+      "input" : {
+        "chapters" : [
+          {
+            "start" : 30,
+            "title" : "OP part 1"
+          },
+          {
+            "start" : 60,
+            "title" : "OP part 2"
+          },
+          {
+            "start" : 120,
+            "title" : "Part A"
+          }
+        ],
+        "duration" : 1400
+      },
+      "name" : "op parts merge"
+    },
+    {
+      "expected" : [
+        {
+          "end" : 40,
+          "kind" : "recap",
+          "mayAutoSkip" : true,
+          "source" : "chapters",
+          "start" : 0
+        },
+        {
+          "end" : null,
+          "kind" : "credits",
+          "mayAutoSkip" : true,
+          "source" : "chapters",
+          "start" : 2000
+        }
+      ],
+      "input" : {
+        "chapters" : [
+          {
+            "start" : 2000,
+            "title" : "Credits"
+          },
+          {
+            "start" : -5,
+            "title" : "Recap"
+          },
+          {
+            "end" : 40,
+            "start" : 0,
+            "title" : "Recap"
+          },
+          {
+            "start" : 40,
+            "title" : "Act 1"
+          }
+        ],
+        "duration" : 2100
+      },
+      "name" : "unordered and negative"
+    },
+    {
+      "expected" : [
+        {
+          "end" : 70,
+          "kind" : "intro",
+          "mayAutoSkip" : true,
+          "source" : "chapters",
+          "start" : 10
+        },
+        {
+          "end" : null,
+          "kind" : "credits",
+          "mayAutoSkip" : true,
+          "source" : "chapters",
+          "start" : 1500
+        }
+      ],
+      "input" : {
+        "chapters" : [
+          {
+            "end" : 70,
+            "start" : 10,
+            "title" : "Intro"
+          },
+          {
+            "start" : 200,
+            "title" : "Act 1"
+          },
+          {
+            "end" : 1600,
+            "start" : 1500,
+            "title" : "End Credits"
+          }
+        ],
+        "duration" : null
+      },
+      "name" : "explicit end and last credits open"
+    },
+    {
+      "expected" : [
+
+      ],
+      "input" : {
+        "chapters" : [
+          {
+            "start" : 0
+          },
+          {
+            "start" : 10,
+            "title" : null
+          }
+        ],
+        "duration" : 100
+      },
+      "name" : "no titles"
+    }
+  ],
+  "function" : "SkipSegments.fromChapters",
+  "generatedBy" : "swift",
+  "shape" : "{chapters:[{title,start,end?}], duration?} -> [segment]",
+  "swiftCommit" : "7e778f1"
+}

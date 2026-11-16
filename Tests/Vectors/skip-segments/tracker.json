@@ -1,0 +1,355 @@
+{
+  "cases" : [
+    {
+      "expected" : [
+        {
+          "autoSkip" : null,
+          "fresh" : null,
+          "prompt" : null
+        },
+        {
+          "autoSkip" : null,
+          "fresh" : true,
+          "prompt" : "intro"
+        },
+        {
+          "autoSkip" : null,
+          "fresh" : true,
+          "prompt" : "intro"
+        },
+        {
+          "autoSkip" : null,
+          "fresh" : false,
+          "prompt" : "intro"
+        },
+        {
+          "autoSkip" : null,
+          "fresh" : null,
+          "prompt" : null
+        },
+        {
+          "autoSkip" : null,
+          "fresh" : null,
+          "prompt" : null
+        },
+        {
+          "autoSkip" : null,
+          "fresh" : true,
+          "prompt" : "intro"
+        }
+      ],
+      "input" : {
+        "segments" : [
+          {
+            "end" : 90,
+            "kind" : "intro",
+            "mayAutoSkip" : true,
+            "source" : "theIntroDB",
+            "start" : 30
+          }
+        ],
+        "steps" : [
+          {
+            "duration" : 2400,
+            "op" : "update",
+            "position" : 10
+          },
+          {
+            "duration" : 2400,
+            "op" : "update",
+            "position" : 31
+          },
+          {
+            "duration" : 2400,
+            "op" : "update",
+            "position" : 36.5
+          },
+          {
+            "duration" : 2400,
+            "op" : "update",
+            "position" : 37.5
+          },
+          {
+            "duration" : 2400,
+            "op" : "update",
+            "position" : 89
+          },
+          {
+            "duration" : 2400,
+            "op" : "update",
+            "position" : 95
+          },
+          {
+            "duration" : 2400,
+            "op" : "update",
+            "position" : 40
+          }
+        ]
+      },
+      "name" : "button fresh then pinned"
+    },
+    {
+      "expected" : [
+        {
+          "autoSkip" : "intro",
+          "fresh" : null,
+          "prompt" : null
+        },
+        {
+          "autoSkip" : null,
+          "fresh" : true,
+          "prompt" : "intro"
+        },
+        {
+          "autoSkip" : null,
+          "fresh" : null,
+          "prompt" : null
+        },
+        {
+          "autoSkip" : null,
+          "fresh" : true,
+          "prompt" : "intro"
+        }
+      ],
+      "input" : {
+        "segments" : [
+          {
+            "end" : 90,
+            "kind" : "intro",
+            "mayAutoSkip" : true,
+            "source" : "theIntroDB",
+            "start" : 30
+          }
+        ],
+        "steps" : [
+          {
+            "duration" : 2400,
+            "mode" : "automatic",
+            "op" : "update",
+            "position" : 31
+          },
+          {
+            "duration" : 2400,
+            "mode" : "automatic",
+            "op" : "update",
+            "position" : 32
+          },
+          {
+            "duration" : 2400,
+            "mode" : "automatic",
+            "op" : "update",
+            "position" : 100
+          },
+          {
+            "duration" : 2400,
+            "mode" : "automatic",
+            "op" : "update",
+            "position" : 40
+          }
+        ]
+      },
+      "name" : "automatic once"
+    },
+    {
+      "expected" : [
+        "seek",
+        {
+          "autoSkip" : null,
+          "fresh" : true,
+          "prompt" : "intro"
+        }
+      ],
+      "input" : {
+        "segments" : [
+          {
+            "end" : 90,
+            "kind" : "intro",
+            "mayAutoSkip" : true,
+            "source" : "theIntroDB",
+            "start" : 30
+          }
+        ],
+        "steps" : [
+          {
+            "duration" : 2400,
+            "op" : "seek",
+            "position" : 50
+          },
+          {
+            "duration" : 2400,
+            "mode" : "automatic",
+            "op" : "update",
+            "position" : 50
+          }
+        ]
+      },
+      "name" : "seek into keeps it"
+    },
+    {
+      "expected" : [
+        {
+          "autoSkip" : "intro",
+          "fresh" : null,
+          "prompt" : null
+        },
+        "undo",
+        {
+          "autoSkip" : null,
+          "fresh" : true,
+          "prompt" : "intro"
+        }
+      ],
+      "input" : {
+        "segments" : [
+          {
+            "end" : 90,
+            "kind" : "intro",
+            "mayAutoSkip" : true,
+            "source" : "theIntroDB",
+            "start" : 30
+          }
+        ],
+        "steps" : [
+          {
+            "duration" : 2400,
+            "mode" : "automatic",
+            "op" : "update",
+            "position" : 31
+          },
+          {
+            "op" : "undo",
+            "segment" : {
+              "end" : 90,
+              "kind" : "intro",
+              "mayAutoSkip" : true,
+              "source" : "theIntroDB",
+              "start" : 30
+            }
+          },
+          {
+            "duration" : 2400,
+            "mode" : "automatic",
+            "op" : "update",
+            "position" : 31
+          }
+        ]
+      },
+      "name" : "undo"
+    },
+    {
+      "expected" : [
+        {
+          "autoSkip" : null,
+          "fresh" : true,
+          "prompt" : "credits"
+        },
+        {
+          "autoSkip" : "credits",
+          "fresh" : null,
+          "prompt" : null
+        },
+        {
+          "autoSkip" : null,
+          "fresh" : null,
+          "prompt" : null
+        }
+      ],
+      "input" : {
+        "segments" : [
+          {
+            "end" : null,
+            "kind" : "credits",
+            "mayAutoSkip" : true,
+            "source" : "theIntroDB",
+            "start" : 2300
+          }
+        ],
+        "steps" : [
+          {
+            "duration" : 2400,
+            "mode" : "automatic",
+            "op" : "update",
+            "position" : 2301
+          },
+          {
+            "autoSkipCredits" : true,
+            "duration" : 2400,
+            "mode" : "automatic",
+            "op" : "update",
+            "position" : 2302
+          },
+          {
+            "autoSkipCredits" : true,
+            "duration" : 2400,
+            "mode" : "automatic",
+            "op" : "update",
+            "position" : 2399
+          }
+        ]
+      },
+      "name" : "credits need permission"
+    },
+    {
+      "expected" : [
+        {
+          "autoSkip" : null,
+          "fresh" : true,
+          "prompt" : "intro"
+        }
+      ],
+      "input" : {
+        "segments" : [
+          {
+            "end" : 90,
+            "kind" : "intro",
+            "mayAutoSkip" : false,
+            "source" : "learned",
+            "start" : 30
+          }
+        ],
+        "steps" : [
+          {
+            "duration" : 2400,
+            "mode" : "automatic",
+            "op" : "update",
+            "position" : 31
+          }
+        ]
+      },
+      "name" : "learned never auto"
+    },
+    {
+      "expected" : [
+        {
+          "autoSkip" : null,
+          "fresh" : null,
+          "prompt" : null
+        }
+      ],
+      "input" : {
+        "segments" : [
+          {
+            "end" : 90,
+            "kind" : "intro",
+            "mayAutoSkip" : true,
+            "source" : "theIntroDB",
+            "start" : 30
+          }
+        ],
+        "steps" : [
+          {
+            "duration" : 2400,
+            "mode" : "off",
+            "op" : "update",
+            "position" : 31
+          }
+        ]
+      },
+      "name" : "off"
+    }
+  ],
+  "function" : "SkipTracker.run",
+  "generatedBy" : "swift",
+  "shape" : "{segments, steps:[{op,position,duration?,mode?,autoSkipCredits?,segment?}]} -> [step result]",
+  "swiftCommit" : "7e778f1"
+}

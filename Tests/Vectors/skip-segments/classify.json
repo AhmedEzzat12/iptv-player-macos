@@ -1,0 +1,358 @@
+{
+  "cases" : [
+    {
+      "expected" : {
+        "kind" : null
+      },
+      "input" : "Act 1",
+      "name" : "'Act 1'"
+    },
+    {
+      "expected" : {
+        "kind" : null
+      },
+      "input" : "Chapter 2",
+      "name" : "'Chapter 2'"
+    },
+    {
+      "expected" : {
+        "kind" : "credits"
+      },
+      "input" : "Credits",
+      "name" : "'Credits'"
+    },
+    {
+      "expected" : {
+        "kind" : "credits"
+      },
+      "input" : "Ending",
+      "name" : "'Ending'"
+    },
+    {
+      "expected" : {
+        "kind" : "intro"
+      },
+      "input" : "Intro",
+      "name" : "'Intro'"
+    },
+    {
+      "expected" : {
+        "kind" : "intro"
+      },
+      "input" : "OP part 1",
+      "name" : "'OP part 1'"
+    },
+    {
+      "expected" : {
+        "kind" : "intro"
+      },
+      "input" : "OP part 2",
+      "name" : "'OP part 2'"
+    },
+    {
+      "expected" : {
+        "kind" : null
+      },
+      "input" : "Part A",
+      "name" : "'Part A'"
+    },
+    {
+      "expected" : {
+        "kind" : "recap"
+      },
+      "input" : "Recap",
+      "name" : "'Recap'"
+    },
+    {
+      "expected" : {
+        "kind" : "intro"
+      },
+      "input" : "Opening Credits",
+      "name" : "'Opening Credits'"
+    },
+    {
+      "expected" : {
+        "kind" : "credits"
+      },
+      "input" : "End Credits",
+      "name" : "'End Credits'"
+    },
+    {
+      "expected" : {
+        "kind" : null
+      },
+      "input" : "Post-Credits Scene",
+      "name" : "'Post-Credits Scene'"
+    },
+    {
+      "expected" : {
+        "kind" : null
+      },
+      "input" : "Mid-credits scene",
+      "name" : "'Mid-credits scene'"
+    },
+    {
+      "expected" : {
+        "kind" : "intro"
+      },
+      "input" : "Main Titles",
+      "name" : "'Main Titles'"
+    },
+    {
+      "expected" : {
+        "kind" : "intro"
+      },
+      "input" : "Title Sequence",
+      "name" : "'Title Sequence'"
+    },
+    {
+      "expected" : {
+        "kind" : null
+      },
+      "input" : "Title",
+      "name" : "'Title'"
+    },
+    {
+      "expected" : {
+        "kind" : null
+      },
+      "input" : "Titles",
+      "name" : "'Titles'"
+    },
+    {
+      "expected" : {
+        "kind" : "intro"
+      },
+      "input" : "Theme Song",
+      "name" : "'Theme Song'"
+    },
+    {
+      "expected" : {
+        "kind" : "recap"
+      },
+      "input" : "Previously on",
+      "name" : "'Previously on'"
+    },
+    {
+      "expected" : {
+        "kind" : "recap"
+      },
+      "input" : "Summary",
+      "name" : "'Summary'"
+    },
+    {
+      "expected" : {
+        "kind" : "credits"
+      },
+      "input" : "ED",
+      "name" : "'ED'"
+    },
+    {
+      "expected" : {
+        "kind" : "intro"
+      },
+      "input" : "OP 2",
+      "name" : "'OP 2'"
+    },
+    {
+      "expected" : {
+        "kind" : "credits"
+      },
+      "input" : "Outro",
+      "name" : "'Outro'"
+    },
+    {
+      "expected" : {
+        "kind" : "credits"
+      },
+      "input" : "Closing",
+      "name" : "'Closing'"
+    },
+    {
+      "expected" : {
+        "kind" : "credits"
+      },
+      "input" : "The End",
+      "name" : "'The End'"
+    },
+    {
+      "expected" : {
+        "kind" : null
+      },
+      "input" : "The Ending Begins Tonight Again",
+      "name" : "'The Ending Begins Tonight Again'"
+    },
+    {
+      "expected" : {
+        "kind" : "intro"
+      },
+      "input" : "Introduction",
+      "name" : "'Introduction'"
+    },
+    {
+      "expected" : {
+        "kind" : null
+      },
+      "input" : "Next Episode Preview",
+      "name" : "'Next Episode Preview'"
+    },
+    {
+      "expected" : {
+        "kind" : null
+      },
+      "input" : "Bonus",
+      "name" : "'Bonus'"
+    },
+    {
+      "expected" : {
+        "kind" : "intro"
+      },
+      "input" : "مقدمة",
+      "name" : "'مقدمة'"
+    },
+    {
+      "expected" : {
+        "kind" : "intro"
+      },
+      "input" : "المقدمة",
+      "name" : "'المقدمة'"
+    },
+    {
+      "expected" : {
+        "kind" : "intro"
+      },
+      "input" : "شارة البداية",
+      "name" : "'شارة البداية'"
+    },
+    {
+      "expected" : {
+        "kind" : "intro"
+      },
+      "input" : "التتر",
+      "name" : "'التتر'"
+    },
+    {
+      "expected" : {
+        "kind" : "credits"
+      },
+      "input" : "تتر النهاية",
+      "name" : "'تتر النهاية'"
+    },
+    {
+      "expected" : {
+        "kind" : "recap"
+      },
+      "input" : "ملخص الحلقة السابقة",
+      "name" : "'ملخص الحلقة السابقة'"
+    },
+    {
+      "expected" : {
+        "kind" : "recap"
+      },
+      "input" : "سابقاً",
+      "name" : "'سابقاً'"
+    },
+    {
+      "expected" : {
+        "kind" : "credits"
+      },
+      "input" : "النهاية",
+      "name" : "'النهاية'"
+    },
+    {
+      "expected" : {
+        "kind" : "credits"
+      },
+      "input" : "الخاتمة",
+      "name" : "'الخاتمة'"
+    },
+    {
+      "expected" : {
+        "kind" : null
+      },
+      "input" : "مشهد بعد النهاية",
+      "name" : "'مشهد بعد النهاية'"
+    },
+    {
+      "expected" : {
+        "kind" : null
+      },
+      "input" : "الحلقة القادمة",
+      "name" : "'الحلقة القادمة'"
+    },
+    {
+      "expected" : {
+        "kind" : "intro"
+      },
+      "input" : "Opening",
+      "name" : "'Opening'"
+    },
+    {
+      "expected" : {
+        "kind" : null
+      },
+      "input" : "Stinger",
+      "name" : "'Stinger'"
+    },
+    {
+      "expected" : {
+        "kind" : "credits"
+      },
+      "input" : "credit",
+      "name" : "'credit'"
+    },
+    {
+      "expected" : {
+        "kind" : "credits"
+      },
+      "input" : "Endcredits",
+      "name" : "'Endcredits'"
+    },
+    {
+      "expected" : {
+        "kind" : "intro"
+      },
+      "input" : "INTRO",
+      "name" : "'INTRO'"
+    },
+    {
+      "expected" : {
+        "kind" : "intro"
+      },
+      "input" : "  intro  ",
+      "name" : "'  intro  '"
+    },
+    {
+      "expected" : {
+        "kind" : "intro"
+      },
+      "input" : "Intro (Short)",
+      "name" : "'Intro (Short)'"
+    },
+    {
+      "expected" : {
+        "kind" : "intro"
+      },
+      "input" : "Chapter 01 - Intro",
+      "name" : "'Chapter 01 - Intro'"
+    },
+    {
+      "expected" : {
+        "kind" : null
+      },
+      "input" : null,
+      "name" : "None"
+    },
+    {
+      "expected" : {
+        "kind" : null
+      },
+      "input" : "",
+      "name" : "''"
+    }
+  ],
+  "function" : "SkipSegments.classify",
+  "generatedBy" : "swift",
+  "shape" : "string|null -> {kind: recap|intro|credits|null}",
+  "swiftCommit" : "7e778f1"
+}

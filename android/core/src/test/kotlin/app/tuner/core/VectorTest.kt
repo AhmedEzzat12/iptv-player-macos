@@ -131,6 +131,42 @@ class VectorTest {
                 "latestYear" to f.latestYear, "automatic" to f.displayName(app.tuner.core.models.CategoryNameStyle.AUTOMATIC),
                 "arabic" to f.displayName(app.tuner.core.models.CategoryNameStyle.ARABIC))
         },
+        "SkipSegments.classify" to { input ->
+            obj("kind" to app.tuner.core.skip.SkipSegments.classify((input as? JsonPrimitive)?.takeUnless { it is JsonNull }?.content)?.raw)
+        },
+        "SkipSegments.fromChapters" to { input ->
+            val o = input.jsonObject
+            val chapters = o["chapters"]!!.jsonArray.map { c ->
+                val m = c.jsonObject
+                app.tuner.core.skip.ChapterMark(m.string("title"), m.double("start") ?: 0.0, m.double("end"))
+            }
+            JsonArray(app.tuner.core.skip.SkipSegments.fromChapters(chapters, o.double("duration")).map { segmentJson(it) })
+        },
+        "SkipSegments.merge" to { input ->
+            val o = input.jsonObject
+            JsonArray(app.tuner.core.skip.SkipSegments.merge(o["candidates"]!!.jsonArray.map { segment(it.jsonObject) }, o.double("duration"))
+                .map { segmentJson(it) })
+        },
+        "SkipTracker.run" to { input ->
+            val o = input.jsonObject
+            val tracker = app.tuner.core.skip.SkipTracker(o["segments"]!!.jsonArray.map { segment(it.jsonObject) })
+            JsonArray(o["steps"]!!.jsonArray.map { stepEl ->
+                val step = stepEl.jsonObject
+                val position = step.double("position") ?: 0.0
+                val duration = step.double("duration")
+                when (step.string("op")) {
+                    "seek" -> { tracker.userSeeked(position, duration); JsonPrimitive("seek") }
+                    "undo" -> { tracker.undoAutoSkip(segment(step["segment"]!!.jsonObject)); JsonPrimitive("undo") }
+                    else -> {
+                        val (prompt, action) = tracker.update(position, duration,
+                            app.tuner.core.skip.SkipMode.of(step.string("mode") ?: "button") ?: app.tuner.core.skip.SkipMode.BUTTON,
+                            (step["autoSkipCredits"] as? JsonPrimitive)?.booleanOrNull ?: false)
+                        obj("prompt" to prompt?.segment?.kind?.raw, "fresh" to prompt?.isFresh,
+                            "autoSkip" to (action as? app.tuner.core.skip.SkipTracker.Action.AutoSkip)?.segment?.kind?.raw)
+                    }
+                }
+            })
+        },
         "XtreamClient.urls" to { input ->
             val o = input.jsonObject
             val x = XtreamURLs(o.string("base")!!, o.string("username")!!, o.string("password")!!)
@@ -170,6 +206,17 @@ class VectorTest {
     }
 
     private fun JsonElement.str(): String = jsonPrimitive.content
+
+    private fun segment(o: JsonObject) = app.tuner.core.skip.SkipSegment(
+        kind = app.tuner.core.skip.SkipSegment.Kind.entries.first { it.raw == o.string("kind") },
+        start = o.double("start") ?: 0.0,
+        end = o.double("end"),
+        source = app.tuner.core.skip.SkipSegment.Source.entries.first { it.raw == o.string("source") },
+        mayAutoSkip = (o["mayAutoSkip"] as? JsonPrimitive)?.booleanOrNull ?: true,
+    )
+
+    private fun segmentJson(s: app.tuner.core.skip.SkipSegment) =
+        obj("kind" to s.kind.raw, "start" to s.start, "end" to s.end, "source" to s.source.raw, "mayAutoSkip" to s.mayAutoSkip)
 
     /** A JSON object from Kotlin values (null → JSON null). */
     private fun obj(vararg pairs: Pair<String, Any?>): JsonObject = JsonObject(pairs.associate { (k, v) ->
