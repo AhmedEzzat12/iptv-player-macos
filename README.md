@@ -254,12 +254,13 @@ iOS/scripts/check-build.sh      # the iPhone/iPad app still compiles (Xcode + Xc
 
 A Google TV version is being built in `android/` (design: `docs/superpowers/specs/2026-11-15-google-tv-design.md`).
 Commits that change app code end with one `Android:` line saying what they mean for it (`ported`, `todo <what>`,
-`deferred <feature>`, `n/a <why>`). Enable the check once per clone, and see what's outstanding:
+`deferred <feature>`, `n/a <why>`). See what's outstanding:
 
 ```bash
-git config core.hooksPath scripts/hooks
 scripts/android-backlog.sh
 ```
+
+A commit hook (`scripts/hooks/commit-msg`) can enforce the line; it stays off until the Android app is finished.
 
 `Tests/Vectors/` holds test cases both ports must pass (see its README).
 

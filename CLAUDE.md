@@ -65,9 +65,9 @@ deliberate differences live in `docs/android-parity.md`).
 - Commits touching `Sources/`, `iOS/Sources/`, `AppStore/Mac/Sources/` or `Tests/TunerCoreTests/` end with exactly
   one trailer line (before `Co-Authored-By`): `Android: ported` (android/ changed in the same commit),
   `Android: todo <what to port>`, `Android: deferred <feature Android doesn't have yet>` or `Android: n/a <why it's
-  Apple-only>`. Describe the behaviour in the body so it can be ported without you. `scripts/hooks/commit-msg` checks
-  it (enable once: `git config core.hooksPath scripts/hooks`). Missed one after pushing? Add a line to
-  `android/parity-tags.txt`.
+  Apple-only>`. Describe the behaviour in the body so it can be ported without you. `scripts/hooks/commit-msg` can
+  check it, but the owner keeps it **off until the Android app is finished**: don't enable `core.hooksPath`. Missed a
+  trailer? Add a line to `android/parity-tags.txt`.
 - A logic fix in a vector area (see `Tests/Vectors/README.md`) adds a case with `"expected": null` and runs
   `TUNER_VECTORS_REGENERATE=1 scripts/test.sh --filter VectorTests`. Never edit `expected` by hand.
 - Android commits that port a change say `Ports: <sha>` (or `Ports-skipped: <sha> <why>`).

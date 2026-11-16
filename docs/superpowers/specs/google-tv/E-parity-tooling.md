@@ -69,8 +69,9 @@ Input: `$1` = path of the message file. Behaviour:
 The hook must run in < 200 ms (no network, no full-history scans). Test it with a bats-free shell test
 `scripts/hooks/test-commit-msg.sh` that creates a temp repo, stages files, and checks exit codes for each case.
 
-Enabling: `git config core.hooksPath scripts/hooks` (documented in README → Development and `CLAUDE.md`).
-`scripts/test.sh` prints a one-line warning if `core.hooksPath` isn't `scripts/hooks` (doesn't fail).
+Enabling: `git config core.hooksPath scripts/hooks`. **Owner's decision (2026-11-16): the hook stays off until the
+Android app is finished**; until then trailers are written by convention (`CLAUDE.md`) and gaps are caught by
+`scripts/android-backlog.sh` (untagged list) and fixed in `android/parity-tags.txt`. No reminder in `scripts/test.sh`.
 
 ## `android/PARITY_BASE`
 
