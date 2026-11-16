@@ -1,0 +1,192 @@
+{
+  "cases" : [
+    {
+      "expected" : {
+        "title" : "Dune Part Two",
+        "year" : "2024"
+      },
+      "input" : "Dune Part Two (2024)",
+      "name" : "Dune Part Two (2024)"
+    },
+    {
+      "expected" : {
+        "title" : "Blade Runner 2049",
+        "year" : null
+      },
+      "input" : "Blade Runner 2049",
+      "name" : "Blade Runner 2049"
+    },
+    {
+      "expected" : {
+        "title" : "Sardar 2",
+        "year" : "2026"
+      },
+      "input" : "Sardar 2 ( 2026 )",
+      "name" : "Sardar 2 ( 2026 )"
+    },
+    {
+      "expected" : {
+        "title" : "المهايطية Pure",
+        "year" : "2026"
+      },
+      "input" : "المهايطية ( 2026 ) Pure",
+      "name" : "المهايطية ( 2026 ) Pure"
+    },
+    {
+      "expected" : {
+        "title" : "The Nice Ones",
+        "year" : "2026"
+      },
+      "input" : "The Nice Ones [2026]",
+      "name" : "The Nice Ones [2026]"
+    },
+    {
+      "expected" : {
+        "title" : "Heat",
+        "year" : "1995"
+      },
+      "input" : "Heat - 1995",
+      "name" : "Heat - 1995"
+    },
+    {
+      "expected" : {
+        "title" : "Movie",
+        "year" : "2019"
+      },
+      "input" : "Movie.2019",
+      "name" : "Movie.2019"
+    },
+    {
+      "expected" : {
+        "title" : "Movie 2019",
+        "year" : null
+      },
+      "input" : "Movie 2019",
+      "name" : "Movie 2019"
+    },
+    {
+      "expected" : {
+        "title" : "(2020)",
+        "year" : "2020"
+      },
+      "input" : "(2020)",
+      "name" : "(2020)"
+    },
+    {
+      "expected" : {
+        "title" : "Title (1899)",
+        "year" : null
+      },
+      "input" : "Title (1899)",
+      "name" : "Title (1899)"
+    },
+    {
+      "expected" : {
+        "title" : "Title (2100)",
+        "year" : null
+      },
+      "input" : "Title (2100)",
+      "name" : "Title (2100)"
+    },
+    {
+      "expected" : {
+        "title" : "Title (2000)",
+        "year" : "1999"
+      },
+      "input" : "Title (1999) (2000)",
+      "name" : "Title (1999) (2000)"
+    },
+    {
+      "expected" : {
+        "title" : "A - B",
+        "year" : "2010"
+      },
+      "input" : "A - B - 2010",
+      "name" : "A - B - 2010"
+    },
+    {
+      "expected" : {
+        "title" : "Title -2010",
+        "year" : null
+      },
+      "input" : "Title -2010",
+      "name" : "Title -2010"
+    },
+    {
+      "expected" : {
+        "title" : "Title.2010.1080p",
+        "year" : null
+      },
+      "input" : "Title.2010.1080p",
+      "name" : "Title.2010.1080p"
+    },
+    {
+      "expected" : {
+        "title" : "Spaced Out",
+        "year" : "2001"
+      },
+      "input" : "  Spaced   Out  (2001)  ",
+      "name" : "  Spaced   Out  (2001)  "
+    },
+    {
+      "expected" : {
+        "title" : "Title",
+        "year" : "2002"
+      },
+      "input" : "Title [ 2002 ]",
+      "name" : "Title [ 2002 ]"
+    },
+    {
+      "expected" : {
+        "title" : "Title (2003",
+        "year" : null
+      },
+      "input" : "Title (2003",
+      "name" : "Title (2003"
+    },
+    {
+      "expected" : {
+        "title" : "فيلم",
+        "year" : "2015"
+      },
+      "input" : "فيلم - 2015",
+      "name" : "فيلم - 2015"
+    },
+    {
+      "expected" : {
+        "title" : "Title ٢٠١٥ (٢٠١٥)",
+        "year" : null
+      },
+      "input" : "Title ٢٠١٥ (٢٠١٥)",
+      "name" : "Title ٢٠١٥ (٢٠١٥)"
+    },
+    {
+      "expected" : {
+        "title" : "2012",
+        "year" : null
+      },
+      "input" : "2012",
+      "name" : "2012"
+    },
+    {
+      "expected" : {
+        "title" : "Title.",
+        "year" : null
+      },
+      "input" : "Title.",
+      "name" : "Title."
+    },
+    {
+      "expected" : {
+        "title" : "",
+        "year" : null
+      },
+      "input" : "",
+      "name" : "empty"
+    }
+  ],
+  "function" : "TitleParser.splitYear",
+  "generatedBy" : "swift",
+  "shape" : "string -> {title, year|null}",
+  "swiftCommit" : "e1076ba"
+}

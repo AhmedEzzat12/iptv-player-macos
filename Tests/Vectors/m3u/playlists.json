@@ -1,0 +1,1586 @@
+{
+  "cases" : [
+    {
+      "expected" : {
+        "categories" : [
+          {
+            "id" : "src_news",
+            "name" : "News"
+          },
+          {
+            "id" : "src_uk-entertainment",
+            "name" : "UK, Entertainment"
+          },
+          {
+            "id" : "src_misc",
+            "name" : "Misc"
+          },
+          {
+            "id" : "src_panel",
+            "name" : "Panel"
+          }
+        ],
+        "channels" : [
+          {
+            "catchupDays" : 5,
+            "catchupSource" : null,
+            "catchupType" : "shift",
+            "categoryId" : "src_news",
+            "id" : "src_cnn.us",
+            "isAdult" : false,
+            "logoURL" : "http://logos/cnn.png",
+            "name" : "CNN HD",
+            "number" : null,
+            "providerStreamId" : null,
+            "referrer" : null,
+            "streamURL" : "http://example.com/live/cnn.m3u8",
+            "tvgId" : "cnn.us",
+            "userAgent" : null
+          },
+          {
+            "catchupDays" : 5,
+            "catchupSource" : null,
+            "catchupType" : "shift",
+            "categoryId" : "src_uk-entertainment",
+            "id" : "src_bbc1.uk",
+            "isAdult" : false,
+            "logoURL" : "http://logos/bbc.png",
+            "name" : "BBC One, London",
+            "number" : 101,
+            "providerStreamId" : null,
+            "referrer" : "http://ref.example.com/",
+            "streamURL" : "http://example.com/bbc1.ts",
+            "tvgId" : "bbc1.uk",
+            "userAgent" : "CustomAgent/1.0"
+          },
+          {
+            "catchupDays" : 5,
+            "catchupSource" : null,
+            "catchupType" : "shift",
+            "categoryId" : "src_news",
+            "id" : "src_cnn.us_55n3p9",
+            "isAdult" : false,
+            "logoURL" : null,
+            "name" : "CNN Backup",
+            "number" : null,
+            "providerStreamId" : null,
+            "referrer" : null,
+            "streamURL" : "http://backup.example.com/cnn.ts",
+            "tvgId" : "cnn.us",
+            "userAgent" : null
+          },
+          {
+            "catchupDays" : 5,
+            "catchupSource" : null,
+            "catchupType" : "shift",
+            "categoryId" : "src_misc",
+            "id" : "src_url_fdl1lv",
+            "isAdult" : false,
+            "logoURL" : null,
+            "name" : "No Id Channel",
+            "number" : null,
+            "providerStreamId" : null,
+            "referrer" : null,
+            "streamURL" : "udp://239.0.0.1:1234",
+            "tvgId" : null,
+            "userAgent" : null
+          },
+          {
+            "catchupDays" : 5,
+            "catchupSource" : null,
+            "catchupType" : "xtream",
+            "categoryId" : "src_panel",
+            "id" : "src_xc.1",
+            "isAdult" : false,
+            "logoURL" : null,
+            "name" : "Panel Channel",
+            "number" : null,
+            "providerStreamId" : "12345",
+            "referrer" : null,
+            "streamURL" : "http://panel.example.com/live/user/pass/12345.ts",
+            "tvgId" : "xc.1",
+            "userAgent" : null
+          }
+        ],
+        "epgURLs" : [
+          "http://epg.example.com/guide.xml.gz",
+          "http://epg2.example.com/g.xml"
+        ],
+        "episodes" : [
+          {
+            "containerExtension" : "mp4",
+            "id" : "src_ep_rys2az",
+            "number" : 2,
+            "season" : 1,
+            "seriesId" : "src_series_breaking-bad",
+            "title" : "Cat's in the Bag"
+          },
+          {
+            "containerExtension" : "mp4",
+            "id" : "src_ep_rzhhd8",
+            "number" : 1,
+            "season" : 1,
+            "seriesId" : "src_series_breaking-bad",
+            "title" : "Episode 1"
+          }
+        ],
+        "movieCategories" : [
+          {
+            "id" : "src_vod_movies",
+            "name" : "Movies"
+          }
+        ],
+        "movies" : [
+          {
+            "categoryId" : "src_vod_movies",
+            "containerExtension" : "mkv",
+            "id" : "src_vod_68qjz3",
+            "name" : "The Matrix",
+            "posterURL" : null,
+            "year" : "1999"
+          }
+        ],
+        "series" : [
+          {
+            "categoryId" : "src_series_series",
+            "id" : "src_series_breaking-bad",
+            "name" : "Breaking Bad"
+          }
+        ],
+        "seriesCategories" : [
+          {
+            "id" : "src_series_series",
+            "name" : "Series"
+          }
+        ]
+      },
+      "input" : {
+        "fixture" : "sample.m3u"
+      },
+      "name" : "sample fixture"
+    },
+    {
+      "expected" : {
+        "categories" : [
+
+        ],
+        "channels" : [
+
+        ],
+        "epgURLs" : [
+
+        ],
+        "episodes" : [
+
+        ],
+        "movieCategories" : [
+
+        ],
+        "movies" : [
+
+        ],
+        "series" : [
+
+        ],
+        "seriesCategories" : [
+
+        ]
+      },
+      "input" : {
+        "text" : ""
+      },
+      "name" : "empty"
+    },
+    {
+      "expected" : {
+        "categories" : [
+
+        ],
+        "channels" : [
+
+        ],
+        "epgURLs" : [
+          "http://a/g.xml",
+          "http://b/g.xml"
+        ],
+        "episodes" : [
+
+        ],
+        "movieCategories" : [
+
+        ],
+        "movies" : [
+
+        ],
+        "series" : [
+
+        ],
+        "seriesCategories" : [
+
+        ]
+      },
+      "input" : {
+        "text" : "#EXTM3U x-tvg-url=\"http://a/g.xml\" tvg-url=\"http://b/g.xml, http://a/g.xml\" catchup-type=\"flussonic\" catchup-days-max=\"3\"\n"
+      },
+      "name" : "header only"
+    },
+    {
+      "expected" : {
+        "categories" : [
+          {
+            "id" : "src_uncategorized",
+            "name" : "Uncategorized"
+          }
+        ],
+        "channels" : [
+          {
+            "catchupDays" : 7,
+            "catchupSource" : null,
+            "catchupType" : "shift",
+            "categoryId" : "src_uncategorized",
+            "id" : "src_a",
+            "isAdult" : false,
+            "logoURL" : null,
+            "name" : "A",
+            "number" : null,
+            "providerStreamId" : null,
+            "referrer" : null,
+            "streamURL" : "http://h/a.m3u8",
+            "tvgId" : "a",
+            "userAgent" : null
+          }
+        ],
+        "epgURLs" : [
+
+        ],
+        "episodes" : [
+
+        ],
+        "movieCategories" : [
+
+        ],
+        "movies" : [
+
+        ],
+        "series" : [
+
+        ],
+        "seriesCategories" : [
+
+        ]
+      },
+      "input" : {
+        "text" : "#EXTM3U tvg-shift=\"2\"\n#EXTINF:-1 tvg-id=\"a\",A\nhttp://h/a.m3u8\n"
+      },
+      "name" : "timeshift header"
+    },
+    {
+      "expected" : {
+        "categories" : [
+          {
+            "id" : "src_uncategorized",
+            "name" : "Uncategorized"
+          }
+        ],
+        "channels" : [
+          {
+            "catchupDays" : null,
+            "catchupSource" : null,
+            "catchupType" : null,
+            "categoryId" : "src_uncategorized",
+            "id" : "src_url_sg4yot",
+            "isAdult" : false,
+            "logoURL" : null,
+            "name" : "Kept",
+            "number" : null,
+            "providerStreamId" : null,
+            "referrer" : null,
+            "streamURL" : "http://h/kept.ts",
+            "tvgId" : null,
+            "userAgent" : null
+          }
+        ],
+        "epgURLs" : [
+
+        ],
+        "episodes" : [
+
+        ],
+        "movieCategories" : [
+
+        ],
+        "movies" : [
+
+        ],
+        "series" : [
+
+        ],
+        "seriesCategories" : [
+
+        ]
+      },
+      "input" : {
+        "text" : "#EXTM3U\nhttp://h/orphan.ts\n#EXTINF:-1,Kept\nhttp://h/kept.ts\n"
+      },
+      "name" : "no extinf before url"
+    },
+    {
+      "expected" : {
+        "categories" : [
+          {
+            "id" : "src_uncategorized",
+            "name" : "Uncategorized"
+          }
+        ],
+        "channels" : [
+          {
+            "catchupDays" : null,
+            "catchupSource" : null,
+            "catchupType" : null,
+            "categoryId" : "src_uncategorized",
+            "id" : "src_url_yqqj3a",
+            "isAdult" : false,
+            "logoURL" : null,
+            "name" : "Good",
+            "number" : null,
+            "providerStreamId" : null,
+            "referrer" : null,
+            "streamURL" : "rtsp://h/good",
+            "tvgId" : null,
+            "userAgent" : null
+          }
+        ],
+        "epgURLs" : [
+
+        ],
+        "episodes" : [
+
+        ],
+        "movieCategories" : [
+
+        ],
+        "movies" : [
+
+        ],
+        "series" : [
+
+        ],
+        "seriesCategories" : [
+
+        ]
+      },
+      "input" : {
+        "text" : "#EXTINF:-1,Bad\nnot a url\n#EXTINF:-1,Good\nrtsp://h/good\n"
+      },
+      "name" : "non url line skipped"
+    },
+    {
+      "expected" : {
+        "categories" : [
+          {
+            "id" : "src_uncategorized",
+            "name" : "Uncategorized"
+          }
+        ],
+        "channels" : [
+          {
+            "catchupDays" : null,
+            "catchupSource" : null,
+            "catchupType" : null,
+            "categoryId" : "src_uncategorized",
+            "id" : "src_url_yvs99o",
+            "isAdult" : false,
+            "logoURL" : null,
+            "name" : "Local",
+            "number" : null,
+            "providerStreamId" : null,
+            "referrer" : null,
+            "streamURL" : "/storage/emulated/0/clip.ts",
+            "tvgId" : null,
+            "userAgent" : null
+          }
+        ],
+        "epgURLs" : [
+
+        ],
+        "episodes" : [
+
+        ],
+        "movieCategories" : [
+
+        ],
+        "movies" : [
+
+        ],
+        "series" : [
+
+        ],
+        "seriesCategories" : [
+
+        ]
+      },
+      "input" : {
+        "text" : "#EXTINF:-1,Local\n/storage/emulated/0/clip.ts\n"
+      },
+      "name" : "file path entry"
+    },
+    {
+      "expected" : {
+        "categories" : [
+          {
+            "id" : "src_a-b",
+            "name" : "A, B"
+          }
+        ],
+        "channels" : [
+          {
+            "catchupDays" : null,
+            "catchupSource" : null,
+            "catchupType" : null,
+            "categoryId" : "src_a-b",
+            "id" : "src_x.1",
+            "isAdult" : false,
+            "logoURL" : "http://l/x.png",
+            "name" : "Title, With, Commas",
+            "number" : null,
+            "providerStreamId" : null,
+            "referrer" : null,
+            "streamURL" : "http://h/x.ts",
+            "tvgId" : "x.1",
+            "userAgent" : null
+          }
+        ],
+        "epgURLs" : [
+
+        ],
+        "episodes" : [
+
+        ],
+        "movieCategories" : [
+
+        ],
+        "movies" : [
+
+        ],
+        "series" : [
+
+        ],
+        "seriesCategories" : [
+
+        ]
+      },
+      "input" : {
+        "text" : "#EXTINF:-1 tvg-id = \"x.1\"  tvg-name='Single, Quoted' group-title=\"A, B\" tvg-logo=http://l/x.png,Title, With, Commas\nhttp://h/x.ts\n"
+      },
+      "name" : "quotes and spaces"
+    },
+    {
+      "expected" : {
+        "categories" : [
+          {
+            "id" : "src_uncategorized",
+            "name" : "Uncategorized"
+          }
+        ],
+        "channels" : [
+          {
+            "catchupDays" : null,
+            "catchupSource" : null,
+            "catchupType" : null,
+            "categoryId" : "src_uncategorized",
+            "id" : "src_url_6f8or9",
+            "isAdult" : false,
+            "logoURL" : null,
+            "name" : "Rest Of Title",
+            "number" : null,
+            "providerStreamId" : null,
+            "referrer" : null,
+            "streamURL" : "http://h/b.ts",
+            "tvgId" : null,
+            "userAgent" : null
+          }
+        ],
+        "epgURLs" : [
+
+        ],
+        "episodes" : [
+
+        ],
+        "movieCategories" : [
+
+        ],
+        "movies" : [
+
+        ],
+        "series" : [
+
+        ],
+        "seriesCategories" : [
+
+        ]
+      },
+      "input" : {
+        "text" : "#EXTINF:-1 tvg-name=\"Broken,Rest Of Title\nhttp://h/b.ts\n"
+      },
+      "name" : "unclosed quote"
+    },
+    {
+      "expected" : {
+        "categories" : [
+          {
+            "id" : "src_uncategorized",
+            "name" : "Uncategorized"
+          }
+        ],
+        "channels" : [
+          {
+            "catchupDays" : null,
+            "catchupSource" : null,
+            "catchupType" : null,
+            "categoryId" : "src_uncategorized",
+            "id" : "src_r",
+            "isAdult" : false,
+            "logoURL" : null,
+            "name" : "Radio One",
+            "number" : null,
+            "providerStreamId" : null,
+            "referrer" : null,
+            "streamURL" : "http://h/r.mp3",
+            "tvgId" : "r",
+            "userAgent" : null
+          }
+        ],
+        "epgURLs" : [
+
+        ],
+        "episodes" : [
+
+        ],
+        "movieCategories" : [
+
+        ],
+        "movies" : [
+
+        ],
+        "series" : [
+
+        ],
+        "seriesCategories" : [
+
+        ]
+      },
+      "input" : {
+        "text" : "#EXTINF:0 radio tvg-id=\"r\" ,Radio One\nhttp://h/r.mp3\n"
+      },
+      "name" : "bare tokens and duration"
+    },
+    {
+      "expected" : {
+        "categories" : [
+          {
+            "id" : "src_uncategorized",
+            "name" : "Uncategorized"
+          }
+        ],
+        "channels" : [
+          {
+            "catchupDays" : null,
+            "catchupSource" : null,
+            "catchupType" : null,
+            "categoryId" : "src_uncategorized",
+            "id" : "src_url_6ezg09",
+            "isAdult" : false,
+            "logoURL" : null,
+            "name" : "Named",
+            "number" : null,
+            "providerStreamId" : null,
+            "referrer" : null,
+            "streamURL" : "http://h/n.ts",
+            "tvgId" : null,
+            "userAgent" : null
+          },
+          {
+            "catchupDays" : null,
+            "catchupSource" : null,
+            "catchupType" : null,
+            "categoryId" : "src_uncategorized",
+            "id" : "src_url_gjnygh",
+            "isAdult" : false,
+            "logoURL" : null,
+            "name" : "Channel 2",
+            "number" : null,
+            "providerStreamId" : null,
+            "referrer" : null,
+            "streamURL" : "http://h/unnamed.ts",
+            "tvgId" : null,
+            "userAgent" : null
+          }
+        ],
+        "epgURLs" : [
+
+        ],
+        "episodes" : [
+
+        ],
+        "movieCategories" : [
+
+        ],
+        "movies" : [
+
+        ],
+        "series" : [
+
+        ],
+        "seriesCategories" : [
+
+        ]
+      },
+      "input" : {
+        "text" : "#EXTINF:-1 tvg-name=\"Named\",\nhttp://h/n.ts\n#EXTINF:-1,\nhttp://h/unnamed.ts\n"
+      },
+      "name" : "empty title uses tvg-name"
+    },
+    {
+      "expected" : {
+        "categories" : [
+          {
+            "id" : "src_group1",
+            "name" : "Group1"
+          },
+          {
+            "id" : "src_uncategorized",
+            "name" : "Uncategorized"
+          }
+        ],
+        "channels" : [
+          {
+            "catchupDays" : null,
+            "catchupSource" : null,
+            "catchupType" : null,
+            "categoryId" : "src_group1",
+            "id" : "src_url_6gafhi",
+            "isAdult" : false,
+            "logoURL" : null,
+            "name" : "One",
+            "number" : null,
+            "providerStreamId" : null,
+            "referrer" : "http://r/",
+            "streamURL" : "http://h/1.ts",
+            "tvgId" : null,
+            "userAgent" : "UA1"
+          },
+          {
+            "catchupDays" : null,
+            "catchupSource" : null,
+            "catchupType" : null,
+            "categoryId" : "src_uncategorized",
+            "id" : "src_url_6g9nr9",
+            "isAdult" : false,
+            "logoURL" : null,
+            "name" : "Two",
+            "number" : null,
+            "providerStreamId" : null,
+            "referrer" : null,
+            "streamURL" : "http://h/2.ts",
+            "tvgId" : null,
+            "userAgent" : null
+          }
+        ],
+        "epgURLs" : [
+
+        ],
+        "episodes" : [
+
+        ],
+        "movieCategories" : [
+
+        ],
+        "movies" : [
+
+        ],
+        "series" : [
+
+        ],
+        "seriesCategories" : [
+
+        ]
+      },
+      "input" : {
+        "text" : "#EXTINF:-1,One\n#EXTVLCOPT:http-user-agent=UA1\n#EXTVLCOPT:http-referer=http://r/\n#EXTGRP:Group1\nhttp://h/1.ts\n#EXTINF:-1,Two\nhttp://h/2.ts\n"
+      },
+      "name" : "vlcopt and extgrp reset"
+    },
+    {
+      "expected" : {
+        "categories" : [
+          {
+            "id" : "src_uncategorized",
+            "name" : "Uncategorized"
+          }
+        ],
+        "channels" : [
+          {
+            "catchupDays" : null,
+            "catchupSource" : null,
+            "catchupType" : null,
+            "categoryId" : "src_uncategorized",
+            "id" : "src_url_6g8w10",
+            "isAdult" : false,
+            "logoURL" : null,
+            "name" : "Three",
+            "number" : null,
+            "providerStreamId" : null,
+            "referrer" : "http://ref/",
+            "streamURL" : "http://h/3.ts",
+            "tvgId" : null,
+            "userAgent" : "UA2"
+          }
+        ],
+        "epgURLs" : [
+
+        ],
+        "episodes" : [
+
+        ],
+        "movieCategories" : [
+
+        ],
+        "movies" : [
+
+        ],
+        "series" : [
+
+        ],
+        "seriesCategories" : [
+
+        ]
+      },
+      "input" : {
+        "text" : "#EXTINF:-1 http-user-agent=\"UA2\" referrer=\"http://ref/\",Three\nhttp://h/3.ts\n"
+      },
+      "name" : "attribute user agent"
+    },
+    {
+      "expected" : {
+        "categories" : [
+          {
+            "id" : "src_uncategorized",
+            "name" : "Uncategorized"
+          }
+        ],
+        "channels" : [
+          {
+            "catchupDays" : 2,
+            "catchupSource" : "?utc={utc}",
+            "catchupType" : "append",
+            "categoryId" : "src_uncategorized",
+            "id" : "src_url_153khp",
+            "isAdult" : false,
+            "logoURL" : null,
+            "name" : "C1",
+            "number" : null,
+            "providerStreamId" : null,
+            "referrer" : null,
+            "streamURL" : "http://h/c1.ts",
+            "tvgId" : null,
+            "userAgent" : null
+          },
+          {
+            "catchupDays" : 4,
+            "catchupSource" : null,
+            "catchupType" : "default",
+            "categoryId" : "src_uncategorized",
+            "id" : "src_url_154c7y",
+            "isAdult" : false,
+            "logoURL" : null,
+            "name" : "C2",
+            "number" : null,
+            "providerStreamId" : null,
+            "referrer" : null,
+            "streamURL" : "http://h/c2.ts",
+            "tvgId" : null,
+            "userAgent" : null
+          },
+          {
+            "catchupDays" : 7,
+            "catchupSource" : null,
+            "catchupType" : "flussonic",
+            "categoryId" : "src_uncategorized",
+            "id" : "src_url_iinqdo",
+            "isAdult" : false,
+            "logoURL" : null,
+            "name" : "C3",
+            "number" : null,
+            "providerStreamId" : null,
+            "referrer" : null,
+            "streamURL" : "http://h/c3/index.m3u8",
+            "tvgId" : null,
+            "userAgent" : null
+          },
+          {
+            "catchupDays" : 7,
+            "catchupSource" : null,
+            "catchupType" : "shift",
+            "categoryId" : "src_uncategorized",
+            "id" : "src_url_155vog",
+            "isAdult" : false,
+            "logoURL" : null,
+            "name" : "C4",
+            "number" : null,
+            "providerStreamId" : null,
+            "referrer" : null,
+            "streamURL" : "http://h/c4.ts",
+            "tvgId" : null,
+            "userAgent" : null
+          },
+          {
+            "catchupDays" : 7,
+            "catchupSource" : null,
+            "catchupType" : "default",
+            "categoryId" : "src_uncategorized",
+            "id" : "src_url_156nep",
+            "isAdult" : false,
+            "logoURL" : null,
+            "name" : "C5",
+            "number" : null,
+            "providerStreamId" : null,
+            "referrer" : null,
+            "streamURL" : "http://h/c5.ts",
+            "tvgId" : null,
+            "userAgent" : null
+          }
+        ],
+        "epgURLs" : [
+
+        ],
+        "episodes" : [
+
+        ],
+        "movieCategories" : [
+
+        ],
+        "movies" : [
+
+        ],
+        "series" : [
+
+        ],
+        "seriesCategories" : [
+
+        ]
+      },
+      "input" : {
+        "text" : "#EXTINF:-1 catchup=\"append\" catchup-source=\"?utc={utc}\" catchup-days=\"2\",C1\nhttp://h/c1.ts\n#EXTINF:-1 tvg-rec=\"4\",C2\nhttp://h/c2.ts\n#EXTINF:-1 catchup=\"fs\",C3\nhttp://h/c3/index.m3u8\n#EXTINF:-1 timeshift=\"1\",C4\nhttp://h/c4.ts\n#EXTINF:-1 catchup=\"weird\",C5\nhttp://h/c5.ts\n"
+      },
+      "name" : "catchup attributes"
+    },
+    {
+      "expected" : {
+        "categories" : [
+          {
+            "id" : "src_uncategorized",
+            "name" : "Uncategorized"
+          },
+          {
+            "id" : "src_adults-only",
+            "name" : "Adults Only"
+          },
+          {
+            "id" : "src_xxx",
+            "name" : "xxx"
+          }
+        ],
+        "channels" : [
+          {
+            "catchupDays" : null,
+            "catchupSource" : null,
+            "catchupType" : null,
+            "categoryId" : "src_uncategorized",
+            "id" : "src_url_13oqd7",
+            "isAdult" : true,
+            "logoURL" : null,
+            "name" : "A1",
+            "number" : null,
+            "providerStreamId" : null,
+            "referrer" : null,
+            "streamURL" : "http://h/a1.ts",
+            "tvgId" : null,
+            "userAgent" : null
+          },
+          {
+            "catchupDays" : null,
+            "catchupSource" : null,
+            "catchupType" : null,
+            "categoryId" : "src_adults-only",
+            "id" : "src_url_13pi3g",
+            "isAdult" : true,
+            "logoURL" : null,
+            "name" : "A2",
+            "number" : null,
+            "providerStreamId" : null,
+            "referrer" : null,
+            "streamURL" : "http://h/a2.ts",
+            "tvgId" : null,
+            "userAgent" : null
+          },
+          {
+            "catchupDays" : null,
+            "catchupSource" : null,
+            "catchupType" : null,
+            "categoryId" : "src_xxx",
+            "id" : "src_url_13q9tp",
+            "isAdult" : false,
+            "logoURL" : null,
+            "name" : "A3",
+            "number" : null,
+            "providerStreamId" : null,
+            "referrer" : null,
+            "streamURL" : "http://h/a3.ts",
+            "tvgId" : null,
+            "userAgent" : null
+          },
+          {
+            "catchupDays" : null,
+            "catchupSource" : null,
+            "catchupType" : null,
+            "categoryId" : "src_xxx",
+            "id" : "src_url_13r1jy",
+            "isAdult" : true,
+            "logoURL" : null,
+            "name" : "A4",
+            "number" : null,
+            "providerStreamId" : null,
+            "referrer" : null,
+            "streamURL" : "http://h/a4.ts",
+            "tvgId" : null,
+            "userAgent" : null
+          }
+        ],
+        "epgURLs" : [
+
+        ],
+        "episodes" : [
+
+        ],
+        "movieCategories" : [
+
+        ],
+        "movies" : [
+
+        ],
+        "series" : [
+
+        ],
+        "seriesCategories" : [
+
+        ]
+      },
+      "input" : {
+        "text" : "#EXTINF:-1 tvg-adult=\"1\",A1\nhttp://h/a1.ts\n#EXTINF:-1 group-title=\"Adults Only\",A2\nhttp://h/a2.ts\n#EXTINF:-1 group-title=\"xxx\",A3\nhttp://h/a3.ts\n#EXTINF:-1 group-title=\"XXX\",A4\nhttp://h/a4.ts\n"
+      },
+      "name" : "adult flags"
+    },
+    {
+      "expected" : {
+        "categories" : [
+          {
+            "id" : "src_uncategorized",
+            "name" : "Uncategorized"
+          }
+        ],
+        "channels" : [
+          {
+            "catchupDays" : null,
+            "catchupSource" : null,
+            "catchupType" : null,
+            "categoryId" : "src_uncategorized",
+            "id" : "src_url_1cv66g",
+            "isAdult" : false,
+            "logoURL" : null,
+            "name" : "N1",
+            "number" : 7,
+            "providerStreamId" : null,
+            "referrer" : null,
+            "streamURL" : "http://h/n1.ts",
+            "tvgId" : null,
+            "userAgent" : null
+          },
+          {
+            "catchupDays" : null,
+            "catchupSource" : null,
+            "catchupType" : null,
+            "categoryId" : "src_uncategorized",
+            "id" : "src_url_1cvxwp",
+            "isAdult" : false,
+            "logoURL" : null,
+            "name" : "N2",
+            "number" : null,
+            "providerStreamId" : null,
+            "referrer" : null,
+            "streamURL" : "http://h/n2.ts",
+            "tvgId" : null,
+            "userAgent" : null
+          },
+          {
+            "catchupDays" : null,
+            "catchupSource" : null,
+            "catchupType" : null,
+            "categoryId" : "src_uncategorized",
+            "id" : "src_url_1cwpmy",
+            "isAdult" : false,
+            "logoURL" : null,
+            "name" : "N3",
+            "number" : 9,
+            "providerStreamId" : null,
+            "referrer" : null,
+            "streamURL" : "http://h/n3.ts",
+            "tvgId" : null,
+            "userAgent" : null
+          }
+        ],
+        "epgURLs" : [
+
+        ],
+        "episodes" : [
+
+        ],
+        "movieCategories" : [
+
+        ],
+        "movies" : [
+
+        ],
+        "series" : [
+
+        ],
+        "seriesCategories" : [
+
+        ]
+      },
+      "input" : {
+        "text" : "#EXTINF:-1 tvg-chno=\"7\",N1\nhttp://h/n1.ts\n#EXTINF:-1 tvg-ch=\"x8\",N2\nhttp://h/n2.ts\n#EXTINF:-1 channel-number=\"+9\",N3\nhttp://h/n3.ts\n"
+      },
+      "name" : "channel numbers"
+    },
+    {
+      "expected" : {
+        "categories" : [
+          {
+            "id" : "src_uncategorized",
+            "name" : "Uncategorized"
+          }
+        ],
+        "channels" : [
+          {
+            "catchupDays" : null,
+            "catchupSource" : null,
+            "catchupType" : null,
+            "categoryId" : "src_uncategorized",
+            "id" : "src_d",
+            "isAdult" : false,
+            "logoURL" : null,
+            "name" : "D1",
+            "number" : null,
+            "providerStreamId" : null,
+            "referrer" : null,
+            "streamURL" : "http://h/d.ts",
+            "tvgId" : "d",
+            "userAgent" : null
+          },
+          {
+            "catchupDays" : null,
+            "catchupSource" : null,
+            "catchupType" : null,
+            "categoryId" : "src_uncategorized",
+            "id" : "src_d_6f75ar",
+            "isAdult" : false,
+            "logoURL" : null,
+            "name" : "D2",
+            "number" : null,
+            "providerStreamId" : null,
+            "referrer" : null,
+            "streamURL" : "http://h/d.ts",
+            "tvgId" : "d",
+            "userAgent" : null
+          },
+          {
+            "catchupDays" : null,
+            "catchupSource" : null,
+            "catchupType" : null,
+            "categoryId" : "src_uncategorized",
+            "id" : "src_d_6f75ar_2",
+            "isAdult" : false,
+            "logoURL" : null,
+            "name" : "D3",
+            "number" : null,
+            "providerStreamId" : null,
+            "referrer" : null,
+            "streamURL" : "http://h/d.ts",
+            "tvgId" : "d",
+            "userAgent" : null
+          },
+          {
+            "catchupDays" : null,
+            "catchupSource" : null,
+            "catchupType" : null,
+            "categoryId" : "src_uncategorized",
+            "id" : "src_url_6eu1wi",
+            "isAdult" : false,
+            "logoURL" : null,
+            "name" : "U1",
+            "number" : null,
+            "providerStreamId" : null,
+            "referrer" : null,
+            "streamURL" : "http://h/u.ts",
+            "tvgId" : null,
+            "userAgent" : null
+          },
+          {
+            "catchupDays" : null,
+            "catchupSource" : null,
+            "catchupType" : null,
+            "categoryId" : "src_uncategorized",
+            "id" : "src_url_6eu1wi_2",
+            "isAdult" : false,
+            "logoURL" : null,
+            "name" : "U2",
+            "number" : null,
+            "providerStreamId" : null,
+            "referrer" : null,
+            "streamURL" : "http://h/u.ts",
+            "tvgId" : null,
+            "userAgent" : null
+          }
+        ],
+        "epgURLs" : [
+
+        ],
+        "episodes" : [
+
+        ],
+        "movieCategories" : [
+
+        ],
+        "movies" : [
+
+        ],
+        "series" : [
+
+        ],
+        "seriesCategories" : [
+
+        ]
+      },
+      "input" : {
+        "text" : "#EXTINF:-1 tvg-id=\"d\",D1\nhttp://h/d.ts\n#EXTINF:-1 tvg-id=\"d\",D2\nhttp://h/d.ts\n#EXTINF:-1 tvg-id=\"d\",D3\nhttp://h/d.ts\n#EXTINF:-1,U1\nhttp://h/u.ts\n#EXTINF:-1,U2\nhttp://h/u.ts\n"
+      },
+      "name" : "duplicate tvg ids"
+    },
+    {
+      "expected" : {
+        "categories" : [
+          {
+            "id" : "src_أفلام-عربية",
+            "name" : "أفلام عربية"
+          },
+          {
+            "id" : "src_category-375j8o",
+            "name" : "!!!"
+          }
+        ],
+        "channels" : [
+          {
+            "catchupDays" : null,
+            "catchupSource" : null,
+            "catchupType" : null,
+            "categoryId" : "src_أفلام-عربية",
+            "id" : "src_____._",
+            "isAdult" : false,
+            "logoURL" : null,
+            "name" : "قناة ١",
+            "number" : null,
+            "providerStreamId" : null,
+            "referrer" : null,
+            "streamURL" : "http://h/ar.ts",
+            "tvgId" : "قناة.١",
+            "userAgent" : null
+          },
+          {
+            "catchupDays" : null,
+            "catchupSource" : null,
+            "catchupType" : null,
+            "categoryId" : "src_category-375j8o",
+            "id" : "src____",
+            "isAdult" : false,
+            "logoURL" : null,
+            "name" : "Ñ",
+            "number" : null,
+            "providerStreamId" : null,
+            "referrer" : null,
+            "streamURL" : "http://h/es.ts",
+            "tvgId" : "ñ é",
+            "userAgent" : null
+          }
+        ],
+        "epgURLs" : [
+
+        ],
+        "episodes" : [
+
+        ],
+        "movieCategories" : [
+
+        ],
+        "movies" : [
+
+        ],
+        "series" : [
+
+        ],
+        "seriesCategories" : [
+
+        ]
+      },
+      "input" : {
+        "text" : "#EXTINF:-1 tvg-id=\"قناة.١\" group-title=\"أفلام عربية\",قناة ١\nhttp://h/ar.ts\n#EXTINF:-1 tvg-id=\"ñ é\" group-title=\"!!!\",Ñ\nhttp://h/es.ts\n"
+      },
+      "name" : "unicode ids and groups"
+    },
+    {
+      "expected" : {
+        "categories" : [
+
+        ],
+        "channels" : [
+
+        ],
+        "epgURLs" : [
+
+        ],
+        "episodes" : [
+
+        ],
+        "movieCategories" : [
+          {
+            "id" : "src_vod_films",
+            "name" : "Films"
+          },
+          {
+            "id" : "src_vod_uncategorized",
+            "name" : "Uncategorized"
+          }
+        ],
+        "movies" : [
+          {
+            "categoryId" : "src_vod_films",
+            "containerExtension" : "mp4",
+            "id" : "src_vod_mmporx",
+            "name" : "Heat",
+            "posterURL" : "http://p/1.jpg",
+            "year" : "1995"
+          },
+          {
+            "categoryId" : "src_vod_films",
+            "containerExtension" : "mp4",
+            "id" : "src_vod_mmporx_2",
+            "name" : "Same URL",
+            "posterURL" : null,
+            "year" : null
+          },
+          {
+            "categoryId" : "src_vod_uncategorized",
+            "containerExtension" : "MKV",
+            "id" : "src_vod_8z7lbc",
+            "name" : "Clip",
+            "posterURL" : null,
+            "year" : null
+          }
+        ],
+        "series" : [
+
+        ],
+        "seriesCategories" : [
+
+        ]
+      },
+      "input" : {
+        "text" : "#EXTINF:-1 group-title=\"Films\" tvg-logo=\"http://p/1.jpg\",Heat - 1995\nhttp://h/films/heat.mp4?token=1\n#EXTINF:-1 group-title=\"Films\",Same URL\nhttp://h/films/heat.mp4?token=1\n#EXTINF:-1,Clip\nhttp://h/clip.MKV\n"
+      },
+      "name" : "vod by extension"
+    },
+    {
+      "expected" : {
+        "categories" : [
+
+        ],
+        "channels" : [
+
+        ],
+        "epgURLs" : [
+
+        ],
+        "episodes" : [
+          {
+            "containerExtension" : "mkv",
+            "id" : "src_ep_9re8o2",
+            "number" : 1,
+            "season" : 1,
+            "seriesId" : "src_series_dark",
+            "title" : "Episode 1"
+          },
+          {
+            "containerExtension" : "mkv",
+            "id" : "src_ep_9qotlt",
+            "number" : 2,
+            "season" : 1,
+            "seriesId" : "src_series_dark",
+            "title" : "Lies"
+          }
+        ],
+        "movieCategories" : [
+          {
+            "id" : "src_vod_shows",
+            "name" : "Shows"
+          }
+        ],
+        "movies" : [
+          {
+            "categoryId" : "src_vod_shows",
+            "containerExtension" : "mp4",
+            "id" : "src_vod_9pzegt",
+            "name" : "No Episode Marker",
+            "posterURL" : null,
+            "year" : null
+          },
+          {
+            "categoryId" : "src_vod_shows",
+            "containerExtension" : "mp4",
+            "id" : "src_vod_9p9zek",
+            "name" : "S01E05",
+            "posterURL" : null,
+            "year" : null
+          }
+        ],
+        "series" : [
+          {
+            "categoryId" : "src_series_shows",
+            "id" : "src_series_dark",
+            "name" : "Dark"
+          }
+        ],
+        "seriesCategories" : [
+          {
+            "id" : "src_series_shows",
+            "name" : "Shows"
+          }
+        ]
+      },
+      "input" : {
+        "text" : "#EXTINF:-1 group-title=\"Shows\",Dark S01E01\nhttp://h/series/u/p/1.mkv\n#EXTINF:-1 group-title=\"Shows\",dark s01 e02 Lies\nhttp://h/series/u/p/2.mkv\n#EXTINF:-1 group-title=\"Shows\",No Episode Marker\nhttp://h/series/u/p/3.mp4\n#EXTINF:-1 group-title=\"Shows\",S01E05\nhttp://h/series/u/p/4.mp4\n"
+      },
+      "name" : "series grouping"
+    },
+    {
+      "expected" : {
+        "categories" : [
+          {
+            "id" : "src_uncategorized",
+            "name" : "Uncategorized"
+          }
+        ],
+        "channels" : [
+          {
+            "catchupDays" : null,
+            "catchupSource" : null,
+            "catchupType" : null,
+            "categoryId" : "src_uncategorized",
+            "id" : "src_url_eckjmt",
+            "isAdult" : false,
+            "logoURL" : null,
+            "name" : "X1",
+            "number" : null,
+            "providerStreamId" : "42",
+            "referrer" : null,
+            "streamURL" : "http://h:8080/live/u/p/42.ts",
+            "tvgId" : null,
+            "userAgent" : null
+          },
+          {
+            "catchupDays" : null,
+            "catchupSource" : null,
+            "catchupType" : null,
+            "categoryId" : "src_uncategorized",
+            "id" : "src_url_6u0w8h",
+            "isAdult" : false,
+            "logoURL" : null,
+            "name" : "X2",
+            "number" : null,
+            "providerStreamId" : null,
+            "referrer" : null,
+            "streamURL" : "http://h/live/u/p/abc.ts",
+            "tvgId" : null,
+            "userAgent" : null
+          },
+          {
+            "catchupDays" : null,
+            "catchupSource" : null,
+            "catchupType" : null,
+            "categoryId" : "src_uncategorized",
+            "id" : "src_url_szi7zm",
+            "isAdult" : false,
+            "logoURL" : null,
+            "name" : "X3",
+            "number" : null,
+            "providerStreamId" : null,
+            "referrer" : null,
+            "streamURL" : "http://h/live/u/42.ts",
+            "tvgId" : null,
+            "userAgent" : null
+          }
+        ],
+        "epgURLs" : [
+
+        ],
+        "episodes" : [
+
+        ],
+        "movieCategories" : [
+
+        ],
+        "movies" : [
+
+        ],
+        "series" : [
+
+        ],
+        "seriesCategories" : [
+
+        ]
+      },
+      "input" : {
+        "text" : "#EXTINF:-1,X1\nhttp://h:8080/live/u/p/42.ts\n#EXTINF:-1,X2\nhttp://h/live/u/p/abc.ts\n#EXTINF:-1,X3\nhttp://h/live/u/42.ts\n"
+      },
+      "name" : "xtream live ids"
+    },
+    {
+      "expected" : {
+        "categories" : [
+          {
+            "id" : "src_uncategorized",
+            "name" : "Uncategorized"
+          }
+        ],
+        "channels" : [
+          {
+            "catchupDays" : null,
+            "catchupSource" : null,
+            "catchupType" : null,
+            "categoryId" : "src_uncategorized",
+            "id" : "src_url_6f3ani",
+            "isAdult" : false,
+            "logoURL" : null,
+            "name" : "Indented",
+            "number" : null,
+            "providerStreamId" : null,
+            "referrer" : null,
+            "streamURL" : "http://h/i.ts",
+            "tvgId" : null,
+            "userAgent" : null
+          },
+          {
+            "catchupDays" : null,
+            "catchupSource" : null,
+            "catchupType" : null,
+            "categoryId" : "src_uncategorized",
+            "id" : "src_url_6f0zgr",
+            "isAdult" : false,
+            "logoURL" : null,
+            "name" : "Last",
+            "number" : null,
+            "providerStreamId" : null,
+            "referrer" : null,
+            "streamURL" : "http://h/l.ts",
+            "tvgId" : null,
+            "userAgent" : null
+          }
+        ],
+        "epgURLs" : [
+
+        ],
+        "episodes" : [
+
+        ],
+        "movieCategories" : [
+
+        ],
+        "movies" : [
+
+        ],
+        "series" : [
+
+        ],
+        "seriesCategories" : [
+
+        ]
+      },
+      "input" : {
+        "text" : "#EXTM3U\r\n\r\n  #EXTINF:-1,Indented  \r\n\thttp://h/i.ts\t\r#EXTINF:-1,Last\nhttp://h/l.ts"
+      },
+      "name" : "bom crlf mixed"
+    },
+    {
+      "expected" : {
+        "categories" : [
+          {
+            "id" : "src_uncategorized",
+            "name" : "Uncategorized"
+          }
+        ],
+        "channels" : [
+          {
+            "catchupDays" : null,
+            "catchupSource" : null,
+            "catchupType" : null,
+            "categoryId" : "src_uncategorized",
+            "id" : "src_url_eoj1g2",
+            "isAdult" : false,
+            "logoURL" : null,
+            "name" : "lower",
+            "number" : null,
+            "providerStreamId" : null,
+            "referrer" : null,
+            "streamURL" : "http://h/lower.ts",
+            "tvgId" : null,
+            "userAgent" : null
+          }
+        ],
+        "epgURLs" : [
+          "http://e/g"
+        ],
+        "episodes" : [
+
+        ],
+        "movieCategories" : [
+
+        ],
+        "movies" : [
+
+        ],
+        "series" : [
+
+        ],
+        "seriesCategories" : [
+
+        ]
+      },
+      "input" : {
+        "text" : "#extm3u url-tvg=\"http://e/g\"\n#extinf:-1,lower\nhttp://h/lower.ts\n"
+      },
+      "name" : "lowercase directives"
+    }
+  ],
+  "function" : "M3UParser.parse",
+  "generatedBy" : "swift",
+  "shape" : "{fixture|text, sourceId?} -> {epgURLs, categories, channels, movieCategories, movies, seriesCategories, series, episodes} (selected fields)",
+  "swiftCommit" : "e1076ba"
+}

@@ -33,4 +33,5 @@ tasks.test {
     useJUnitPlatform()
     // Shared test vectors live in the Apple tree (Tests/Vectors) and are read in place.
     systemProperty("tuner.vectors", rootProject.file("../Tests/Vectors").absolutePath)
+    systemProperty("tuner.fixtures", rootProject.file("../Tests/TunerCoreTests/Fixtures").absolutePath)
 }

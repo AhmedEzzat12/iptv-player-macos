@@ -4,6 +4,8 @@ import app.tuner.core.models.CatchupType
 import app.tuner.core.models.EndOfMediaStall
 import app.tuner.core.parsing.CatchupURLBuilder
 import app.tuner.core.parsing.ChannelNameNormalizer
+import app.tuner.core.parsing.M3UParser
+import app.tuner.core.parsing.TitleParser
 import app.tuner.core.parsing.StableID
 import app.tuner.core.providers.XtreamURLs
 import kotlinx.serialization.json.Json
@@ -20,6 +22,7 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
+import kotlinx.serialization.json.JsonArray
 import org.junit.jupiter.api.DynamicTest
 import org.junit.jupiter.api.TestFactory
 import java.io.File
@@ -57,6 +60,42 @@ class VectorTest {
                     now = Instant.parse(o.string("now")),
                 ),
             )
+        },
+        "M3UParser.parse" to { input ->
+            val o = input.jsonObject
+            val bytes = o.string("fixture")?.let { app.tuner.core.Fixtures.bytes(it) } ?: o.string("text")!!.toByteArray()
+            val p = M3UParser.parse(bytes, o.string("sourceId") ?: "src")
+            fun cats(list: List<app.tuner.core.models.Category>) = JsonArray(list.map { obj("id" to it.id, "name" to it.name) })
+            obj(
+                "epgURLs" to JsonArray(p.epgURLs.map { JsonPrimitive(it) }),
+                "categories" to cats(p.categories),
+                "channels" to JsonArray(p.channels.map { c ->
+                    obj("id" to c.id, "name" to c.name, "categoryId" to c.categoryId, "tvgId" to c.tvgId, "number" to c.number,
+                        "logoURL" to c.logoURL, "streamURL" to c.streamURL, "providerStreamId" to c.providerStreamId,
+                        "catchupType" to c.catchupType?.raw, "catchupSource" to c.catchupSource, "catchupDays" to c.catchupDays,
+                        "userAgent" to c.userAgent, "referrer" to c.referrer, "isAdult" to c.isAdult)
+                }),
+                "movieCategories" to cats(p.movieCategories),
+                "movies" to JsonArray(p.movies.map { m ->
+                    obj("id" to m.id, "name" to m.name, "year" to m.year, "categoryId" to m.categoryId,
+                        "containerExtension" to m.containerExtension, "posterURL" to m.posterURL)
+                }),
+                "seriesCategories" to cats(p.seriesCategories),
+                "series" to JsonArray(p.series.map { obj("id" to it.id, "name" to it.name, "categoryId" to it.categoryId) }),
+                "episodes" to JsonArray(p.episodes.map { e ->
+                    obj("id" to e.id, "seriesId" to e.seriesId, "season" to e.season, "number" to e.number, "title" to e.title,
+                        "containerExtension" to e.containerExtension)
+                }),
+            )
+        },
+        "TitleParser.splitYear" to { input ->
+            val (title, year) = TitleParser.splitYear(input.str())
+            obj("title" to title, "year" to year)
+        },
+        "TitleParser.episodeInfo" to { input ->
+            val r = TitleParser.episodeInfo(input.str())
+            if (r == null) obj("found" to false)
+            else obj("found" to true, "show" to r.show, "season" to r.season, "episode" to r.episode, "title" to r.title)
         },
         "XtreamClient.urls" to { input ->
             val o = input.jsonObject
@@ -97,6 +136,18 @@ class VectorTest {
     }
 
     private fun JsonElement.str(): String = jsonPrimitive.content
+
+    /** A JSON object from Kotlin values (null → JSON null). */
+    private fun obj(vararg pairs: Pair<String, Any?>): JsonObject = JsonObject(pairs.associate { (k, v) ->
+        k to when (v) {
+            null -> JsonNull
+            is JsonElement -> v
+            is String -> JsonPrimitive(v)
+            is Number -> JsonPrimitive(v)
+            is Boolean -> JsonPrimitive(v)
+            else -> error("unsupported ${v::class}")
+        }
+    })
     private fun JsonObject.string(key: String): String? = (this[key] as? JsonPrimitive)?.takeUnless { it is JsonNull }?.contentOrNull
     private fun JsonObject.double(key: String): Double? = (this[key] as? JsonPrimitive)?.takeUnless { it is JsonNull }?.doubleOrNull
 

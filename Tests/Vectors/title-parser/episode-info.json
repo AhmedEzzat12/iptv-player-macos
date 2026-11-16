@@ -1,0 +1,160 @@
+{
+  "cases" : [
+    {
+      "expected" : {
+        "episode" : 10,
+        "found" : true,
+        "season" : 3,
+        "show" : "The Office (US)",
+        "title" : "A Benihana Christmas"
+      },
+      "input" : "The Office (US) S03E10 A Benihana Christmas",
+      "name" : "The Office (US) S03E10 A Benihana Christmas"
+    },
+    {
+      "expected" : {
+        "episode" : 2,
+        "found" : true,
+        "season" : 1,
+        "show" : "Breaking Bad",
+        "title" : "Cat's in the Bag"
+      },
+      "input" : "Breaking Bad S01 E02 Cat's in the Bag",
+      "name" : "Breaking Bad S01 E02 Cat's in the Bag"
+    },
+    {
+      "expected" : {
+        "episode" : 1,
+        "found" : true,
+        "season" : 1,
+        "show" : "Breaking Bad",
+        "title" : null
+      },
+      "input" : "Breaking Bad S01E01",
+      "name" : "Breaking Bad S01E01"
+    },
+    {
+      "expected" : {
+        "episode" : 2,
+        "found" : true,
+        "season" : 1,
+        "show" : "dark",
+        "title" : null
+      },
+      "input" : "dark s1e2",
+      "name" : "dark s1e2"
+    },
+    {
+      "expected" : {
+        "episode" : 3,
+        "found" : true,
+        "season" : 2,
+        "show" : "Show",
+        "title" : "Title"
+      },
+      "input" : "Show.S02.E03.Title",
+      "name" : "Show.S02.E03.Title"
+    },
+    {
+      "expected" : {
+        "episode" : 100,
+        "found" : true,
+        "season" : 10,
+        "show" : "Show",
+        "title" : null
+      },
+      "input" : "Show_S10_E100",
+      "name" : "Show_S10_E100"
+    },
+    {
+      "expected" : {
+        "episode" : 1,
+        "found" : true,
+        "season" : 1,
+        "show" : "Show",
+        "title" : "Pilot"
+      },
+      "input" : "Show - S01E01 - Pilot",
+      "name" : "Show - S01E01 - Pilot"
+    },
+    {
+      "expected" : {
+        "found" : false
+      },
+      "input" : "S01E01",
+      "name" : "S01E01"
+    },
+    {
+      "expected" : {
+        "found" : false
+      },
+      "input" : "Show S123E01",
+      "name" : "Show S123E01"
+    },
+    {
+      "expected" : {
+        "found" : false
+      },
+      "input" : "Show S1E1234",
+      "name" : "Show S1E1234"
+    },
+    {
+      "expected" : {
+        "found" : false
+      },
+      "input" : "No marker",
+      "name" : "No marker"
+    },
+    {
+      "expected" : {
+        "found" : false
+      },
+      "input" : "Show S01",
+      "name" : "Show S01"
+    },
+    {
+      "expected" : {
+        "found" : false
+      },
+      "input" : "Show E01",
+      "name" : "Show E01"
+    },
+    {
+      "expected" : {
+        "episode" : 5,
+        "found" : true,
+        "season" : 1,
+        "show" : "مسلسل",
+        "title" : "الحلقة"
+      },
+      "input" : "مسلسل S01E05 الحلقة",
+      "name" : "مسلسل S01E05 الحلقة"
+    },
+    {
+      "expected" : {
+        "episode" : 1,
+        "found" : true,
+        "season" : 1,
+        "show" : "Show",
+        "title" : null
+      },
+      "input" : "Show S01E01   ",
+      "name" : "Show S01E01   "
+    },
+    {
+      "expected" : {
+        "episode" : 1,
+        "found" : true,
+        "season" : 1,
+        "show" : "Show",
+        "title" : "title with S02E03 inside"
+      },
+      "input" : "Show s01e01 title with S02E03 inside",
+      "name" : "Show s01e01 title with S02E03 inside"
+    }
+  ],
+  "function" : "TitleParser.episodeInfo",
+  "generatedBy" : "swift",
+  "shape" : "string -> {found: false} | {found: true, show, season, episode, title|null}",
+  "swiftCommit" : "e1076ba"
+}

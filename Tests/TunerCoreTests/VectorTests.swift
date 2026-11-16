@@ -86,6 +86,47 @@ struct VectorTests {
                 template: o["template"] as? String, tvgId: o["tvgId"] as? String,
                 start: try date(o["start"]), end: try date(o["end"]), now: try date(o["now"]))
         },
+        "M3UParser.parse": { input in
+            let o = try object(input)
+            let data: Data
+            if let name = o["fixture"] as? String {
+                data = try Data(contentsOf: folder.deletingLastPathComponent().appendingPathComponent("TunerCoreTests/Fixtures/\(name)"))
+            } else {
+                data = Data(try string(o["text"] as Any).utf8)
+            }
+            let p = M3UParser.parse(data, sourceId: o["sourceId"] as? String ?? "src")
+            func opt(_ v: Any?) -> Any { v ?? NSNull() }
+            return [
+                "epgURLs": p.epgURLs,
+                "categories": p.categories.map { ["id": $0.id, "name": $0.name] },
+                "channels": p.channels.map { c -> [String: Any] in
+                    ["id": c.id, "name": c.name, "categoryId": opt(c.categoryId), "tvgId": opt(c.tvgId), "number": opt(c.number),
+                     "logoURL": opt(c.logoURL), "streamURL": c.streamURL, "providerStreamId": opt(c.providerStreamId),
+                     "catchupType": opt(c.catchupType?.rawValue), "catchupSource": opt(c.catchupSource),
+                     "catchupDays": opt(c.catchupDays), "userAgent": opt(c.userAgent), "referrer": opt(c.referrer),
+                     "isAdult": c.isAdult]
+                },
+                "movieCategories": p.movieCategories.map { ["id": $0.id, "name": $0.name] },
+                "movies": p.movies.map { m -> [String: Any] in
+                    ["id": m.id, "name": m.name, "year": opt(m.year), "categoryId": opt(m.categoryId),
+                     "containerExtension": opt(m.containerExtension), "posterURL": opt(m.posterURL)]
+                },
+                "seriesCategories": p.seriesCategories.map { ["id": $0.id, "name": $0.name] },
+                "series": p.series.map { ["id": $0.id, "name": $0.name, "categoryId": opt($0.categoryId)] },
+                "episodes": p.episodes.map { e -> [String: Any] in
+                    ["id": e.id, "seriesId": e.seriesId, "season": e.season, "number": e.number, "title": e.title,
+                     "containerExtension": opt(e.containerExtension)]
+                },
+            ]
+        },
+        "TitleParser.splitYear": { input in
+            let r = TitleParser.splitYear(try string(input))
+            return ["title": r.title, "year": r.year as Any? ?? NSNull()] as [String: Any]
+        },
+        "TitleParser.episodeInfo": { input in
+            guard let r = TitleParser.episodeInfo(try string(input)) else { return ["found": false] }
+            return ["found": true, "show": r.show, "season": r.season, "episode": r.episode, "title": r.title as Any? ?? NSNull()] as [String: Any]
+        },
         "XtreamClient.urls": { input in
             let o = try object(input)
             let client = XtreamClient(base: try string(o["base"] as Any), username: try string(o["username"] as Any),
