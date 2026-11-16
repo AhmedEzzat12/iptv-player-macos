@@ -125,6 +125,12 @@ class VectorTest {
         "LenientJSON.objects" to { input ->
             JsonArray(app.tuner.core.net.LenientJson.objects(input).map { JsonPrimitive(it.string("id") ?: "?") })
         },
+        "CategoryClassifier.classify" to { input ->
+            val f = app.tuner.core.models.CategoryClassifier.classify(input.str())
+            obj("group" to f.group.raw, "latinName" to f.latinName, "arabicName" to f.arabicName, "yearLabel" to f.yearLabel,
+                "latestYear" to f.latestYear, "automatic" to f.displayName(app.tuner.core.models.CategoryNameStyle.AUTOMATIC),
+                "arabic" to f.displayName(app.tuner.core.models.CategoryNameStyle.ARABIC))
+        },
         "XtreamClient.urls" to { input ->
             val o = input.jsonObject
             val x = XtreamURLs(o.string("base")!!, o.string("username")!!, o.string("password")!!)

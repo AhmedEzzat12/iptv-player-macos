@@ -1,0 +1,1503 @@
+{
+  "cases" : [
+    {
+      "expected" : {
+        "arabic" : "2010–2016",
+        "arabicName" : null,
+        "automatic" : "2010–2016",
+        "group" : "featured",
+        "latestYear" : 2016,
+        "latinName" : null,
+        "yearLabel" : "2010–2016"
+      },
+      "input" : "2010–2016",
+      "name" : "2010–2016"
+    },
+    {
+      "expected" : {
+        "arabic" : "افلام اكشن اجنبيه",
+        "arabicName" : "افلام اكشن اجنبيه",
+        "automatic" : "Action",
+        "group" : "genres",
+        "latestYear" : null,
+        "latinName" : "Action",
+        "yearLabel" : null
+      },
+      "input" : "Action - افلام اكشن اجنبيه",
+      "name" : "Action - افلام اكشن اجنبيه"
+    },
+    {
+      "expected" : {
+        "arabic" : "Amos",
+        "arabicName" : null,
+        "automatic" : "Amos",
+        "group" : "more",
+        "latestYear" : null,
+        "latinName" : "Amos",
+        "yearLabel" : null
+      },
+      "input" : "Amos",
+      "name" : "Amos"
+    },
+    {
+      "expected" : {
+        "arabic" : "انمي مترجم للانجليزية",
+        "arabicName" : "انمي مترجم للانجليزية",
+        "automatic" : "Anime With English sub",
+        "group" : "genres",
+        "latestYear" : null,
+        "latinName" : "Anime With English sub",
+        "yearLabel" : null
+      },
+      "input" : "Anime With English sub - انمي مترجم للانجليزية",
+      "name" : "Anime With English sub - انمي مترجم للانجليزية"
+    },
+    {
+      "expected" : {
+        "arabic" : "عربي 2010–2016",
+        "arabicName" : "عربي",
+        "automatic" : "Arabic Movies 2010–2016",
+        "group" : "byYear",
+        "latestYear" : 2016,
+        "latinName" : "Arabic Movies",
+        "yearLabel" : "2010–2016"
+      },
+      "input" : "Arabic Movies -  [  2010 - 2016 ] عربي",
+      "name" : "Arabic Movies -  [  2010 - 2016 ] عربي"
+    },
+    {
+      "expected" : {
+        "arabic" : "عربي 2024",
+        "arabicName" : "عربي",
+        "automatic" : "Arabic Movies 2024",
+        "group" : "byYear",
+        "latestYear" : 2024,
+        "latinName" : "Arabic Movies",
+        "yearLabel" : "2024"
+      },
+      "input" : "Arabic Movies - عربي 2024",
+      "name" : "Arabic Movies - عربي 2024"
+    },
+    {
+      "expected" : {
+        "arabic" : "Arabic Movies 2010–2016",
+        "arabicName" : null,
+        "automatic" : "Arabic Movies 2010–2016",
+        "group" : "byYear",
+        "latestYear" : 2016,
+        "latinName" : "Arabic Movies 2010–2016",
+        "yearLabel" : "2010–2016"
+      },
+      "input" : "Arabic Movies 2010–2016",
+      "name" : "Arabic Movies 2010–2016"
+    },
+    {
+      "expected" : {
+        "arabic" : "بين الترفيهية",
+        "arabicName" : "بين الترفيهية",
+        "automatic" : "BeIN Entertainment",
+        "group" : "more",
+        "latestYear" : null,
+        "latinName" : "BeIN Entertainment",
+        "yearLabel" : null
+      },
+      "input" : "BeIN Entertainment - بين الترفيهية",
+      "name" : "BeIN Entertainment - بين الترفيهية"
+    },
+    {
+      "expected" : {
+        "arabic" : "تحتاج اجهزه قوية ونت قوي",
+        "arabicName" : "تحتاج اجهزه قوية ونت قوي",
+        "automatic" : "Bein Sport · UHD",
+        "group" : "sports",
+        "latestYear" : null,
+        "latinName" : "Bein Sport · UHD",
+        "yearLabel" : null
+      },
+      "input" : "Bein Sport  [ UHD ] | [ تحتاج اجهزه قوية ونت قوي ]",
+      "name" : "Bein Sport  [ UHD ] | [ تحتاج اجهزه قوية ونت قوي ]"
+    },
+    {
+      "expected" : {
+        "arabic" : "Bein Sport · FHD",
+        "arabicName" : null,
+        "automatic" : "Bein Sport · FHD",
+        "group" : "sports",
+        "latestYear" : null,
+        "latinName" : "Bein Sport · FHD",
+        "yearLabel" : null
+      },
+      "input" : "Bein Sport [ FHD ]",
+      "name" : "Bein Sport [ FHD ]"
+    },
+    {
+      "expected" : {
+        "arabic" : "افلام السنه المميزة",
+        "arabicName" : "افلام السنه المميزة",
+        "automatic" : "Box Office",
+        "group" : "featured",
+        "latestYear" : null,
+        "latinName" : "Box Office",
+        "yearLabel" : null
+      },
+      "input" : "Box Office -  افلام السنه المميزة",
+      "name" : "Box Office -  افلام السنه المميزة"
+    },
+    {
+      "expected" : {
+        "arabic" : "حفلات",
+        "arabicName" : "حفلات",
+        "automatic" : "Concerts",
+        "group" : "genres",
+        "latestYear" : null,
+        "latinName" : "Concerts",
+        "yearLabel" : null
+      },
+      "input" : "Concerts - حفلات",
+      "name" : "Concerts - حفلات"
+    },
+    {
+      "expected" : {
+        "arabic" : "ديزني بالعربي",
+        "arabicName" : "ديزني بالعربي",
+        "automatic" : "Disney+",
+        "group" : "platforms",
+        "latestYear" : null,
+        "latinName" : "Disney+",
+        "yearLabel" : null
+      },
+      "input" : "Disney+ - ديزني بالعربي",
+      "name" : "Disney+ - ديزني بالعربي"
+    },
+    {
+      "expected" : {
+        "arabic" : "Drama",
+        "arabicName" : null,
+        "automatic" : "Drama",
+        "group" : "genres",
+        "latestYear" : null,
+        "latinName" : "Drama",
+        "yearLabel" : null
+      },
+      "input" : "Drama",
+      "name" : "Drama"
+    },
+    {
+      "expected" : {
+        "arabic" : "افلام اجنبيه دراما",
+        "arabicName" : "افلام اجنبيه دراما",
+        "automatic" : "Drama",
+        "group" : "genres",
+        "latestYear" : null,
+        "latinName" : "Drama",
+        "yearLabel" : null
+      },
+      "input" : "Drama- افلام اجنبيه دراما",
+      "name" : "Drama- افلام اجنبيه دراما"
+    },
+    {
+      "expected" : {
+        "arabic" : "مصر",
+        "arabicName" : "مصر",
+        "automatic" : "Egypt",
+        "group" : "languages",
+        "latestYear" : null,
+        "latinName" : "Egypt",
+        "yearLabel" : null
+      },
+      "input" : "Egypt - مصر",
+      "name" : "Egypt - مصر"
+    },
+    {
+      "expected" : {
+        "arabic" : "عربي",
+        "arabicName" : "عربي",
+        "automatic" : "English",
+        "group" : "languages",
+        "latestYear" : null,
+        "latinName" : "English",
+        "yearLabel" : null
+      },
+      "input" : "English - عربي",
+      "name" : "English - عربي"
+    },
+    {
+      "expected" : {
+        "arabic" : "اجنبي 2023",
+        "arabicName" : "اجنبي",
+        "automatic" : "English Movies 2023",
+        "group" : "byYear",
+        "latestYear" : 2023,
+        "latinName" : "English Movies",
+        "yearLabel" : "2023"
+      },
+      "input" : "English Movies -  2023 اجنبي",
+      "name" : "English Movies -  2023 اجنبي"
+    },
+    {
+      "expected" : {
+        "arabic" : "اجنبي 2026",
+        "arabicName" : "اجنبي",
+        "automatic" : "English Movies 2026",
+        "group" : "byYear",
+        "latestYear" : 2026,
+        "latinName" : "English Movies",
+        "yearLabel" : "2026"
+      },
+      "input" : "English Movies -  2026 اجنبي",
+      "name" : "English Movies -  2026 اجنبي"
+    },
+    {
+      "expected" : {
+        "arabic" : "English Movies 2026",
+        "arabicName" : null,
+        "automatic" : "English Movies 2026",
+        "group" : "byYear",
+        "latestYear" : 2026,
+        "latinName" : "English Movies 2026",
+        "yearLabel" : "2026"
+      },
+      "input" : "English Movies 2026",
+      "name" : "English Movies 2026"
+    },
+    {
+      "expected" : {
+        "arabic" : "اجنبي 2000–2016",
+        "arabicName" : "اجنبي",
+        "automatic" : "English Movies 2000–2016",
+        "group" : "byYear",
+        "latestYear" : 2016,
+        "latinName" : "English Movies",
+        "yearLabel" : "2000–2016"
+      },
+      "input" : "English Movies [ 2000- 2016 ] اجنبي",
+      "name" : "English Movies [ 2000- 2016 ] اجنبي"
+    },
+    {
+      "expected" : {
+        "arabic" : "English Movies",
+        "arabicName" : null,
+        "automatic" : "English Movies",
+        "group" : "languages",
+        "latestYear" : null,
+        "latinName" : "English Movies",
+        "yearLabel" : null
+      },
+      "input" : "English Movies",
+      "name" : "English Movies"
+    },
+    {
+      "expected" : {
+        "arabic" : "أفضل افلام التاريخ",
+        "arabicName" : "أفضل افلام التاريخ",
+        "automatic" : "IMDB · TOP 264 Movie",
+        "group" : "featured",
+        "latestYear" : null,
+        "latinName" : "IMDB · TOP 264 Movie",
+        "yearLabel" : null
+      },
+      "input" : "IMDB [ TOP 264 Movie ] - أفضل افلام التاريخ",
+      "name" : "IMDB [ TOP 264 Movie ] - أفضل افلام التاريخ"
+    },
+    {
+      "expected" : {
+        "arabic" : "Kids",
+        "arabicName" : null,
+        "automatic" : "Kids",
+        "group" : "kids",
+        "latestYear" : null,
+        "latinName" : "Kids",
+        "yearLabel" : null
+      },
+      "input" : "Kids",
+      "name" : "Kids"
+    },
+    {
+      "expected" : {
+        "arabic" : "افلام كورية",
+        "arabicName" : "افلام كورية",
+        "automatic" : "Korean movies",
+        "group" : "languages",
+        "latestYear" : null,
+        "latinName" : "Korean movies",
+        "yearLabel" : null
+      },
+      "input" : "Korean movies - افلام كورية",
+      "name" : "Korean movies - افلام كورية"
+    },
+    {
+      "expected" : {
+        "arabic" : "عالم مارفل كامل",
+        "arabicName" : "عالم مارفل كامل",
+        "automatic" : "Marvel Movies",
+        "group" : "featured",
+        "latestYear" : null,
+        "latinName" : "Marvel Movies",
+        "yearLabel" : null
+      },
+      "input" : "Marvel Movies - عالم مارفل كامل",
+      "name" : "Marvel Movies - عالم مارفل كامل"
+    },
+    {
+      "expected" : {
+        "arabic" : "أفلام متعددة التراجم",
+        "arabicName" : "أفلام متعددة التراجم",
+        "automatic" : "Movies Multi Sub",
+        "group" : "quality",
+        "latestYear" : null,
+        "latinName" : "Movies Multi Sub",
+        "yearLabel" : null
+      },
+      "input" : "Movies Multi Sub - أفلام متعددة التراجم",
+      "name" : "Movies Multi Sub - أفلام متعددة التراجم"
+    },
+    {
+      "expected" : {
+        "arabic" : "أفلام نت فليكس",
+        "arabicName" : "أفلام نت فليكس",
+        "automatic" : "Netflix",
+        "group" : "platforms",
+        "latestYear" : null,
+        "latinName" : "Netflix",
+        "yearLabel" : null
+      },
+      "input" : "Netflix - أفلام نت فليكس",
+      "name" : "Netflix - أفلام نت فليكس"
+    },
+    {
+      "expected" : {
+        "arabic" : "Osn Box Office",
+        "arabicName" : null,
+        "automatic" : "Osn Box Office",
+        "group" : "platforms",
+        "latestYear" : null,
+        "latinName" : "Osn Box Office",
+        "yearLabel" : null
+      },
+      "input" : "Osn Box Office",
+      "name" : "Osn Box Office"
+    },
+    {
+      "expected" : {
+        "arabic" : "افلام اجنبية فائقة الجودة",
+        "arabicName" : "افلام اجنبية فائقة الجودة",
+        "automatic" : "Pure Movies",
+        "group" : "quality",
+        "latestYear" : null,
+        "latinName" : "Pure Movies",
+        "yearLabel" : null
+      },
+      "input" : "Pure Movies - افلام اجنبية فائقة الجودة",
+      "name" : "Pure Movies - افلام اجنبية فائقة الجودة"
+    },
+    {
+      "expected" : {
+        "arabic" : "RAMADAN سوريا 2026",
+        "arabicName" : "RAMADAN سوريا",
+        "automatic" : "RAMADAN سوريا 2026",
+        "group" : "featured",
+        "latestYear" : 2026,
+        "latinName" : null,
+        "yearLabel" : "2026"
+      },
+      "input" : "RAMADAN 2026 سوريا",
+      "name" : "RAMADAN 2026 سوريا"
+    },
+    {
+      "expected" : {
+        "arabic" : "RAMADAN مصر 2026",
+        "arabicName" : "RAMADAN مصر",
+        "automatic" : "RAMADAN مصر 2026",
+        "group" : "featured",
+        "latestYear" : 2026,
+        "latinName" : null,
+        "yearLabel" : "2026"
+      },
+      "input" : "RAMADAN 2026 مصر",
+      "name" : "RAMADAN 2026 مصر"
+    },
+    {
+      "expected" : {
+        "arabic" : "افلام خيال علمي",
+        "arabicName" : "افلام خيال علمي",
+        "automatic" : "Sci-Fi",
+        "group" : "genres",
+        "latestYear" : null,
+        "latinName" : "Sci-Fi",
+        "yearLabel" : null
+      },
+      "input" : "Sci-Fi - افلام خيال علمي",
+      "name" : "Sci-Fi - افلام خيال علمي"
+    },
+    {
+      "expected" : {
+        "arabic" : "Sci-Fi",
+        "arabicName" : null,
+        "automatic" : "Sci-Fi",
+        "group" : "genres",
+        "latestYear" : null,
+        "latinName" : "Sci-Fi",
+        "yearLabel" : null
+      },
+      "input" : "Sci-Fi",
+      "name" : "Sci-Fi"
+    },
+    {
+      "expected" : {
+        "arabic" : "أفلام منصة شاهد",
+        "arabicName" : "أفلام منصة شاهد",
+        "automatic" : "Shahid vip",
+        "group" : "platforms",
+        "latestYear" : null,
+        "latinName" : "Shahid vip",
+        "yearLabel" : null
+      },
+      "input" : "Shahid vip - أفلام منصة شاهد",
+      "name" : "Shahid vip - أفلام منصة شاهد"
+    },
+    {
+      "expected" : {
+        "arabic" : "تستحق المشاهدة",
+        "arabicName" : "تستحق المشاهدة",
+        "automatic" : "Short Series",
+        "group" : "more",
+        "latestYear" : null,
+        "latinName" : "Short Series",
+        "yearLabel" : null
+      },
+      "input" : "Short Series [ تستحق المشاهدة ]",
+      "name" : "Short Series [ تستحق المشاهدة ]"
+    },
+    {
+      "expected" : {
+        "arabic" : "سبيستون غو",
+        "arabicName" : "سبيستون غو",
+        "automatic" : "Spacetoon go",
+        "group" : "kids",
+        "latestYear" : null,
+        "latinName" : "Spacetoon go",
+        "yearLabel" : null
+      },
+      "input" : "Spacetoon go - سبيستون غو",
+      "name" : "Spacetoon go - سبيستون غو"
+    },
+    {
+      "expected" : {
+        "arabic" : "سورية",
+        "arabicName" : "سورية",
+        "automatic" : "Syrian Series",
+        "group" : "languages",
+        "latestYear" : null,
+        "latinName" : "Syrian Series",
+        "yearLabel" : null
+      },
+      "input" : "Syrian Series [ سورية ]",
+      "name" : "Syrian Series [ سورية ]"
+    },
+    {
+      "expected" : {
+        "arabic" : "ثمانية · الدوري السعودي",
+        "arabicName" : "ثمانية · الدوري السعودي",
+        "automatic" : "Thmanyah",
+        "group" : "sports",
+        "latestYear" : null,
+        "latinName" : "Thmanyah",
+        "yearLabel" : null
+      },
+      "input" : "Thmanyah | ثمانية | الدوري السعودي",
+      "name" : "Thmanyah | ثمانية | الدوري السعودي"
+    },
+    {
+      "expected" : {
+        "arabic" : "افلام تركية",
+        "arabicName" : "افلام تركية",
+        "automatic" : "Turkish movies",
+        "group" : "languages",
+        "latestYear" : null,
+        "latinName" : "Turkish movies",
+        "yearLabel" : null
+      },
+      "input" : "Turkish movies - افلام تركية",
+      "name" : "Turkish movies - افلام تركية"
+    },
+    {
+      "expected" : {
+        "arabic" : "انجلترا",
+        "arabicName" : "انجلترا",
+        "automatic" : "UK",
+        "group" : "languages",
+        "latestYear" : null,
+        "latinName" : "UK",
+        "yearLabel" : null
+      },
+      "input" : "UK - انجلترا",
+      "name" : "UK - انجلترا"
+    },
+    {
+      "expected" : {
+        "arabic" : "أفلام منصة واتش ات",
+        "arabicName" : "أفلام منصة واتش ات",
+        "automatic" : "WATCH-IT",
+        "group" : "platforms",
+        "latestYear" : null,
+        "latinName" : "WATCH-IT",
+        "yearLabel" : null
+      },
+      "input" : "WATCH-IT - أفلام منصة واتش ات",
+      "name" : "WATCH-IT - أفلام منصة واتش ات"
+    },
+    {
+      "expected" : {
+        "arabic" : "مصارعة متجددة",
+        "arabicName" : "مصارعة متجددة",
+        "automatic" : "WWE",
+        "group" : "sports",
+        "latestYear" : null,
+        "latinName" : "WWE",
+        "yearLabel" : null
+      },
+      "input" : "WWE - مصارعة متجددة",
+      "name" : "WWE - مصارعة متجددة"
+    },
+    {
+      "expected" : {
+        "arabic" : "مسلسلات تركية تعرض حاليا",
+        "arabicName" : "مسلسلات تركية تعرض حاليا",
+        "automatic" : "مسلسلات تركية تعرض حاليا",
+        "group" : "featured",
+        "latestYear" : null,
+        "latinName" : null,
+        "yearLabel" : null
+      },
+      "input" : "[ مسلسلات تركية تعرض حاليا ]",
+      "name" : "[ مسلسلات تركية تعرض حاليا ]"
+    },
+    {
+      "expected" : {
+        "arabic" : "مسلسلات عربية تعرض حاليا",
+        "arabicName" : "مسلسلات عربية تعرض حاليا",
+        "automatic" : "مسلسلات عربية تعرض حاليا",
+        "group" : "featured",
+        "latestYear" : null,
+        "latinName" : null,
+        "yearLabel" : null
+      },
+      "input" : "[ مسلسلات عربية تعرض حاليا ]",
+      "name" : "[ مسلسلات عربية تعرض حاليا ]"
+    },
+    {
+      "expected" : {
+        "arabic" : "افلام وثائقية",
+        "arabicName" : "افلام وثائقية",
+        "automatic" : "documentaries",
+        "group" : "genres",
+        "latestYear" : null,
+        "latinName" : "documentaries",
+        "yearLabel" : null
+      },
+      "input" : "documentaries  - افلام وثائقية",
+      "name" : "documentaries  - افلام وثائقية"
+    },
+    {
+      "expected" : {
+        "arabic" : "باقه الاطفال العربية",
+        "arabicName" : "باقه الاطفال العربية",
+        "automatic" : "kids · AR",
+        "group" : "kids",
+        "latestYear" : null,
+        "latinName" : "kids · AR",
+        "yearLabel" : null
+      },
+      "input" : "kids [ AR ] - باقه الاطفال العربية",
+      "name" : "kids [ AR ] - باقه الاطفال العربية"
+    },
+    {
+      "expected" : {
+        "arabic" : "اجنبي 2026",
+        "arabicName" : "اجنبي",
+        "automatic" : "اجنبي 2026",
+        "group" : "byYear",
+        "latestYear" : 2026,
+        "latinName" : null,
+        "yearLabel" : "2026"
+      },
+      "input" : "اجنبي 2026",
+      "name" : "اجنبي 2026"
+    },
+    {
+      "expected" : {
+        "arabic" : "اجنبي",
+        "arabicName" : "اجنبي",
+        "automatic" : "اجنبي",
+        "group" : "languages",
+        "latestYear" : null,
+        "latinName" : null,
+        "yearLabel" : null
+      },
+      "input" : "اجنبي",
+      "name" : "اجنبي"
+    },
+    {
+      "expected" : {
+        "arabic" : "الدكتور راغب السرجاني",
+        "arabicName" : "الدكتور راغب السرجاني",
+        "automatic" : "الدكتور راغب السرجاني",
+        "group" : "more",
+        "latestYear" : null,
+        "latinName" : null,
+        "yearLabel" : null
+      },
+      "input" : "الدكتور راغب السرجاني",
+      "name" : "الدكتور راغب السرجاني"
+    },
+    {
+      "expected" : {
+        "arabic" : "السعودية",
+        "arabicName" : "السعودية",
+        "automatic" : "السعودية",
+        "group" : "languages",
+        "latestYear" : null,
+        "latinName" : null,
+        "yearLabel" : null
+      },
+      "input" : "السعودية",
+      "name" : "السعودية"
+    },
+    {
+      "expected" : {
+        "arabic" : "المشاهدة",
+        "arabicName" : "المشاهدة",
+        "automatic" : "المشاهدة",
+        "group" : "more",
+        "latestYear" : null,
+        "latinName" : null,
+        "yearLabel" : null
+      },
+      "input" : "المشاهدة",
+      "name" : "المشاهدة"
+    },
+    {
+      "expected" : {
+        "arabic" : "تحتاج اجهزه قوية ونت قوي",
+        "arabicName" : "تحتاج اجهزه قوية ونت قوي",
+        "automatic" : "تحتاج اجهزه قوية ونت قوي",
+        "group" : "more",
+        "latestYear" : null,
+        "latinName" : null,
+        "yearLabel" : null
+      },
+      "input" : "تحتاج اجهزه قوية ونت قوي",
+      "name" : "تحتاج اجهزه قوية ونت قوي"
+    },
+    {
+      "expected" : {
+        "arabic" : "شاهد",
+        "arabicName" : "شاهد",
+        "automatic" : "شاهد",
+        "group" : "platforms",
+        "latestYear" : null,
+        "latinName" : null,
+        "yearLabel" : null
+      },
+      "input" : "شاهد",
+      "name" : "شاهد"
+    },
+    {
+      "expected" : {
+        "arabic" : "مرشحون لجوائز الأوسكار 2023",
+        "arabicName" : "مرشحون لجوائز الأوسكار",
+        "automatic" : "مرشحون لجوائز الأوسكار 2023",
+        "group" : "featured",
+        "latestYear" : 2023,
+        "latinName" : null,
+        "yearLabel" : "2023"
+      },
+      "input" : "مرشحون لجوائز الأوسكار 2023",
+      "name" : "مرشحون لجوائز الأوسكار 2023"
+    },
+    {
+      "expected" : {
+        "arabic" : "مسلسلات تركية تعرض حاليا",
+        "arabicName" : "مسلسلات تركية تعرض حاليا",
+        "automatic" : "مسلسلات تركية تعرض حاليا",
+        "group" : "featured",
+        "latestYear" : null,
+        "latinName" : null,
+        "yearLabel" : null
+      },
+      "input" : "مسلسلات تركية تعرض حاليا",
+      "name" : "مسلسلات تركية تعرض حاليا"
+    },
+    {
+      "expected" : {
+        "arabic" : "ملخصات المباريات",
+        "arabicName" : "ملخصات المباريات",
+        "automatic" : "ملخصات المباريات",
+        "group" : "sports",
+        "latestYear" : null,
+        "latinName" : null,
+        "yearLabel" : null
+      },
+      "input" : "ملخصات المباريات",
+      "name" : "ملخصات المباريات"
+    },
+    {
+      "expected" : {
+        "arabic" : "AR · NEWS",
+        "arabicName" : null,
+        "automatic" : "AR · NEWS",
+        "group" : "genres",
+        "latestYear" : null,
+        "latinName" : "AR · NEWS",
+        "yearLabel" : null
+      },
+      "input" : "|AR| NEWS",
+      "name" : "|AR| NEWS"
+    },
+    {
+      "expected" : {
+        "arabic" : "UK: Sports",
+        "arabicName" : null,
+        "automatic" : "UK: Sports",
+        "group" : "sports",
+        "latestYear" : null,
+        "latinName" : "UK: Sports",
+        "yearLabel" : null
+      },
+      "input" : "UK: Sports",
+      "name" : "UK: Sports"
+    },
+    {
+      "expected" : {
+        "arabic" : "4K UHD",
+        "arabicName" : null,
+        "automatic" : "4K UHD",
+        "group" : "quality",
+        "latestYear" : null,
+        "latinName" : "4K UHD",
+        "yearLabel" : null
+      },
+      "input" : "4K UHD",
+      "name" : "4K UHD"
+    },
+    {
+      "expected" : {
+        "arabic" : "HEVC Movies",
+        "arabicName" : null,
+        "automatic" : "HEVC Movies",
+        "group" : "quality",
+        "latestYear" : null,
+        "latinName" : "HEVC Movies",
+        "yearLabel" : null
+      },
+      "input" : "HEVC Movies",
+      "name" : "HEVC Movies"
+    },
+    {
+      "expected" : {
+        "arabic" : "Movies",
+        "arabicName" : "Movies",
+        "automatic" : "Movies",
+        "group" : "more",
+        "latestYear" : null,
+        "latinName" : null,
+        "yearLabel" : null
+      },
+      "input" : "Movies ٢٠٢٤",
+      "name" : "Movies ٢٠٢٤"
+    },
+    {
+      "expected" : {
+        "arabic" : "Oscar",
+        "arabicName" : null,
+        "automatic" : "Oscar",
+        "group" : "featured",
+        "latestYear" : null,
+        "latinName" : "Oscar",
+        "yearLabel" : null
+      },
+      "input" : "Oscar",
+      "name" : "Oscar"
+    },
+    {
+      "expected" : {
+        "arabic" : "Christmas Movies",
+        "arabicName" : null,
+        "automatic" : "Christmas Movies",
+        "group" : "more",
+        "latestYear" : null,
+        "latinName" : "Christmas Movies",
+        "yearLabel" : null
+      },
+      "input" : "Christmas Movies",
+      "name" : "Christmas Movies"
+    },
+    {
+      "expected" : {
+        "arabic" : "Horror 1980 1980–1989",
+        "arabicName" : null,
+        "automatic" : "Horror 1980 1980–1989",
+        "group" : "featured",
+        "latestYear" : 1989,
+        "latinName" : "Horror 1980",
+        "yearLabel" : "1980–1989"
+      },
+      "input" : "Horror 1980 - 1989",
+      "name" : "Horror 1980 - 1989"
+    },
+    {
+      "expected" : {
+        "arabic" : "Classic 1950s",
+        "arabicName" : null,
+        "automatic" : "Classic 1950s",
+        "group" : "featured",
+        "latestYear" : 1950,
+        "latinName" : "Classic 1950s",
+        "yearLabel" : "1950"
+      },
+      "input" : "Classic 1950s",
+      "name" : "Classic 1950s"
+    },
+    {
+      "expected" : {
+        "arabic" : "Series 2099",
+        "arabicName" : null,
+        "automatic" : "Series 2099",
+        "group" : "byYear",
+        "latestYear" : 2099,
+        "latinName" : "Series 2099",
+        "yearLabel" : "2099"
+      },
+      "input" : "Series 2099",
+      "name" : "Series 2099"
+    },
+    {
+      "expected" : {
+        "arabic" : "Films 1949",
+        "arabicName" : null,
+        "automatic" : "Films 1949",
+        "group" : "more",
+        "latestYear" : null,
+        "latinName" : "Films 1949",
+        "yearLabel" : null
+      },
+      "input" : "Films 1949",
+      "name" : "Films 1949"
+    },
+    {
+      "expected" : {
+        "arabic" : "Top 10",
+        "arabicName" : null,
+        "automatic" : "Top 10",
+        "group" : "featured",
+        "latestYear" : null,
+        "latinName" : "Top 10",
+        "yearLabel" : null
+      },
+      "input" : "Top 10",
+      "name" : "Top 10"
+    },
+    {
+      "expected" : {
+        "arabic" : "Best of 2025",
+        "arabicName" : null,
+        "automatic" : "Best of 2025",
+        "group" : "featured",
+        "latestYear" : 2025,
+        "latinName" : "Best of 2025",
+        "yearLabel" : "2025"
+      },
+      "input" : "Best of 2025",
+      "name" : "Best of 2025"
+    },
+    {
+      "expected" : {
+        "arabic" : "A–Z",
+        "arabicName" : null,
+        "automatic" : "A–Z",
+        "group" : "more",
+        "latestYear" : null,
+        "latinName" : "A–Z",
+        "yearLabel" : null
+      },
+      "input" : "A–Z",
+      "name" : "A–Z"
+    },
+    {
+      "expected" : {
+        "arabic" : "Disney",
+        "arabicName" : null,
+        "automatic" : "Disney",
+        "group" : "platforms",
+        "latestYear" : null,
+        "latinName" : "Disney",
+        "yearLabel" : null
+      },
+      "input" : "Disney",
+      "name" : "Disney"
+    },
+    {
+      "expected" : {
+        "arabic" : "HBO Max",
+        "arabicName" : null,
+        "automatic" : "HBO Max",
+        "group" : "platforms",
+        "latestYear" : null,
+        "latinName" : "HBO Max",
+        "yearLabel" : null
+      },
+      "input" : "HBO Max",
+      "name" : "HBO Max"
+    },
+    {
+      "expected" : {
+        "arabic" : "Amazon Prime Video",
+        "arabicName" : null,
+        "automatic" : "Amazon Prime Video",
+        "group" : "platforms",
+        "latestYear" : null,
+        "latinName" : "Amazon Prime Video",
+        "yearLabel" : null
+      },
+      "input" : "Amazon Prime Video",
+      "name" : "Amazon Prime Video"
+    },
+    {
+      "expected" : {
+        "arabic" : "Apple TV+",
+        "arabicName" : null,
+        "automatic" : "Apple TV+",
+        "group" : "platforms",
+        "latestYear" : null,
+        "latinName" : "Apple TV+",
+        "yearLabel" : null
+      },
+      "input" : "Apple TV+",
+      "name" : "Apple TV+"
+    },
+    {
+      "expected" : {
+        "arabic" : "مدبلج",
+        "arabicName" : "مدبلج",
+        "automatic" : "Arabic Dubbed",
+        "group" : "languages",
+        "latestYear" : null,
+        "latinName" : "Arabic Dubbed",
+        "yearLabel" : null
+      },
+      "input" : "Arabic Dubbed - مدبلج",
+      "name" : "Arabic Dubbed - مدبلج"
+    },
+    {
+      "expected" : {
+        "arabic" : "Latin America",
+        "arabicName" : null,
+        "automatic" : "Latin America",
+        "group" : "languages",
+        "latestYear" : null,
+        "latinName" : "Latin America",
+        "yearLabel" : null
+      },
+      "input" : "Latin America",
+      "name" : "Latin America"
+    },
+    {
+      "expected" : {
+        "arabic" : "هندي",
+        "arabicName" : "هندي",
+        "automatic" : "Indian Movies",
+        "group" : "languages",
+        "latestYear" : null,
+        "latinName" : "Indian Movies",
+        "yearLabel" : null
+      },
+      "input" : "Indian Movies - هندي",
+      "name" : "Indian Movies - هندي"
+    },
+    {
+      "expected" : {
+        "arabic" : "Cartoon Network",
+        "arabicName" : null,
+        "automatic" : "Cartoon Network",
+        "group" : "kids",
+        "latestYear" : null,
+        "latinName" : "Cartoon Network",
+        "yearLabel" : null
+      },
+      "input" : "Cartoon Network",
+      "name" : "Cartoon Network"
+    },
+    {
+      "expected" : {
+        "arabic" : "كرة القدم",
+        "arabicName" : "كرة القدم",
+        "automatic" : "Football",
+        "group" : "sports",
+        "latestYear" : null,
+        "latinName" : "Football",
+        "yearLabel" : null
+      },
+      "input" : "Football - كرة القدم",
+      "name" : "Football - كرة القدم"
+    },
+    {
+      "expected" : {
+        "arabic" : "NBA League Pass",
+        "arabicName" : null,
+        "automatic" : "NBA League Pass",
+        "group" : "sports",
+        "latestYear" : null,
+        "latinName" : "NBA League Pass",
+        "yearLabel" : null
+      },
+      "input" : "NBA League Pass",
+      "name" : "NBA League Pass"
+    },
+    {
+      "expected" : {
+        "arabic" : "Formula 1",
+        "arabicName" : null,
+        "automatic" : "Formula 1",
+        "group" : "more",
+        "latestYear" : null,
+        "latinName" : "Formula 1",
+        "yearLabel" : null
+      },
+      "input" : "Formula 1",
+      "name" : "Formula 1"
+    },
+    {
+      "expected" : {
+        "arabic" : "Radio",
+        "arabicName" : null,
+        "automatic" : "Radio",
+        "group" : "genres",
+        "latestYear" : null,
+        "latinName" : "Radio",
+        "yearLabel" : null
+      },
+      "input" : "Radio",
+      "name" : "Radio"
+    },
+    {
+      "expected" : {
+        "arabic" : "قرآن",
+        "arabicName" : "قرآن",
+        "automatic" : "Quran",
+        "group" : "genres",
+        "latestYear" : null,
+        "latinName" : "Quran",
+        "yearLabel" : null
+      },
+      "input" : "Quran - قرآن",
+      "name" : "Quran - قرآن"
+    },
+    {
+      "expected" : {
+        "arabic" : "Islamic",
+        "arabicName" : null,
+        "automatic" : "Islamic",
+        "group" : "genres",
+        "latestYear" : null,
+        "latinName" : "Islamic",
+        "yearLabel" : null
+      },
+      "input" : "Islamic",
+      "name" : "Islamic"
+    },
+    {
+      "expected" : {
+        "arabic" : "Music Videos",
+        "arabicName" : null,
+        "automatic" : "Music Videos",
+        "group" : "genres",
+        "latestYear" : null,
+        "latinName" : "Music Videos",
+        "yearLabel" : null
+      },
+      "input" : "Music Videos",
+      "name" : "Music Videos"
+    },
+    {
+      "expected" : {
+        "arabic" : "Talk Shows",
+        "arabicName" : null,
+        "automatic" : "Talk Shows",
+        "group" : "genres",
+        "latestYear" : null,
+        "latinName" : "Talk Shows",
+        "yearLabel" : null
+      },
+      "input" : "Talk Shows",
+      "name" : "Talk Shows"
+    },
+    {
+      "expected" : {
+        "arabic" : "Family Movies",
+        "arabicName" : null,
+        "automatic" : "Family Movies",
+        "group" : "genres",
+        "latestYear" : null,
+        "latinName" : "Family Movies",
+        "yearLabel" : null
+      },
+      "input" : "Family Movies",
+      "name" : "Family Movies"
+    },
+    {
+      "expected" : {
+        "arabic" : "War Movies",
+        "arabicName" : null,
+        "automatic" : "War Movies",
+        "group" : "genres",
+        "latestYear" : null,
+        "latinName" : "War Movies",
+        "yearLabel" : null
+      },
+      "input" : "War Movies",
+      "name" : "War Movies"
+    },
+    {
+      "expected" : {
+        "arabic" : "Thriller",
+        "arabicName" : null,
+        "automatic" : "Thriller",
+        "group" : "genres",
+        "latestYear" : null,
+        "latinName" : "Thriller",
+        "yearLabel" : null
+      },
+      "input" : "Thriller",
+      "name" : "Thriller"
+    },
+    {
+      "expected" : {
+        "arabic" : "Mystery",
+        "arabicName" : null,
+        "automatic" : "Mystery",
+        "group" : "genres",
+        "latestYear" : null,
+        "latinName" : "Mystery",
+        "yearLabel" : null
+      },
+      "input" : "Mystery",
+      "name" : "Mystery"
+    },
+    {
+      "expected" : {
+        "arabic" : "كوميدي",
+        "arabicName" : "كوميدي",
+        "automatic" : "Comedy",
+        "group" : "genres",
+        "latestYear" : null,
+        "latinName" : "Comedy",
+        "yearLabel" : null
+      },
+      "input" : "Comedy - كوميدي",
+      "name" : "Comedy - كوميدي"
+    },
+    {
+      "expected" : {
+        "arabic" : "Romance",
+        "arabicName" : null,
+        "automatic" : "Romance",
+        "group" : "genres",
+        "latestYear" : null,
+        "latinName" : "Romance",
+        "yearLabel" : null
+      },
+      "input" : "Romance",
+      "name" : "Romance"
+    },
+    {
+      "expected" : {
+        "arabic" : "Science Fiction",
+        "arabicName" : null,
+        "automatic" : "Science Fiction",
+        "group" : "genres",
+        "latestYear" : null,
+        "latinName" : "Science Fiction",
+        "yearLabel" : null
+      },
+      "input" : "Science Fiction",
+      "name" : "Science Fiction"
+    },
+    {
+      "expected" : {
+        "arabic" : "History Channel",
+        "arabicName" : null,
+        "automatic" : "History Channel",
+        "group" : "genres",
+        "latestYear" : null,
+        "latinName" : "History Channel",
+        "yearLabel" : null
+      },
+      "input" : "History Channel",
+      "name" : "History Channel"
+    },
+    {
+      "expected" : {
+        "arabic" : "Documentary",
+        "arabicName" : null,
+        "automatic" : "Documentary",
+        "group" : "genres",
+        "latestYear" : null,
+        "latinName" : "Documentary",
+        "yearLabel" : null
+      },
+      "input" : "Documentary",
+      "name" : "Documentary"
+    },
+    {
+      "expected" : {
+        "arabic" : "News",
+        "arabicName" : null,
+        "automatic" : "News",
+        "group" : "genres",
+        "latestYear" : null,
+        "latinName" : "News",
+        "yearLabel" : null
+      },
+      "input" : "News",
+      "name" : "News"
+    },
+    {
+      "expected" : {
+        "arabic" : "Learn English",
+        "arabicName" : null,
+        "automatic" : "Learn English",
+        "group" : "genres",
+        "latestYear" : null,
+        "latinName" : "Learn English",
+        "yearLabel" : null
+      },
+      "input" : "Learn English",
+      "name" : "Learn English"
+    },
+    {
+      "expected" : {
+        "arabic" : "Medical Series",
+        "arabicName" : null,
+        "automatic" : "Medical Series",
+        "group" : "genres",
+        "latestYear" : null,
+        "latinName" : "Medical Series",
+        "yearLabel" : null
+      },
+      "input" : "Medical Series",
+      "name" : "Medical Series"
+    },
+    {
+      "expected" : {
+        "arabic" : "   ",
+        "arabicName" : null,
+        "automatic" : "   ",
+        "group" : "more",
+        "latestYear" : null,
+        "latinName" : null,
+        "yearLabel" : null
+      },
+      "input" : "   ",
+      "name" : "   "
+    },
+    {
+      "expected" : {
+        "arabic" : "",
+        "arabicName" : null,
+        "automatic" : "",
+        "group" : "more",
+        "latestYear" : null,
+        "latinName" : null,
+        "yearLabel" : null
+      },
+      "input" : "",
+      "name" : "empty"
+    },
+    {
+      "expected" : {
+        "arabic" : "---",
+        "arabicName" : null,
+        "automatic" : "---",
+        "group" : "more",
+        "latestYear" : null,
+        "latinName" : null,
+        "yearLabel" : null
+      },
+      "input" : "---",
+      "name" : "---"
+    },
+    {
+      "expected" : {
+        "arabic" : "[ ]",
+        "arabicName" : null,
+        "automatic" : "[ ]",
+        "group" : "more",
+        "latestYear" : null,
+        "latinName" : null,
+        "yearLabel" : null
+      },
+      "input" : "[ ]",
+      "name" : "[ ]"
+    },
+    {
+      "expected" : {
+        "arabic" : "2024",
+        "arabicName" : null,
+        "automatic" : "2024",
+        "group" : "featured",
+        "latestYear" : 2024,
+        "latinName" : null,
+        "yearLabel" : "2024"
+      },
+      "input" : "2024",
+      "name" : "2024"
+    },
+    {
+      "expected" : {
+        "arabic" : "Movies · 4K 2023",
+        "arabicName" : null,
+        "automatic" : "Movies · 4K 2023",
+        "group" : "byYear",
+        "latestYear" : 2023,
+        "latinName" : "Movies · 4K",
+        "yearLabel" : "2023"
+      },
+      "input" : "Movies | 2023 | 4K",
+      "name" : "Movies | 2023 | 4K"
+    },
+    {
+      "expected" : {
+        "arabic" : "مسلسلات رمضان",
+        "arabicName" : "مسلسلات رمضان",
+        "automatic" : "مسلسلات رمضان",
+        "group" : "featured",
+        "latestYear" : null,
+        "latinName" : null,
+        "yearLabel" : null
+      },
+      "input" : "مسلسلات رمضان ٢٠٢٦",
+      "name" : "مسلسلات رمضان ٢٠٢٦"
+    },
+    {
+      "expected" : {
+        "arabic" : "أفلام عربية قديمة",
+        "arabicName" : "أفلام عربية قديمة",
+        "automatic" : "أفلام عربية قديمة",
+        "group" : "languages",
+        "latestYear" : null,
+        "latinName" : null,
+        "yearLabel" : null
+      },
+      "input" : "أفلام عربية قديمة",
+      "name" : "أفلام عربية قديمة"
+    },
+    {
+      "expected" : {
+        "arabic" : "افلام اجنبية جديدة",
+        "arabicName" : "افلام اجنبية جديدة",
+        "automatic" : "افلام اجنبية جديدة",
+        "group" : "featured",
+        "latestYear" : null,
+        "latinName" : null,
+        "yearLabel" : null
+      },
+      "input" : "افلام اجنبية جديدة",
+      "name" : "افلام اجنبية جديدة"
+    },
+    {
+      "expected" : {
+        "arabic" : "مسلسلات",
+        "arabicName" : "مسلسلات",
+        "automatic" : "Series",
+        "group" : "more",
+        "latestYear" : null,
+        "latinName" : "Series",
+        "yearLabel" : null
+      },
+      "input" : "Series - مسلسلات",
+      "name" : "Series - مسلسلات"
+    },
+    {
+      "expected" : {
+        "arabic" : "أطفال مدبلج",
+        "arabicName" : "أطفال مدبلج",
+        "automatic" : "Kids",
+        "group" : "kids",
+        "latestYear" : null,
+        "latinName" : "Kids",
+        "yearLabel" : null
+      },
+      "input" : "Kids - أطفال مدبلج",
+      "name" : "Kids - أطفال مدبلج"
+    },
+    {
+      "expected" : {
+        "arabic" : "beIN SPORTS 4K",
+        "arabicName" : null,
+        "automatic" : "beIN SPORTS 4K",
+        "group" : "sports",
+        "latestYear" : null,
+        "latinName" : "beIN SPORTS 4K",
+        "yearLabel" : null
+      },
+      "input" : "beIN SPORTS 4K",
+      "name" : "beIN SPORTS 4K"
+    },
+    {
+      "expected" : {
+        "arabic" : "Shoof Max",
+        "arabicName" : null,
+        "automatic" : "Shoof Max",
+        "group" : "platforms",
+        "latestYear" : null,
+        "latinName" : "Shoof Max",
+        "yearLabel" : null
+      },
+      "input" : "Shoof Max",
+      "name" : "Shoof Max"
+    },
+    {
+      "expected" : {
+        "arabic" : "Rotana Cinema",
+        "arabicName" : null,
+        "automatic" : "Rotana Cinema",
+        "group" : "platforms",
+        "latestYear" : null,
+        "latinName" : "Rotana Cinema",
+        "yearLabel" : null
+      },
+      "input" : "Rotana Cinema",
+      "name" : "Rotana Cinema"
+    },
+    {
+      "expected" : {
+        "arabic" : "MBC Shahid",
+        "arabicName" : null,
+        "automatic" : "MBC Shahid",
+        "group" : "platforms",
+        "latestYear" : null,
+        "latinName" : "MBC Shahid",
+        "yearLabel" : null
+      },
+      "input" : "MBC Shahid",
+      "name" : "MBC Shahid"
+    },
+    {
+      "expected" : {
+        "arabic" : "Art Aflam",
+        "arabicName" : null,
+        "automatic" : "Art Aflam",
+        "group" : "platforms",
+        "latestYear" : null,
+        "latinName" : "Art Aflam",
+        "yearLabel" : null
+      },
+      "input" : "Art Aflam",
+      "name" : "Art Aflam"
+    }
+  ],
+  "function" : "CategoryClassifier.classify",
+  "generatedBy" : "swift",
+  "shape" : "string -> {group, latinName, arabicName, yearLabel, latestYear, automatic, arabic}",
+  "swiftCommit" : "b7a9df4"
+}

@@ -163,6 +163,13 @@ struct VectorTests {
             let root = try JSONSerialization.jsonObject(with: data) as? [String: Any]
             return LenientJSON.objects(root?["v"]).map { $0.string("id") ?? "?" }
         },
+        "CategoryClassifier.classify": { input in
+            let f = CategoryClassifier.classify(try string(input))
+            func opt(_ v: Any?) -> Any { v ?? NSNull() }
+            return ["group": f.group.rawValue, "latinName": opt(f.latinName), "arabicName": opt(f.arabicName),
+                    "yearLabel": opt(f.yearLabel), "latestYear": opt(f.latestYear),
+                    "automatic": f.displayName(.automatic), "arabic": f.displayName(.arabic)] as [String: Any]
+        },
         "XtreamClient.urls": { input in
             let o = try object(input)
             let client = XtreamClient(base: try string(o["base"] as Any), username: try string(o["username"] as Any),
