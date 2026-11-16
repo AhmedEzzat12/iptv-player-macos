@@ -7,8 +7,22 @@ work: `scripts/android-backlog.sh`. Mechanism: `docs/superpowers/specs/google-tv
 
 | Area | Swift file(s) | Kotlin file(s) | Ported from | Notes |
 |---|---|---|---|---|
-
-(Filled in from phase 2 on, one row per ported area.)
+| Stable ids | `Parsing/StableID.swift` | `core/…/parsing/StableID.kt` | 666f598 | vectors |
+| Channel names | `Parsing/ChannelNameNormalizer.swift` | `parsing/ChannelNameNormalizer.kt` | 666f598 | vectors; folding rule in appendix A |
+| Catchup URLs | `Parsing/CatchupURLBuilder.swift` | `parsing/CatchupURLBuilder.kt` | 666f598 | vectors |
+| M3U | `Parsing/M3UParser.swift` (+ `TitleParser`) | `parsing/M3UParser.kt`, `TitleParser.kt` | 666f598 | 11 tests + vectors |
+| XMLTV, gzip | `Parsing/XMLTVParser.swift`, `Gzip.swift` | `parsing/XMLTVParser.kt`, `Gzip.kt` | 666f598 | 9 tests + vectors |
+| Guide parse step | `Services/GuideService.swift` (`parse`) | `services/GuideParse.kt` | 666f598 | no smart matching (v1) |
+| JSON, HTTP | `Networking/LenientJSON.swift`, `HTTPClient.swift` | `net/LenientJson.kt`, `HttpClient.kt`, `UrlEncoding.kt` | 666f598 | vectors; OkHttp |
+| Xtream | `Providers/XtreamClient.swift` | `providers/XtreamClient.kt`, `XtreamURLs.kt` | 666f598 | mock-server tests + vectors |
+| Stalker | `Providers/StalkerClient.swift` | `providers/StalkerClient.kt` | 666f598 | mock-server tests |
+| Models | `Models/Source, Channel, Program, VOD` | `models/*.kt` | 666f598 | |
+| Category grouping | `Models/CategoryGrouping.swift` | `models/CategoryGrouping.kt` | 666f598 | vectors |
+| Episode navigation | `Models/EpisodeNavigation.swift` | `models/EpisodeNavigation.kt` | 666f598 | 13 tests |
+| Continue Watching | `Models/SmartContinueWatching.swift` | `models/SmartContinueWatching.kt` | 666f598 | 21 tests; DB suite in phase 3 |
+| Skip segments | `Skip/SkipSegments.swift` | `skip/SkipSegments.kt` | 666f598 | vectors; SkipLearner not in v1 |
+| Fingerprint | `CloudSync/SourceFingerprint.swift` | `sync/SourceFingerprint.kt` | 666f598 | vectors |
+| Metadata, skip lookups | `Metadata/*`, `Skip/SkipSegmentService.swift` | — | — | **not yet ported** (rest of phase 2) |
 
 ## Deliberate differences
 
