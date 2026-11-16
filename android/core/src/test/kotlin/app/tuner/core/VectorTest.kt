@@ -120,7 +120,14 @@ class VectorTest {
         },
         "JSONObject.accessors" to { input ->
             val o = app.tuner.core.net.LenientObject(input.jsonObject)
-            obj("string" to o.string("v"), "int" to o.int("v"), "double" to o.double("v"), "bool" to o.bool("v"))
+            val d = o.double("v")
+            val double: Any? = when {
+                d == null -> null
+                d.isNaN() -> "nan"
+                d.isInfinite() -> if (d > 0) "inf" else "-inf"
+                else -> d
+            }
+            obj("string" to o.string("v"), "int" to o.int("v"), "double" to double, "bool" to o.bool("v"))
         },
         "LenientJSON.objects" to { input ->
             JsonArray(app.tuner.core.net.LenientJson.objects(input).map { JsonPrimitive(it.string("id") ?: "?") })

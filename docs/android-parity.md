@@ -30,6 +30,3 @@ work: `scripts/android-backlog.sh`. Mechanism: `docs/superpowers/specs/google-tv
   and TS for mpv. ExoPlayer plays raw TS well and starts faster.
 - **Quick reopen default.** A closed movie or episode stays ready for 2 minutes by default on TV (Apple: 10). TV boxes
   have little RAM. The setting offers the same choices.
-- **Lenient JSON `int` on "nan"/"inf".** Swift's `JSONObject.int` traps (crashes) converting a non-finite double to
-  `Int`; Kotlin returns null. Those inputs are left out of `Tests/Vectors/lenient-json/accessors.json`. The Swift crash
-  is a bug worth fixing in the Apple apps (reported 2026-11-16).

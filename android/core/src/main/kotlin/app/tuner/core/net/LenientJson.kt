@@ -36,7 +36,11 @@ public class LenientObject(public val raw: JsonObject) {
         val p = primitive(key) ?: return null
         if (p.isString) {
             val t = p.content.trim(' ', '\t')
-            return t.toIntStrict() ?: t.toSwiftDouble()?.takeIf { it.isFinite() }?.toInt()
+            // Truncate "3.7" to 3; "nan", "inf" and values beyond Swift's Int range ("1e30") are null, as in Swift.
+            return t.toIntStrict() ?: t.toSwiftDouble()?.let { d ->
+                val whole = if (d < 0) kotlin.math.ceil(d) else kotlin.math.floor(d)
+                if (!whole.isFinite() || whole < -9.223372036854776E18 || whole >= 9.223372036854776E18) null else whole.toLong().toInt()
+            }
         }
         p.booleanOrNull?.let { return if (it) 1 else 0 }
         return p.doubleOrNull?.takeIf { it.isFinite() }?.toLong()?.toInt()

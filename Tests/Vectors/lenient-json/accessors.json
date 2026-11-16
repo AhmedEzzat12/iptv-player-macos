@@ -339,10 +339,58 @@
         "v" : "٥"
       },
       "name" : "arabic digits"
+    },
+    {
+      "expected" : {
+        "bool" : false,
+        "double" : "nan",
+        "int" : null,
+        "string" : "nan"
+      },
+      "input" : {
+        "v" : "nan"
+      },
+      "name" : "string nan"
+    },
+    {
+      "expected" : {
+        "bool" : false,
+        "double" : "inf",
+        "int" : null,
+        "string" : "inf"
+      },
+      "input" : {
+        "v" : "inf"
+      },
+      "name" : "string inf"
+    },
+    {
+      "expected" : {
+        "bool" : false,
+        "double" : "-inf",
+        "int" : null,
+        "string" : "-Infinity"
+      },
+      "input" : {
+        "v" : "-Infinity"
+      },
+      "name" : "string -Infinity"
+    },
+    {
+      "expected" : {
+        "bool" : false,
+        "double" : 1e+30,
+        "int" : null,
+        "string" : "1e30"
+      },
+      "input" : {
+        "v" : "1e30"
+      },
+      "name" : "string huge"
     }
   ],
   "function" : "JSONObject.accessors",
   "generatedBy" : "swift",
   "shape" : "{v: any} -> {string, int, double (non-finite as text), bool}",
-  "swiftCommit" : "fd41197"
+  "swiftCommit" : "0b9c4a0"
 }
