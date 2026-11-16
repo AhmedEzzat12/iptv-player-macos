@@ -209,6 +209,15 @@ struct VectorTests {
             }
             return out
         },
+        "SourceFingerprint.of": { input in
+            let o = try object(input)
+            let kind = Source.Kind(rawValue: try string(o["kind"] as Any)) ?? .m3u
+            let url = try string(o["url"] as Any)
+            let pub = SourceFingerprint.publicURL(url)
+            return ["fingerprint": SourceFingerprint.of(kind: kind, url: url, username: o["username"] as? String, mac: o["mac"] as? String),
+                    "normalizedURL": SourceFingerprint.normalizedURL(url), "publicURL": pub.url, "removedSecret": pub.removedSecret]
+                as [String: Any]
+        },
         "XtreamClient.urls": { input in
             let o = try object(input)
             let client = XtreamClient(base: try string(o["base"] as Any), username: try string(o["username"] as Any),

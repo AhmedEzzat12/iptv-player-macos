@@ -1,0 +1,398 @@
+{
+  "cases" : [
+    {
+      "expected" : {
+        "fingerprint" : "417b8a1d31b7c2b3a0fb",
+        "normalizedURL" : "http://example.com/get.php?output=ts&type=m3u_plus&username=bob",
+        "publicURL" : "http://Example.COM:80/get.php?username=bob&type=m3u_plus&output=ts",
+        "removedSecret" : true
+      },
+      "input" : {
+        "kind" : "m3u",
+        "mac" : null,
+        "url" : "http://Example.COM:80/get.php?username=bob&password=secret&type=m3u_plus&output=ts",
+        "username" : null
+      },
+      "name" : "m3u 'http://Example.COM:80/get.php?username=bob&password=secret&type=m"
+    },
+    {
+      "expected" : {
+        "fingerprint" : "4a9ddf24368a65d7f95d",
+        "normalizedURL" : "https://example.com/list.m3u",
+        "publicURL" : "https://example.com:443/list.m3u/",
+        "removedSecret" : false
+      },
+      "input" : {
+        "kind" : "m3u",
+        "mac" : null,
+        "url" : "https://example.com:443/list.m3u/",
+        "username" : null
+      },
+      "name" : "m3u 'https://example.com:443/list.m3u/'"
+    },
+    {
+      "expected" : {
+        "fingerprint" : "e6cc3e13bf319eeaa7b5",
+        "normalizedURL" : "https://example.com:8443/list.m3u?A=0&a=1&b=2",
+        "publicURL" : "https://example.com:8443/list.m3u?b=2&a=1&A=0",
+        "removedSecret" : false
+      },
+      "input" : {
+        "kind" : "m3u",
+        "mac" : null,
+        "url" : "https://example.com:8443/list.m3u?b=2&a=1&A=0",
+        "username" : null
+      },
+      "name" : "m3u 'https://example.com:8443/list.m3u?b=2&a=1&A=0'"
+    },
+    {
+      "expected" : {
+        "fingerprint" : "597fe4fe1e06b8437e56",
+        "normalizedURL" : "http://panel.tv:8080",
+        "publicURL" : "http://panel.tv:8080/",
+        "removedSecret" : false
+      },
+      "input" : {
+        "kind" : "xtream",
+        "mac" : null,
+        "url" : "http://panel.tv:8080/",
+        "username" : "Bob"
+      },
+      "name" : "xtream 'http://panel.tv:8080/'"
+    },
+    {
+      "expected" : {
+        "fingerprint" : "597fe4fe1e06b8437e56",
+        "normalizedURL" : "http://panel.tv:8080",
+        "publicURL" : "http://user@panel.tv:8080/",
+        "removedSecret" : true
+      },
+      "input" : {
+        "kind" : "xtream",
+        "mac" : null,
+        "url" : "http://user:pass@panel.tv:8080/",
+        "username" : "bob"
+      },
+      "name" : "xtream 'http://user:pass@panel.tv:8080/'"
+    },
+    {
+      "expected" : {
+        "fingerprint" : "8cc8a7fec0ab2d9dd15b",
+        "normalizedURL" : "http://portal.tv/c",
+        "publicURL" : "http://portal.tv/c/",
+        "removedSecret" : false
+      },
+      "input" : {
+        "kind" : "stalker",
+        "mac" : " 00:1A:79:AB:CD:EF ",
+        "url" : "http://portal.tv/c/",
+        "username" : null
+      },
+      "name" : "stalker 'http://portal.tv/c/'"
+    },
+    {
+      "expected" : {
+        "fingerprint" : "8195b532b695400aef98",
+        "normalizedURL" : "http://h/playlist/USER/PASSWORD/m3u_plus",
+        "publicURL" : "http://h/playlist/USER/PASSWORD/m3u_plus",
+        "removedSecret" : true
+      },
+      "input" : {
+        "kind" : "m3u",
+        "mac" : null,
+        "url" : "http://h/playlist/alice/s3cret/m3u_plus",
+        "username" : null
+      },
+      "name" : "m3u 'http://h/playlist/alice/s3cret/m3u_plus'"
+    },
+    {
+      "expected" : {
+        "fingerprint" : "60be95bfd0d4a2009e4b",
+        "normalizedURL" : "http://h/live/USER/PASSWORD/1.ts",
+        "publicURL" : "http://h/live/USER/PASSWORD/1.ts",
+        "removedSecret" : false
+      },
+      "input" : {
+        "kind" : "m3u",
+        "mac" : null,
+        "url" : "http://h/live/USER/PASSWORD/1.ts",
+        "username" : null
+      },
+      "name" : "m3u 'http://h/live/USER/PASSWORD/1.ts'"
+    },
+    {
+      "expected" : {
+        "fingerprint" : "9769569152791d148aef",
+        "normalizedURL" : "http://h/m3u/USER/PASSWORD",
+        "publicURL" : "http://h/m3u/USER/PASSWORD",
+        "removedSecret" : true
+      },
+      "input" : {
+        "kind" : "m3u",
+        "mac" : null,
+        "url" : "http://h/m3u/u/p",
+        "username" : null
+      },
+      "name" : "m3u 'http://h/m3u/u/p'"
+    },
+    {
+      "expected" : {
+        "fingerprint" : "d34c98ad52bfeac92cf4",
+        "normalizedURL" : "http://h/get/u",
+        "publicURL" : "http://h/get/u/",
+        "removedSecret" : false
+      },
+      "input" : {
+        "kind" : "m3u",
+        "mac" : null,
+        "url" : "http://h/get/u/",
+        "username" : null
+      },
+      "name" : "m3u 'http://h/get/u/'"
+    },
+    {
+      "expected" : {
+        "fingerprint" : "4cf20422b695dbcdae06",
+        "normalizedURL" : "http://h/x.m3u?channel=7",
+        "publicURL" : "http://h/x.m3u?channel=7",
+        "removedSecret" : true
+      },
+      "input" : {
+        "kind" : "m3u",
+        "mac" : null,
+        "url" : "http://h/x.m3u?token=abc&api_key=1&key=2&p=3&pwd=4&sig=5&channel=7",
+        "username" : null
+      },
+      "name" : "m3u 'http://h/x.m3u?token=abc&api_key=1&key=2&p=3&pwd=4&sig=5&channel="
+    },
+    {
+      "expected" : {
+        "fingerprint" : "466af6d50eba70b2be7c",
+        "normalizedURL" : "http://h/x.m3u?q",
+        "publicURL" : "http://h/x.m3u?q",
+        "removedSecret" : true
+      },
+      "input" : {
+        "kind" : "m3u",
+        "mac" : null,
+        "url" : "http://h/x.m3u?Auth=1&authority=2&q",
+        "username" : null
+      },
+      "name" : "m3u 'http://h/x.m3u?Auth=1&authority=2&q'"
+    },
+    {
+      "expected" : {
+        "fingerprint" : "9777a1e3be0995cedd2b",
+        "normalizedURL" : "http://h/x.m3u?e=%26&f=%3D&g=+&name=a%20b&v=c+d",
+        "publicURL" : "http://h/x.m3u?name=a%20b&v=c+d&e=%26&f=%3D&g=%2B",
+        "removedSecret" : false
+      },
+      "input" : {
+        "kind" : "m3u",
+        "mac" : null,
+        "url" : "http://h/x.m3u?name=a%20b&v=c+d&e=%26&f=%3D&g=%2B",
+        "username" : null
+      },
+      "name" : "m3u 'http://h/x.m3u?name=a%20b&v=c+d&e=%26&f=%3D&g=%2B'"
+    },
+    {
+      "expected" : {
+        "fingerprint" : "9088743e1606dcd8b905",
+        "normalizedURL" : "http://h/x.m3u?z=1",
+        "publicURL" : "http://h/x.m3u?z=1#frag",
+        "removedSecret" : false
+      },
+      "input" : {
+        "kind" : "m3u",
+        "mac" : null,
+        "url" : "http://h/x.m3u?z=1#frag",
+        "username" : null
+      },
+      "name" : "m3u 'http://h/x.m3u?z=1#frag'"
+    },
+    {
+      "expected" : {
+        "fingerprint" : "15c29397cfd20f8716ba",
+        "normalizedURL" : "file:///storage/emulated/0/list.m3u",
+        "publicURL" : "file:///storage/emulated/0/list.m3u",
+        "removedSecret" : false
+      },
+      "input" : {
+        "kind" : "m3u",
+        "mac" : null,
+        "url" : "file:///storage/emulated/0/list.m3u",
+        "username" : null
+      },
+      "name" : "m3u 'file:///storage/emulated/0/list.m3u'"
+    },
+    {
+      "expected" : {
+        "fingerprint" : "60d115c17eee707aed60",
+        "normalizedURL" : "http://h/Path",
+        "publicURL" : "HTTP://H/Path/",
+        "removedSecret" : false
+      },
+      "input" : {
+        "kind" : "m3u",
+        "mac" : null,
+        "url" : "  HTTP://H/Path/  ",
+        "username" : null
+      },
+      "name" : "m3u '  HTTP://H/Path/  '"
+    },
+    {
+      "expected" : {
+        "fingerprint" : "47b45b75069c0ce6bed5",
+        "normalizedURL" : "not a url",
+        "publicURL" : "not a url",
+        "removedSecret" : false
+      },
+      "input" : {
+        "kind" : "m3u",
+        "mac" : null,
+        "url" : "not a url",
+        "username" : null
+      },
+      "name" : "m3u 'not a url'"
+    },
+    {
+      "expected" : {
+        "fingerprint" : "af52b8329cbeeaeda684",
+        "normalizedURL" : "http://h/a%20b/c.m3u",
+        "publicURL" : "http://h/a b/c.m3u",
+        "removedSecret" : false
+      },
+      "input" : {
+        "kind" : "m3u",
+        "mac" : null,
+        "url" : "http://h/a b/c.m3u",
+        "username" : null
+      },
+      "name" : "m3u 'http://h/a b/c.m3u'"
+    },
+    {
+      "expected" : {
+        "fingerprint" : "9377de13d78445312312",
+        "normalizedURL" : "http://h/%C3%BC/list.m3u?x=%C3%A9",
+        "publicURL" : "http://h/ü/list.m3u?x=é",
+        "removedSecret" : false
+      },
+      "input" : {
+        "kind" : "m3u",
+        "mac" : null,
+        "url" : "http://h/ü/list.m3u?x=é",
+        "username" : null
+      },
+      "name" : "m3u 'http://h/ü/list.m3u?x=é'"
+    },
+    {
+      "expected" : {
+        "fingerprint" : "fca4a330a16d63f2c0f3",
+        "normalizedURL" : "http://[::1]:8080/list.m3u",
+        "publicURL" : "http://[::1]:8080/list.m3u",
+        "removedSecret" : false
+      },
+      "input" : {
+        "kind" : "m3u",
+        "mac" : null,
+        "url" : "http://[::1]:8080/list.m3u",
+        "username" : null
+      },
+      "name" : "m3u 'http://[::1]:8080/list.m3u'"
+    },
+    {
+      "expected" : {
+        "fingerprint" : "8d75a6f24dfff6bc909b",
+        "normalizedURL" : "http://h",
+        "publicURL" : "http://h:80",
+        "removedSecret" : false
+      },
+      "input" : {
+        "kind" : "m3u",
+        "mac" : null,
+        "url" : "http://h:80",
+        "username" : null
+      },
+      "name" : "m3u 'http://h:80'"
+    },
+    {
+      "expected" : {
+        "fingerprint" : "4413044d11533434db31",
+        "normalizedURL" : "http://h/x",
+        "publicURL" : "http://h/x?",
+        "removedSecret" : false
+      },
+      "input" : {
+        "kind" : "m3u",
+        "mac" : null,
+        "url" : "http://h/x?",
+        "username" : null
+      },
+      "name" : "m3u 'http://h/x?'"
+    },
+    {
+      "expected" : {
+        "fingerprint" : "48559b4e841786da459e",
+        "normalizedURL" : "http://h/x?a=0&a=1&b",
+        "publicURL" : "http://h/x?a=1&a=0&b",
+        "removedSecret" : false
+      },
+      "input" : {
+        "kind" : "m3u",
+        "mac" : null,
+        "url" : "http://h/x?a=1&a=0&b",
+        "username" : null
+      },
+      "name" : "m3u 'http://h/x?a=1&a=0&b'"
+    },
+    {
+      "expected" : {
+        "fingerprint" : "ee57970a4b838cc750c4",
+        "normalizedURL" : "panel.tv:8080",
+        "publicURL" : "panel.tv:8080",
+        "removedSecret" : false
+      },
+      "input" : {
+        "kind" : "xtream",
+        "mac" : null,
+        "url" : "panel.tv:8080",
+        "username" : "u"
+      },
+      "name" : "xtream 'panel.tv:8080'"
+    },
+    {
+      "expected" : {
+        "fingerprint" : "303cfda96f6f4084d26a",
+        "normalizedURL" : "http://h/series/USER/PASSWORD/1.mp4",
+        "publicURL" : "http://h/series/USER/PASSWORD/1.mp4",
+        "removedSecret" : true
+      },
+      "input" : {
+        "kind" : "m3u",
+        "mac" : null,
+        "url" : "http://h/series/u/p/1.mp4?password=x",
+        "username" : null
+      },
+      "name" : "m3u 'http://h/series/u/p/1.mp4?password=x'"
+    },
+    {
+      "expected" : {
+        "fingerprint" : "b428959726677ebf2287",
+        "normalizedURL" : "",
+        "publicURL" : "",
+        "removedSecret" : false
+      },
+      "input" : {
+        "kind" : "m3u",
+        "mac" : null,
+        "url" : "",
+        "username" : null
+      },
+      "name" : "m3u ''"
+    }
+  ],
+  "function" : "SourceFingerprint.of",
+  "generatedBy" : "swift",
+  "shape" : "{kind,url,username?,mac?} -> {fingerprint, normalizedURL, publicURL, removedSecret}",
+  "swiftCommit" : "a84647d"
+}

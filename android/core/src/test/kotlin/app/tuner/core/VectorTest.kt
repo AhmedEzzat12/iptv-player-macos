@@ -167,6 +167,14 @@ class VectorTest {
                 }
             })
         },
+        "SourceFingerprint.of" to { input ->
+            val o = input.jsonObject
+            val kind = app.tuner.core.models.Source.Kind.of(o.string("kind")!!) ?: app.tuner.core.models.Source.Kind.M3U
+            val url = o.string("url") ?: ""
+            val (publicURL, removed) = app.tuner.core.sync.SourceFingerprint.publicURL(url)
+            obj("fingerprint" to app.tuner.core.sync.SourceFingerprint.of(kind, url, o.string("username"), o.string("mac")),
+                "normalizedURL" to app.tuner.core.sync.SourceFingerprint.normalizedURL(url), "publicURL" to publicURL, "removedSecret" to removed)
+        },
         "XtreamClient.urls" to { input ->
             val o = input.jsonObject
             val x = XtreamURLs(o.string("base")!!, o.string("username")!!, o.string("password")!!)
