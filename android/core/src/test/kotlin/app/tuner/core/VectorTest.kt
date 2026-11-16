@@ -182,6 +182,30 @@ class VectorTest {
             obj("fingerprint" to app.tuner.core.sync.SourceFingerprint.of(kind, url, o.string("username"), o.string("mac")),
                 "normalizedURL" to app.tuner.core.sync.SourceFingerprint.normalizedURL(url), "publicURL" to publicURL, "removedSecret" to removed)
         },
+        "TitleMatcher.query" to { input ->
+            val o = input.jsonObject
+            val kind = app.tuner.core.metadata.MediaMetadata.Kind.valueOf(o.string("kind") ?: "movie")
+            val q = app.tuner.core.metadata.TitleMatcher.query(o.string("name")!!, o.string("year"), kind)
+            if (q == null) obj("found" to false)
+            else obj("found" to true, "title" to q.title, "year" to q.year, "literalTitle" to q.literalTitle, "literalYear" to q.literalYear)
+        },
+        "TitleMatcher.titleSimilarity" to { input ->
+            val o = input.jsonObject
+            JsonPrimitive(Math.round(app.tuner.core.metadata.TitleMatcher.titleSimilarity(o.string("a")!!, o.string("b")!!) * 1_000_000) / 1_000_000.0)
+        },
+        "TitleMatcher.bestMatch" to { input ->
+            val o = input.jsonObject
+            val kind = app.tuner.core.metadata.MediaMetadata.Kind.valueOf(o.string("kind") ?: "movie")
+            val q = app.tuner.core.metadata.TitleMatcher.query(o.string("name")!!, o.string("year"), kind)
+            val candidates = o["candidates"]!!.jsonArray.map { c ->
+                val m = c.jsonObject
+                app.tuner.core.metadata.TitleMatcher.Candidate(m["titles"]!!.jsonArray.map { it.jsonPrimitive.content },
+                    (m["year"] as? JsonPrimitive)?.intOrNull, (m["endYear"] as? JsonPrimitive)?.intOrNull)
+            }
+            val best = q?.let { app.tuner.core.metadata.TitleMatcher.bestMatch(it, candidates, kind) }
+            if (best == null) obj("found" to false)
+            else obj("found" to true, "index" to best.first, "score" to Math.round(best.second * 1_000_000) / 1_000_000.0)
+        },
         "XtreamClient.urls" to { input ->
             val o = input.jsonObject
             val x = XtreamURLs(o.string("base")!!, o.string("username")!!, o.string("password")!!)

@@ -1,0 +1,136 @@
+{
+  "cases" : [
+    {
+      "expected" : 0,
+      "input" : {
+        "a" : "Dune",
+        "b" : "Oppenheimer"
+      },
+      "name" : "Dune | Oppenheimer"
+    },
+    {
+      "expected" : 0.64285700000000001,
+      "input" : {
+        "a" : "Matrix Reloaded The",
+        "b" : "The Matrix Reloaded Special"
+      },
+      "name" : "Matrix Reloaded The | The Matrix Reloaded Special"
+    },
+    {
+      "expected" : 0.96999999999999997,
+      "input" : {
+        "a" : "Matrix",
+        "b" : "The Matrix"
+      },
+      "name" : "Matrix | The Matrix"
+    },
+    {
+      "expected" : 0.80000000000000004,
+      "input" : {
+        "a" : "The Matrix",
+        "b" : "The Matrix Reloaded"
+      },
+      "name" : "The Matrix | The Matrix Reloaded"
+    },
+    {
+      "expected" : 1,
+      "input" : {
+        "a" : "The Matrix",
+        "b" : "the matrix"
+      },
+      "name" : "The Matrix | the matrix"
+    },
+    {
+      "expected" : 1,
+      "input" : {
+        "a" : "Rocky II",
+        "b" : "Rocky 2"
+      },
+      "name" : "Rocky II | Rocky 2"
+    },
+    {
+      "expected" : 1,
+      "input" : {
+        "a" : "Ocean's Eleven",
+        "b" : "Oceans Eleven"
+      },
+      "name" : "Ocean's Eleven | Oceans Eleven"
+    },
+    {
+      "expected" : 1,
+      "input" : {
+        "a" : "Fast & Furious",
+        "b" : "Fast and Furious"
+      },
+      "name" : "Fast & Furious | Fast and Furious"
+    },
+    {
+      "expected" : 1,
+      "input" : {
+        "a" : "Amélie",
+        "b" : "Amelie"
+      },
+      "name" : "Amélie | Amelie"
+    },
+    {
+      "expected" : 1,
+      "input" : {
+        "a" : "أفلام",
+        "b" : "افلام"
+      },
+      "name" : "أفلام | افلام"
+    },
+    {
+      "expected" : 0.69999999999999996,
+      "input" : {
+        "a" : "Star Wars Episode IV",
+        "b" : "Star Wars"
+      },
+      "name" : "Star Wars Episode IV | Star Wars"
+    },
+    {
+      "expected" : 0.80000000000000004,
+      "input" : {
+        "a" : "Toy Story",
+        "b" : "Toy Story 4"
+      },
+      "name" : "Toy Story | Toy Story 4"
+    },
+    {
+      "expected" : 0,
+      "input" : {
+        "a" : "Seven",
+        "b" : "Se7en"
+      },
+      "name" : "Seven | Se7en"
+    },
+    {
+      "expected" : 1,
+      "input" : {
+        "a" : "Up",
+        "b" : "Up"
+      },
+      "name" : "Up | Up"
+    },
+    {
+      "expected" : 0,
+      "input" : {
+        "a" : "",
+        "b" : "x"
+      },
+      "name" : " | x"
+    },
+    {
+      "expected" : 0.80000000000000004,
+      "input" : {
+        "a" : "Mission Impossible Dead Reckoning",
+        "b" : "Mission: Impossible – Dead Reckoning Part One"
+      },
+      "name" : "Mission Impossible Dead Reckoning | Mission: Impossible – Dead Reckoning Part One"
+    }
+  ],
+  "function" : "TitleMatcher.titleSimilarity",
+  "generatedBy" : "swift",
+  "shape" : "{a, b} -> number (6 decimals)",
+  "swiftCommit" : "bd4846a"
+}

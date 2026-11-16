@@ -1,0 +1,183 @@
+{
+  "cases" : [
+    {
+      "expected" : {
+        "found" : true,
+        "index" : 1,
+        "score" : 1.1499999999999999
+      },
+      "input" : {
+        "candidates" : [
+          {
+            "titles" : [
+              "Dune"
+            ],
+            "year" : 1984
+          },
+          {
+            "titles" : [
+              "Dune"
+            ],
+            "year" : 2021
+          }
+        ],
+        "kind" : "movie",
+        "name" : "Dune (2021)"
+      },
+      "name" : "exact with year"
+    },
+    {
+      "expected" : {
+        "found" : false
+      },
+      "input" : {
+        "candidates" : [
+          {
+            "titles" : [
+              "Dune"
+            ]
+          }
+        ],
+        "kind" : "movie",
+        "name" : "Dune (2021)"
+      },
+      "name" : "no year candidate"
+    },
+    {
+      "expected" : {
+        "found" : true,
+        "index" : 1,
+        "score" : 1
+      },
+      "input" : {
+        "candidates" : [
+          {
+            "titles" : [
+              "Blade Runner"
+            ],
+            "year" : 1982
+          },
+          {
+            "titles" : [
+              "Blade Runner 2049"
+            ],
+            "year" : 2017
+          }
+        ],
+        "kind" : "movie",
+        "name" : "Blade Runner 2049"
+      },
+      "name" : "literal reading wins"
+    },
+    {
+      "expected" : {
+        "found" : true,
+        "index" : 0,
+        "score" : 1.05
+      },
+      "input" : {
+        "candidates" : [
+          {
+            "endYear" : 2013,
+            "titles" : [
+              "Breaking Bad"
+            ],
+            "year" : 2008
+          }
+        ],
+        "kind" : "series",
+        "name" : "Breaking Bad",
+        "year" : "2010"
+      },
+      "name" : "series run"
+    },
+    {
+      "expected" : {
+        "found" : true,
+        "index" : 0,
+        "score" : 1.05
+      },
+      "input" : {
+        "candidates" : [
+          {
+            "titles" : [
+              "The Simpsons"
+            ],
+            "year" : 1989
+          }
+        ],
+        "kind" : "series",
+        "name" : "The Simpsons",
+        "year" : "2024"
+      },
+      "name" : "running series"
+    },
+    {
+      "expected" : {
+        "found" : true,
+        "index" : 0,
+        "score" : 1
+      },
+      "input" : {
+        "candidates" : [
+          {
+            "titles" : [
+              "Up"
+            ]
+          },
+          {
+            "titles" : [
+              "Up"
+            ]
+          }
+        ],
+        "kind" : "movie",
+        "name" : "Up"
+      },
+      "name" : "ties go first"
+    },
+    {
+      "expected" : {
+        "found" : false
+      },
+      "input" : {
+        "candidates" : [
+          {
+            "titles" : [
+              "Oppenheimer"
+            ],
+            "year" : 2023
+          }
+        ],
+        "kind" : "movie",
+        "name" : "Dune"
+      },
+      "name" : "nothing acceptable"
+    },
+    {
+      "expected" : {
+        "found" : true,
+        "index" : 0,
+        "score" : 1
+      },
+      "input" : {
+        "candidates" : [
+          {
+            "titles" : [
+              "Money Heist",
+              "La Casa de Papel"
+            ],
+            "year" : 2017
+          }
+        ],
+        "kind" : "series",
+        "name" : "La Casa de Papel"
+      },
+      "name" : "alt titles"
+    }
+  ],
+  "function" : "TitleMatcher.bestMatch",
+  "generatedBy" : "swift",
+  "shape" : "{name, year?, kind, candidates} -> {found:false} | {found, index, score}",
+  "swiftCommit" : "bd4846a"
+}

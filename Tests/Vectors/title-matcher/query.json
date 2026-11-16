@@ -1,0 +1,626 @@
+{
+  "cases" : [
+    {
+      "expected" : {
+        "found" : true,
+        "literalTitle" : "Blade Runner 2049",
+        "literalYear" : null,
+        "title" : "Blade Runner",
+        "year" : 2049
+      },
+      "input" : {
+        "kind" : "movie",
+        "name" : "Blade Runner 2049",
+        "year" : null
+      },
+      "name" : "'Blade Runner 2049' None movie"
+    },
+    {
+      "expected" : {
+        "found" : true,
+        "literalTitle" : null,
+        "literalYear" : null,
+        "title" : "The Matrix",
+        "year" : 1999
+      },
+      "input" : {
+        "kind" : "movie",
+        "name" : "EN - The Matrix (1999) [4K]",
+        "year" : null
+      },
+      "name" : "'EN - The Matrix (1999) [4K]' None movie"
+    },
+    {
+      "expected" : {
+        "found" : false
+      },
+      "input" : {
+        "kind" : "movie",
+        "name" : "  ",
+        "year" : null
+      },
+      "name" : "'  ' None movie"
+    },
+    {
+      "expected" : {
+        "found" : false
+      },
+      "input" : {
+        "kind" : "movie",
+        "name" : "4K HDR",
+        "year" : null
+      },
+      "name" : "'4K HDR' None movie"
+    },
+    {
+      "expected" : {
+        "found" : true,
+        "literalTitle" : "Dune Part Two 2024",
+        "literalYear" : null,
+        "title" : "Dune Part Two",
+        "year" : 2024
+      },
+      "input" : {
+        "kind" : "movie",
+        "name" : "4K-Dune Part Two 2024 HDTC",
+        "year" : null
+      },
+      "name" : "'4K-Dune Part Two 2024 HDTC' None movie"
+    },
+    {
+      "expected" : {
+        "found" : true,
+        "literalTitle" : null,
+        "literalYear" : null,
+        "title" : "Breaking Bad",
+        "year" : null
+      },
+      "input" : {
+        "kind" : "series",
+        "name" : "Breaking Bad",
+        "year" : null
+      },
+      "name" : "'Breaking Bad' None series"
+    },
+    {
+      "expected" : {
+        "found" : true,
+        "literalTitle" : null,
+        "literalYear" : null,
+        "title" : "Dune",
+        "year" : 2021
+      },
+      "input" : {
+        "kind" : "movie",
+        "name" : "Dune (2021)",
+        "year" : null
+      },
+      "name" : "'Dune (2021)' None movie"
+    },
+    {
+      "expected" : {
+        "found" : false
+      },
+      "input" : {
+        "kind" : "movie",
+        "name" : "[MULTI-SUB] ( )",
+        "year" : null
+      },
+      "name" : "'[MULTI-SUB] ( )' None movie"
+    },
+    {
+      "expected" : {
+        "found" : true,
+        "literalTitle" : null,
+        "literalYear" : null,
+        "title" : "REC",
+        "year" : 2007
+      },
+      "input" : {
+        "kind" : "movie",
+        "name" : "[REC] (2007)",
+        "year" : null
+      },
+      "name" : "'[REC] (2007)' None movie"
+    },
+    {
+      "expected" : {
+        "found" : true,
+        "literalTitle" : "Oppenheimer 2023",
+        "literalYear" : null,
+        "title" : "Oppenheimer",
+        "year" : 2023
+      },
+      "input" : {
+        "kind" : "movie",
+        "name" : "Oppenheimer 2023",
+        "year" : null
+      },
+      "name" : "'Oppenheimer 2023' None movie"
+    },
+    {
+      "expected" : {
+        "found" : true,
+        "literalTitle" : "Oppenheimer 2023",
+        "literalYear" : 2023,
+        "title" : "Oppenheimer",
+        "year" : 2023
+      },
+      "input" : {
+        "kind" : "movie",
+        "name" : "Oppenheimer 2023",
+        "year" : "2023"
+      },
+      "name" : "'Oppenheimer 2023' 2023 movie"
+    },
+    {
+      "expected" : {
+        "found" : true,
+        "literalTitle" : null,
+        "literalYear" : null,
+        "title" : "Blade Runner 2049",
+        "year" : 2017
+      },
+      "input" : {
+        "kind" : "movie",
+        "name" : "Blade Runner 2049",
+        "year" : "2017"
+      },
+      "name" : "'Blade Runner 2049' 2017 movie"
+    },
+    {
+      "expected" : {
+        "found" : true,
+        "literalTitle" : "The Matrix 1999",
+        "literalYear" : null,
+        "title" : "The Matrix",
+        "year" : 1999
+      },
+      "input" : {
+        "kind" : "movie",
+        "name" : "The.Matrix.1999.1080p.BluRay.x264",
+        "year" : null
+      },
+      "name" : "'The.Matrix.1999.1080p.BluRay.x264' None movie"
+    },
+    {
+      "expected" : {
+        "found" : true,
+        "literalTitle" : "الرسالة 1976",
+        "literalYear" : null,
+        "title" : "الرسالة",
+        "year" : 1976
+      },
+      "input" : {
+        "kind" : "movie",
+        "name" : "|AR| فيلم الرسالة 1976 بجودة عالية",
+        "year" : null
+      },
+      "name" : "'|AR| فيلم الرسالة 1976 بجودة عالية' None movie"
+    },
+    {
+      "expected" : {
+        "found" : true,
+        "literalTitle" : null,
+        "literalYear" : null,
+        "title" : "Stranger Things",
+        "year" : null
+      },
+      "input" : {
+        "kind" : "series",
+        "name" : "NF: Stranger Things S04E01",
+        "year" : null
+      },
+      "name" : "'NF: Stranger Things S04E01' None series"
+    },
+    {
+      "expected" : {
+        "found" : true,
+        "literalTitle" : null,
+        "literalYear" : null,
+        "title" : "Game of Thrones",
+        "year" : null
+      },
+      "input" : {
+        "kind" : "series",
+        "name" : "Game of Thrones S08E06 The Iron Throne",
+        "year" : null
+      },
+      "name" : "'Game of Thrones S08E06 The Iron Throne' None series"
+    },
+    {
+      "expected" : {
+        "found" : true,
+        "literalTitle" : null,
+        "literalYear" : null,
+        "title" : "Breaking Bad",
+        "year" : null
+      },
+      "input" : {
+        "kind" : "series",
+        "name" : "Breaking Bad - Season 1",
+        "year" : null
+      },
+      "name" : "'Breaking Bad - Season 1' None series"
+    },
+    {
+      "expected" : {
+        "found" : true,
+        "literalTitle" : null,
+        "literalYear" : null,
+        "title" : "Wednesday",
+        "year" : null
+      },
+      "input" : {
+        "kind" : "series",
+        "name" : "Wednesday S01",
+        "year" : null
+      },
+      "name" : "'Wednesday S01' None series"
+    },
+    {
+      "expected" : {
+        "found" : true,
+        "literalTitle" : null,
+        "literalYear" : null,
+        "title" : "The Matrix",
+        "year" : null
+      },
+      "input" : {
+        "kind" : "movie",
+        "name" : "Matrix, The",
+        "year" : null
+      },
+      "name" : "'Matrix, The' None movie"
+    },
+    {
+      "expected" : {
+        "found" : true,
+        "literalTitle" : null,
+        "literalYear" : null,
+        "title" : "(500) Days of Summer",
+        "year" : null
+      },
+      "input" : {
+        "kind" : "movie",
+        "name" : "(500) Days of Summer",
+        "year" : null
+      },
+      "name" : "'(500) Days of Summer' None movie"
+    },
+    {
+      "expected" : {
+        "found" : true,
+        "literalTitle" : null,
+        "literalYear" : null,
+        "title" : "Charlotte's Web",
+        "year" : null
+      },
+      "input" : {
+        "kind" : "movie",
+        "name" : "Charlotte's Web",
+        "year" : null
+      },
+      "name" : "\"Charlotte's Web\" None movie"
+    },
+    {
+      "expected" : {
+        "found" : true,
+        "literalTitle" : null,
+        "literalYear" : null,
+        "title" : "Cam",
+        "year" : 2018
+      },
+      "input" : {
+        "kind" : "movie",
+        "name" : "Cam (2018)",
+        "year" : null
+      },
+      "name" : "'Cam (2018)' None movie"
+    },
+    {
+      "expected" : {
+        "found" : true,
+        "literalTitle" : null,
+        "literalYear" : null,
+        "title" : "The Movie",
+        "year" : null
+      },
+      "input" : {
+        "kind" : "movie",
+        "name" : "CAM The Movie",
+        "year" : null
+      },
+      "name" : "'CAM The Movie' None movie"
+    },
+    {
+      "expected" : {
+        "found" : true,
+        "literalTitle" : null,
+        "literalYear" : null,
+        "title" : "Inception",
+        "year" : null
+      },
+      "input" : {
+        "kind" : "movie",
+        "name" : "Inception - EN",
+        "year" : null
+      },
+      "name" : "'Inception - EN' None movie"
+    },
+    {
+      "expected" : {
+        "found" : true,
+        "literalTitle" : null,
+        "literalYear" : null,
+        "title" : "Inception - en",
+        "year" : null
+      },
+      "input" : {
+        "kind" : "movie",
+        "name" : "Inception - en",
+        "year" : null
+      },
+      "name" : "'Inception - en' None movie"
+    },
+    {
+      "expected" : {
+        "found" : true,
+        "literalTitle" : null,
+        "literalYear" : null,
+        "title" : "Encanto",
+        "year" : null
+      },
+      "input" : {
+        "kind" : "movie",
+        "name" : "DISNEY+ - Encanto",
+        "year" : null
+      },
+      "name" : "'DISNEY+ - Encanto' None movie"
+    },
+    {
+      "expected" : {
+        "found" : true,
+        "literalTitle" : null,
+        "literalYear" : null,
+        "title" : "The Office",
+        "year" : null
+      },
+      "input" : {
+        "kind" : "series",
+        "name" : "[US] (EN) The Office",
+        "year" : null
+      },
+      "name" : "'[US] (EN) The Office' None series"
+    },
+    {
+      "expected" : {
+        "found" : true,
+        "literalTitle" : "Avatar The Way of Water 2022",
+        "literalYear" : null,
+        "title" : "Avatar The Way of Water",
+        "year" : 2022
+      },
+      "input" : {
+        "kind" : "movie",
+        "name" : "Avatar The Way of Water 2022 IMAX Edition WEB-DL",
+        "year" : null
+      },
+      "name" : "'Avatar The Way of Water 2022 IMAX Edition WEB-DL' None movie"
+    },
+    {
+      "expected" : {
+        "found" : true,
+        "literalTitle" : null,
+        "literalYear" : null,
+        "title" : "Die Hard",
+        "year" : null
+      },
+      "input" : {
+        "kind" : "movie",
+        "name" : "Die Hard Director's Cut",
+        "year" : null
+      },
+      "name" : "\"Die Hard Director's Cut\" None movie"
+    },
+    {
+      "expected" : {
+        "found" : true,
+        "literalTitle" : null,
+        "literalYear" : null,
+        "title" : "Amélie",
+        "year" : null
+      },
+      "input" : {
+        "kind" : "movie",
+        "name" : "Amélie",
+        "year" : null
+      },
+      "name" : "'Amélie' None movie"
+    },
+    {
+      "expected" : {
+        "found" : true,
+        "literalTitle" : null,
+        "literalYear" : null,
+        "title" : "Ｆｕｌｌ Ｍｅｔａｌ Ｊａｃｋｅｔ",
+        "year" : null
+      },
+      "input" : {
+        "kind" : "movie",
+        "name" : "Ｆｕｌｌ Ｍｅｔａｌ Ｊａｃｋｅｔ",
+        "year" : null
+      },
+      "name" : "'Ｆｕｌｌ Ｍｅｔａｌ Ｊａｃｋｅｔ' None movie"
+    },
+    {
+      "expected" : {
+        "found" : true,
+        "literalTitle" : null,
+        "literalYear" : null,
+        "title" : "1917",
+        "year" : null
+      },
+      "input" : {
+        "kind" : "movie",
+        "name" : "1917",
+        "year" : null
+      },
+      "name" : "'1917' None movie"
+    },
+    {
+      "expected" : {
+        "found" : true,
+        "literalTitle" : null,
+        "literalYear" : null,
+        "title" : "2012",
+        "year" : null
+      },
+      "input" : {
+        "kind" : "movie",
+        "name" : "2012",
+        "year" : null
+      },
+      "name" : "'2012' None movie"
+    },
+    {
+      "expected" : {
+        "found" : true,
+        "literalTitle" : null,
+        "literalYear" : null,
+        "title" : "Up",
+        "year" : 2009
+      },
+      "input" : {
+        "kind" : "movie",
+        "name" : "Up (2009) Arabic Dubbed",
+        "year" : null
+      },
+      "name" : "'Up (2009) Arabic Dubbed' None movie"
+    },
+    {
+      "expected" : {
+        "found" : true,
+        "literalTitle" : null,
+        "literalYear" : null,
+        "title" : "Toy Story 4",
+        "year" : null
+      },
+      "input" : {
+        "kind" : "movie",
+        "name" : "Toy Story 4 [Multi Audio]",
+        "year" : null
+      },
+      "name" : "'Toy Story 4 [Multi Audio]' None movie"
+    },
+    {
+      "expected" : {
+        "found" : true,
+        "literalTitle" : null,
+        "literalYear" : null,
+        "title" : "الحشاشين",
+        "year" : null
+      },
+      "input" : {
+        "kind" : "series",
+        "name" : "مسلسل الحشاشين الحلقة 3",
+        "year" : null
+      },
+      "name" : "'مسلسل الحشاشين الحلقة 3' None series"
+    },
+    {
+      "expected" : {
+        "found" : true,
+        "literalTitle" : null,
+        "literalYear" : null,
+        "title" : "Title With Underscores",
+        "year" : null
+      },
+      "input" : {
+        "kind" : "movie",
+        "name" : "Title_With_Underscores",
+        "year" : null
+      },
+      "name" : "'Title_With_Underscores' None movie"
+    },
+    {
+      "expected" : {
+        "found" : true,
+        "literalTitle" : null,
+        "literalYear" : null,
+        "title" : "The Batman",
+        "year" : 2022
+      },
+      "input" : {
+        "kind" : "movie",
+        "name" : "The Batman",
+        "year" : "2022-03-04"
+      },
+      "name" : "'The Batman' 2022-03-04 movie"
+    },
+    {
+      "expected" : {
+        "found" : true,
+        "literalTitle" : null,
+        "literalYear" : null,
+        "title" : "Dune Part Two",
+        "year" : 2024
+      },
+      "input" : {
+        "kind" : "movie",
+        "name" : "Dune Part Two",
+        "year" : "release 2024"
+      },
+      "name" : "'Dune Part Two' release 2024 movie"
+    },
+    {
+      "expected" : {
+        "found" : true,
+        "literalTitle" : null,
+        "literalYear" : null,
+        "title" : "Show",
+        "year" : null
+      },
+      "input" : {
+        "kind" : "series",
+        "name" : "Show (UK) S02",
+        "year" : null
+      },
+      "name" : "'Show (UK) S02' None series"
+    },
+    {
+      "expected" : {
+        "found" : true,
+        "literalTitle" : null,
+        "literalYear" : null,
+        "title" : "Inception",
+        "year" : null
+      },
+      "input" : {
+        "kind" : "movie",
+        "name" : "TOP - Inception",
+        "year" : null
+      },
+      "name" : "'TOP - Inception' None movie"
+    },
+    {
+      "expected" : {
+        "found" : true,
+        "literalTitle" : null,
+        "literalYear" : null,
+        "title" : "Spider-Man: No Way Home",
+        "year" : null
+      },
+      "input" : {
+        "kind" : "movie",
+        "name" : "Spider-Man: No Way Home",
+        "year" : null
+      },
+      "name" : "'Spider-Man: No Way Home' None movie"
+    }
+  ],
+  "function" : "TitleMatcher.query",
+  "generatedBy" : "swift",
+  "shape" : "{name, year?, kind} -> {found:false} | {found, title, year, literalTitle, literalYear}",
+  "swiftCommit" : "bd4846a"
+}

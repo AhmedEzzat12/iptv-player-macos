@@ -218,6 +218,34 @@ struct VectorTests {
                     "normalizedURL": SourceFingerprint.normalizedURL(url), "publicURL": pub.url, "removedSecret": pub.removedSecret]
                 as [String: Any]
         },
+        "TitleMatcher.query": { input in
+            let o = try object(input)
+            let kind = MediaMetadata.Kind(rawValue: o["kind"] as? String ?? "movie") ?? .movie
+            guard let q = TitleMatcher.query(name: try string(o["name"] as Any), year: o["year"] as? String, kind: kind) else {
+                return ["found": false]
+            }
+            func opt(_ v: Any?) -> Any { v ?? NSNull() }
+            return ["found": true, "title": q.title, "year": opt(q.year), "literalTitle": opt(q.literalTitle),
+                    "literalYear": opt(q.literalYear)] as [String: Any]
+        },
+        "TitleMatcher.titleSimilarity": { input in
+            let o = try object(input)
+            let v = TitleMatcher.titleSimilarity(try string(o["a"] as Any), try string(o["b"] as Any))
+            return (v * 1_000_000).rounded() / 1_000_000
+        },
+        "TitleMatcher.bestMatch": { input in
+            // {name, year?, kind, candidates: [{titles, year?, endYear?}]} -> {index, score} | {found: false}
+            let o = try object(input)
+            let kind = MediaMetadata.Kind(rawValue: o["kind"] as? String ?? "movie") ?? .movie
+            guard let q = TitleMatcher.query(name: try string(o["name"] as Any), year: o["year"] as? String, kind: kind) else {
+                return ["found": false]
+            }
+            let candidates = (o["candidates"] as? [[String: Any]] ?? []).map {
+                TitleMatcher.Candidate(titles: $0["titles"] as? [String] ?? [], year: $0["year"] as? Int, endYear: $0["endYear"] as? Int)
+            }
+            guard let best = TitleMatcher.bestMatch(q, candidates, kind: kind) else { return ["found": false] }
+            return ["found": true, "index": best.index, "score": (best.score * 1_000_000).rounded() / 1_000_000] as [String: Any]
+        },
         "XtreamClient.urls": { input in
             let o = try object(input)
             let client = XtreamClient(base: try string(o["base"] as Any), username: try string(o["username"] as Any),
