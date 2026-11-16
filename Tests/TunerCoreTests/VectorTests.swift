@@ -1,0 +1,149 @@
+import Foundation
+import Testing
+@testable import TunerCore
+
+/// Shared test vectors (`Tests/Vectors/**.json`): the same cases run here and in the Android app's Kotlin tests, so
+/// both ports give the same answers. Expected values are produced by this Swift code, never written by hand:
+/// `TUNER_VECTORS_REGENERATE=1 scripts/test.sh --filter VectorTests` fills cases whose `expected` is null
+/// (`=all` recomputes every case). See `Tests/Vectors/README.md`.
+@Suite("Shared vectors")
+struct VectorTests {
+    /// Found from this file's location (the package only bundles `Fixtures`), so regenerating writes in place.
+    static let folder = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        .appendingPathComponent("Vectors", isDirectory: true)
+
+    static let regenerate = ProcessInfo.processInfo.environment["TUNER_VECTORS_REGENERATE"]
+
+    static var files: [URL] {
+        let walker = FileManager.default.enumerator(at: folder, includingPropertiesForKeys: nil)
+        return (walker?.allObjects as? [URL] ?? []).filter { $0.pathExtension == "json" }
+            .sorted { $0.path < $1.path }
+    }
+
+    @Test func vectorFilesExist() {
+        #expect(!Self.files.isEmpty, "no vector files under \(Self.folder.path)")
+    }
+
+    @Test(arguments: VectorTests.files)
+    func vectorFile(_ url: URL) throws {
+        let data = try Data(contentsOf: url)
+        guard var file = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let function = file["function"] as? String,
+              var cases = file["cases"] as? [[String: Any]] else {
+            Issue.record("\(url.lastPathComponent): not a vector file")
+            return
+        }
+        guard let run = Self.functions[function] else {
+            Issue.record("\(url.lastPathComponent): no Swift function registered for \(function)")
+            return
+        }
+        var changed = false
+        for i in cases.indices {
+            let name = cases[i]["name"] as? String ?? "#\(i)"
+            let actual = try run(cases[i]["input"] ?? NSNull())
+            let expected = cases[i]["expected"]
+            let missing = expected == nil || expected is NSNull
+            if Self.regenerate == "all" || (Self.regenerate != nil && missing) {
+                if missing || !Self.same(expected!, actual) {
+                    cases[i]["expected"] = actual
+                    changed = true
+                }
+            } else if missing {
+                Issue.record("\(url.lastPathComponent) / \(name): expected is null; run with TUNER_VECTORS_REGENERATE=1")
+            } else if !Self.same(expected!, actual) {
+                Issue.record("\(url.lastPathComponent) / \(name): expected \(expected!), got \(actual)")
+            }
+        }
+        if changed {
+            file["cases"] = cases
+            file["swiftCommit"] = Self.headCommit()
+            var out = try JSONSerialization.data(withJSONObject: file,
+                                                 options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes])
+            out.append(0x0A)
+            try out.write(to: url)
+        }
+    }
+
+    // MARK: - Functions under test
+
+    typealias Run = @Sendable (Any) throws -> Any
+
+    static let functions: [String: Run] = [
+        "StableID.hash": { StableID.hash(try string($0)) },
+        "StableID.sanitize": { StableID.sanitize(try string($0)) },
+        "StableID.slug": { StableID.slug(try string($0)) },
+        "ChannelNameNormalizer.normalize": { ChannelNameNormalizer.normalize(try string($0)) },
+        "EndOfMediaStall.hasEnded": { input in
+            let o = try object(input)
+            return EndOfMediaStall.hasEnded(position: o["position"] as? Double, duration: o["duration"] as? Double,
+                                            stalledFor: o["stalledFor"] as? Double ?? 0)
+        },
+        "CatchupURLBuilder.m3u": { input in
+            let o = try object(input)
+            return CatchupURLBuilder.m3u(
+                channelURL: try string(o["channelURL"] as Any),
+                type: CatchupType(rawValue: try string(o["type"] as Any)) ?? .default,
+                template: o["template"] as? String, tvgId: o["tvgId"] as? String,
+                start: try date(o["start"]), end: try date(o["end"]), now: try date(o["now"]))
+        },
+        "XtreamClient.urls": { input in
+            let o = try object(input)
+            let client = XtreamClient(base: try string(o["base"] as Any), username: try string(o["username"] as Any),
+                                      password: try string(o["password"] as Any))
+            let id = try string(o["streamId"] as Any)
+            let ext = o["ext"] as? String
+            return [
+                "live": client.liveURL(streamId: id, format: .ts),
+                "liveM3U8": client.liveURL(streamId: id, format: .m3u8),
+                "movie": client.movieURL(streamId: id, ext: ext),
+                "episode": client.episodeURL(episodeId: id, ext: ext),
+                "timeshift": client.timeshiftURL(streamId: id, start: try date(o["start"]),
+                                                 durationMinutes: o["minutes"] as? Int ?? 0,
+                                                 serverTimeOffset: o["serverTimeOffset"] as? Double ?? 0),
+                "api": client.apiURL("get_live_streams"),
+            ]
+        },
+    ]
+
+    // MARK: - Helpers
+
+    struct BadInput: Error, CustomStringConvertible { let description: String }
+
+    static func string(_ any: Any) throws -> String {
+        guard let s = any as? String else { throw BadInput(description: "expected a string, got \(any)") }
+        return s
+    }
+
+    static func object(_ any: Any) throws -> [String: Any] {
+        guard let o = any as? [String: Any] else { throw BadInput(description: "expected an object, got \(any)") }
+        return o
+    }
+
+    static func date(_ any: Any?) throws -> Date {
+        guard let s = any as? String, let d = ISO8601DateFormatter().date(from: s) else {
+            throw BadInput(description: "expected an ISO-8601 date, got \(String(describing: any))")
+        }
+        return d
+    }
+
+    /// JSON equality (numbers compared as numbers, so 1 == 1.0).
+    static func same(_ a: Any, _ b: Any) -> Bool {
+        let wrap = { (v: Any) -> Data? in
+            try? JSONSerialization.data(withJSONObject: ["v": v], options: [.sortedKeys, .fragmentsAllowed])
+        }
+        return wrap(a) == wrap(b) && wrap(a) != nil
+    }
+
+    static func headCommit() -> String? {
+        let p = Process()
+        p.executableURL = URL(fileURLWithPath: "/usr/bin/git")
+        p.arguments = ["-C", folder.path, "rev-parse", "--short", "HEAD"]
+        let pipe = Pipe()
+        p.standardOutput = pipe
+        try? p.run()
+        p.waitUntilExit()
+        let out = String(data: pipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8)?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return out?.isEmpty == false ? out : nil
+    }
+}

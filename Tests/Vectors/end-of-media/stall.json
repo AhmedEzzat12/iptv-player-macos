@@ -1,0 +1,107 @@
+{
+  "cases" : [
+    {
+      "expected" : true,
+      "input" : {
+        "duration" : 1800,
+        "position" : 1785,
+        "stalledFor" : 3
+      },
+      "name" : "exactly 15 s left, 3 s stalled"
+    },
+    {
+      "expected" : false,
+      "input" : {
+        "duration" : 1800,
+        "position" : 1784.9000000000001,
+        "stalledFor" : 3
+      },
+      "name" : "15.1 s left"
+    },
+    {
+      "expected" : false,
+      "input" : {
+        "duration" : 1800,
+        "position" : 1790,
+        "stalledFor" : 2.8999999999999999
+      },
+      "name" : "stalled 2.9 s"
+    },
+    {
+      "expected" : true,
+      "input" : {
+        "duration" : 1800,
+        "position" : 1799,
+        "stalledFor" : 10
+      },
+      "name" : "1 s left"
+    },
+    {
+      "expected" : false,
+      "input" : {
+        "duration" : 30,
+        "position" : 25,
+        "stalledFor" : 5
+      },
+      "name" : "duration 30 s (not > 30)"
+    },
+    {
+      "expected" : true,
+      "input" : {
+        "duration" : 31,
+        "position" : 26,
+        "stalledFor" : 5
+      },
+      "name" : "duration 31 s"
+    },
+    {
+      "expected" : false,
+      "input" : {
+        "duration" : 1800,
+        "position" : null,
+        "stalledFor" : 5
+      },
+      "name" : "no position"
+    },
+    {
+      "expected" : false,
+      "input" : {
+        "duration" : null,
+        "position" : 1790,
+        "stalledFor" : 5
+      },
+      "name" : "no duration"
+    },
+    {
+      "expected" : true,
+      "input" : {
+        "duration" : 1800,
+        "position" : 1800,
+        "stalledFor" : 3
+      },
+      "name" : "at the end"
+    },
+    {
+      "expected" : true,
+      "input" : {
+        "duration" : 1800,
+        "position" : 1810,
+        "stalledFor" : 3
+      },
+      "name" : "past the end"
+    },
+    {
+      "expected" : false,
+      "input" : {
+        "duration" : 1800,
+        "position" : 0,
+        "stalledFor" : 100
+      },
+      "name" : "stalled at start"
+    }
+  ],
+  "function" : "EndOfMediaStall.hasEnded",
+  "generatedBy" : "swift",
+  "shape" : "{position: number|null, duration: number|null, stalledFor: number} -> bool",
+  "swiftCommit" : "bc2b940"
+}

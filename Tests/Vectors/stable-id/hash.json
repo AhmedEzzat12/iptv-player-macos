@@ -1,0 +1,573 @@
+{
+  "cases" : [
+    {
+      "expected" : "nwm100",
+      "input" : "CNN HD",
+      "name" : "'CNN HD'"
+    },
+    {
+      "expected" : "pmxtsf",
+      "input" : " London",
+      "name" : "' London'"
+    },
+    {
+      "expected" : "cp1fq",
+      "input" : "CNN Backup",
+      "name" : "'CNN Backup'"
+    },
+    {
+      "expected" : "dal1nc",
+      "input" : "No Id Channel",
+      "name" : "'No Id Channel'"
+    },
+    {
+      "expected" : "xirfym",
+      "input" : "Panel Channel",
+      "name" : "'Panel Channel'"
+    },
+    {
+      "expected" : "kp8qfk",
+      "input" : "Tuner News",
+      "name" : "'Tuner News'"
+    },
+    {
+      "expected" : "ncen0i",
+      "input" : "Tuner Sports",
+      "name" : "'Tuner Sports'"
+    },
+    {
+      "expected" : "r8rqai",
+      "input" : "Tuner Movies",
+      "name" : "'Tuner Movies'"
+    },
+    {
+      "expected" : "kpayqq",
+      "input" : "Tuner Kids",
+      "name" : "'Tuner Kids'"
+    },
+    {
+      "expected" : "a3p8il",
+      "input" : "Tuner Sports 4K",
+      "name" : "'Tuner Sports 4K'"
+    },
+    {
+      "expected" : "i3nmhq",
+      "input" : "US| CNN HD ᴴᴰ",
+      "name" : "'US| CNN HD ᴴᴰ'"
+    },
+    {
+      "expected" : "zhrih2",
+      "input" : "UK: BBC One FHD",
+      "name" : "'UK: BBC One FHD'"
+    },
+    {
+      "expected" : "pkdrmi",
+      "input" : "[CA] CBC News",
+      "name" : "'[CA] CBC News'"
+    },
+    {
+      "expected" : "1d682b",
+      "input" : "|AR| MBC 1",
+      "name" : "'|AR| MBC 1'"
+    },
+    {
+      "expected" : "z9168y",
+      "input" : "AR: MBC 2 HD",
+      "name" : "'AR: MBC 2 HD'"
+    },
+    {
+      "expected" : "srn68b",
+      "input" : "DE | Das Erste HEVC",
+      "name" : "'DE | Das Erste HEVC'"
+    },
+    {
+      "expected" : "tjo0he",
+      "input" : "(FR) TF1 1080p",
+      "name" : "'(FR) TF1 1080p'"
+    },
+    {
+      "expected" : "irqoin",
+      "input" : "beIN Sports 1",
+      "name" : "'beIN Sports 1'"
+    },
+    {
+      "expected" : "irqoio",
+      "input" : "beIN Sports 2",
+      "name" : "'beIN Sports 2'"
+    },
+    {
+      "expected" : "cqz6mj",
+      "input" : "beIN SPORTS 1 HD",
+      "name" : "'beIN SPORTS 1 HD'"
+    },
+    {
+      "expected" : "lxbh7p",
+      "input" : "beIN Sports 1 +1",
+      "name" : "'beIN Sports 1 +1'"
+    },
+    {
+      "expected" : "nigvyp",
+      "input" : "Canal+",
+      "name" : "'Canal+'"
+    },
+    {
+      "expected" : "y1qp7r",
+      "input" : "Canal+ Sport",
+      "name" : "'Canal+ Sport'"
+    },
+    {
+      "expected" : "5ufhbc",
+      "input" : "Canal Plus",
+      "name" : "'Canal Plus'"
+    },
+    {
+      "expected" : "gcnryn",
+      "input" : "Sky Sports Main Event UHD",
+      "name" : "'Sky Sports Main Event UHD'"
+    },
+    {
+      "expected" : "1j9dm1",
+      "input" : "Sky Cinema Premiere (Backup)",
+      "name" : "'Sky Cinema Premiere (Backup)'"
+    },
+    {
+      "expected" : "z4bf2t",
+      "input" : "HBO East",
+      "name" : "'HBO East'"
+    },
+    {
+      "expected" : "z3xglb",
+      "input" : "HBO West",
+      "name" : "'HBO West'"
+    },
+    {
+      "expected" : "6243oh",
+      "input" : "Fox News Live",
+      "name" : "'Fox News Live'"
+    },
+    {
+      "expected" : "yjxg2d",
+      "input" : "Live",
+      "name" : "'Live'"
+    },
+    {
+      "expected" : "3hnf5",
+      "input" : "HD",
+      "name" : "'HD'"
+    },
+    {
+      "expected" : "3hmx0",
+      "input" : "4K",
+      "name" : "'4K'"
+    },
+    {
+      "expected" : "376stw",
+      "input" : "VIP",
+      "name" : "'VIP'"
+    },
+    {
+      "expected" : "3hnqn",
+      "input" : "TV",
+      "name" : "'TV'"
+    },
+    {
+      "expected" : "ofkktg",
+      "input" : "ESPN 2 VIP",
+      "name" : "'ESPN 2 VIP'"
+    },
+    {
+      "expected" : "3mf2lp",
+      "input" : "ESPN2",
+      "name" : "'ESPN2'"
+    },
+    {
+      "expected" : "hf28ue",
+      "input" : "AT&T SportsNet",
+      "name" : "'AT&T SportsNet'"
+    },
+    {
+      "expected" : "376aa9",
+      "input" : "A&E",
+      "name" : "'A&E'"
+    },
+    {
+      "expected" : "ghtjfo",
+      "input" : "Nat Geo Wild 720p",
+      "name" : "'Nat Geo Wild 720p'"
+    },
+    {
+      "expected" : "80byc8",
+      "input" : "Discovery Channel [Multi-Audio]",
+      "name" : "'Discovery Channel [Multi-Audio]'"
+    },
+    {
+      "expected" : "3hqdm2",
+      "input" : "Disney Junior {RAW}",
+      "name" : "'Disney Junior {RAW}'"
+    },
+    {
+      "expected" : "7wroyb",
+      "input" : "Cartoon Network 50fps",
+      "name" : "'Cartoon Network 50fps'"
+    },
+    {
+      "expected" : "k4y6ri",
+      "input" : "Ｆｕｌｌ Ｗｉｄｔｈ ＴＶ",
+      "name" : "'Ｆｕｌｌ Ｗｉｄｔｈ ＴＶ'"
+    },
+    {
+      "expected" : "hsb4ax",
+      "input" : "ＭＢＣ　１",
+      "name" : "'ＭＢＣ\\u3000１'"
+    },
+    {
+      "expected" : "x8w8n9",
+      "input" : "Café TV",
+      "name" : "'Café TV'"
+    },
+    {
+      "expected" : "ys1ee2",
+      "input" : "Télé-Québec",
+      "name" : "'Télé-Québec'"
+    },
+    {
+      "expected" : "xw5zac",
+      "input" : "Ñuñoa TV",
+      "name" : "'Ñuñoa TV'"
+    },
+    {
+      "expected" : "v8okpl",
+      "input" : "ÄRD Ölympia",
+      "name" : "'ÄRD Ölympia'"
+    },
+    {
+      "expected" : "q8vx38",
+      "input" : "İstanbul TV",
+      "name" : "'İstanbul TV'"
+    },
+    {
+      "expected" : "rap03o",
+      "input" : "Işık TV",
+      "name" : "'Işık TV'"
+    },
+    {
+      "expected" : "70uiih",
+      "input" : "ⓉⓋ Circled",
+      "name" : "'ⓉⓋ Circled'"
+    },
+    {
+      "expected" : "crptfd",
+      "input" : "TV ⁵",
+      "name" : "'TV ⁵'"
+    },
+    {
+      "expected" : "e7kxkp",
+      "input" : "Channel 5 ²",
+      "name" : "'Channel 5 ²'"
+    },
+    {
+      "expected" : "df4h7l",
+      "input" : "📺 Emoji TV",
+      "name" : "'📺 Emoji TV'"
+    },
+    {
+      "expected" : "yvqw16",
+      "input" : "🇺🇸 USA Network",
+      "name" : "'🇺🇸 USA Network'"
+    },
+    {
+      "expected" : "45h",
+      "input" : "",
+      "name" : "''"
+    },
+    {
+      "expected" : "3t1h",
+      "input" : " ",
+      "name" : "' '"
+    },
+    {
+      "expected" : "375j8o",
+      "input" : "!!!",
+      "name" : "'!!!'"
+    },
+    {
+      "expected" : "375tn0",
+      "input" : "---",
+      "name" : "'---'"
+    },
+    {
+      "expected" : "375x4r",
+      "input" : "123",
+      "name" : "'123'"
+    },
+    {
+      "expected" : "nfo2we",
+      "input" : "24/7 News",
+      "name" : "'24/7 News'"
+    },
+    {
+      "expected" : "dmbwie",
+      "input" : "قناة الجزيرة",
+      "name" : "'قناة الجزيرة'"
+    },
+    {
+      "expected" : "eic58o",
+      "input" : "الجزيرة HD",
+      "name" : "'الجزيرة HD'"
+    },
+    {
+      "expected" : "o9agnc",
+      "input" : "الجزيرة الوثائقية",
+      "name" : "'الجزيرة الوثائقية'"
+    },
+    {
+      "expected" : "an4yq5",
+      "input" : "أبوظبي الرياضية",
+      "name" : "'أبوظبي الرياضية'"
+    },
+    {
+      "expected" : "dje7o1",
+      "input" : "ابوظبي الرياضية",
+      "name" : "'ابوظبي الرياضية'"
+    },
+    {
+      "expected" : "ngsp81",
+      "input" : "إم بي سي",
+      "name" : "'إم بي سي'"
+    },
+    {
+      "expected" : "syonx1",
+      "input" : "قناةُ العربيّة",
+      "name" : "'قناةُ العربيّة'"
+    },
+    {
+      "expected" : "5rrno1",
+      "input" : "العربية FHD",
+      "name" : "'العربية FHD'"
+    },
+    {
+      "expected" : "jqb1cl",
+      "input" : "روتانا سينما +2",
+      "name" : "'روتانا سينما +2'"
+    },
+    {
+      "expected" : "54op11",
+      "input" : "MBC مصر",
+      "name" : "'MBC مصر'"
+    },
+    {
+      "expected" : "yjz2cn",
+      "input" : "ON E",
+      "name" : "'ON E'"
+    },
+    {
+      "expected" : "o3h33w",
+      "input" : "CBC سفرة",
+      "name" : "'CBC سفرة'"
+    },
+    {
+      "expected" : "tqbatr",
+      "input" : "TRT Türk",
+      "name" : "'TRT Türk'"
+    },
+    {
+      "expected" : "br0sn4",
+      "input" : "Россия 1",
+      "name" : "'Россия 1'"
+    },
+    {
+      "expected" : "3r3l27",
+      "input" : "Первый канал HD",
+      "name" : "'Первый канал HD'"
+    },
+    {
+      "expected" : "qivv16",
+      "input" : "ΕΡΤ1",
+      "name" : "'ΕΡΤ1'"
+    },
+    {
+      "expected" : "3n5v6c",
+      "input" : "日本テレビ",
+      "name" : "'日本テレビ'"
+    },
+    {
+      "expected" : "s3ckqa",
+      "input" : "CCTV-1 综合",
+      "name" : "'CCTV-1 综合'"
+    },
+    {
+      "expected" : "dkzkzk",
+      "input" : "KBS 1TV",
+      "name" : "'KBS 1TV'"
+    },
+    {
+      "expected" : "remqqw",
+      "input" : "ZEE TV ᵁᴴᴰ",
+      "name" : "'ZEE TV ᵁᴴᴰ'"
+    },
+    {
+      "expected" : "gx8kcb",
+      "input" : "Star Plus ʰᵈ",
+      "name" : "'Star Plus ʰᵈ'"
+    },
+    {
+      "expected" : "nq67er",
+      "input" : "Sony SAB (Backup 2)",
+      "name" : "'Sony SAB (Backup 2)'"
+    },
+    {
+      "expected" : "8stmn9",
+      "input" : "NBC 4 New York",
+      "name" : "'NBC 4 New York'"
+    },
+    {
+      "expected" : "r8yw3r",
+      "input" : "WABC 7 (New York)",
+      "name" : "'WABC 7 (New York)'"
+    },
+    {
+      "expected" : "ivcsuj",
+      "input" : "ABC (East) HD",
+      "name" : "'ABC (East) HD'"
+    },
+    {
+      "expected" : "fo8ce0",
+      "input" : "SuperSport Premier League x265",
+      "name" : "'SuperSport Premier League x265'"
+    },
+    {
+      "expected" : "rc617r",
+      "input" : "DAZN 1 H264",
+      "name" : "'DAZN 1 H264'"
+    },
+    {
+      "expected" : "w49qv9",
+      "input" : "Eurosport 1 576p",
+      "name" : "'Eurosport 1 576p'"
+    },
+    {
+      "expected" : "qg0sc9",
+      "input" : "Motorvision 2160p",
+      "name" : "'Motorvision 2160p'"
+    },
+    {
+      "expected" : "ks5yq1",
+      "input" : "Rai 1 SD",
+      "name" : "'Rai 1 SD'"
+    },
+    {
+      "expected" : "6q5mv4",
+      "input" : "La 1 QHD",
+      "name" : "'La 1 QHD'"
+    },
+    {
+      "expected" : "crfriz",
+      "input" : "TV3 8K",
+      "name" : "'TV3 8K'"
+    },
+    {
+      "expected" : "warv5l",
+      "input" : "Channel   With   Spaces",
+      "name" : "'Channel   With   Spaces'"
+    },
+    {
+      "expected" : "gcx656",
+      "input" : "UPPER CASE CHANNEL",
+      "name" : "'UPPER CASE CHANNEL'"
+    },
+    {
+      "expected" : "s6ybhf",
+      "input" : "lower case channel",
+      "name" : "'lower case channel'"
+    },
+    {
+      "expected" : "uuhu8c",
+      "input" : "Mixed-Case.Channel_Name",
+      "name" : "'Mixed-Case.Channel_Name'"
+    },
+    {
+      "expected" : "i9o3g1",
+      "input" : "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "name" : "'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+      "expected" : "nj4hp3",
+      "input" : "أفلامٌ عربية",
+      "name" : "'أفلامٌ عربية'"
+    },
+    {
+      "expected" : "zbbeh0",
+      "input" : "Movies | 2024",
+      "name" : "'Movies | 2024'"
+    },
+    {
+      "expected" : "s15bo7",
+      "input" : "Series :: Drama",
+      "name" : "'Series :: Drama'"
+    },
+    {
+      "expected" : "kj9w5r",
+      "input" : "Ação & Aventura",
+      "name" : "'Ação & Aventura'"
+    },
+    {
+      "expected" : "xket9d",
+      "input" : "KIDS/FAMILY",
+      "name" : "'KIDS/FAMILY'"
+    },
+    {
+      "expected" : "v8vu68",
+      "input" : "category with trailing ---",
+      "name" : "'category with trailing ---'"
+    },
+    {
+      "expected" : "ep52dv",
+      "input" : "😀😀",
+      "name" : "'😀😀'"
+    },
+    {
+      "expected" : "9erifo",
+      "input" : "𝐁𝐨𝐥𝐝 𝐌𝐚𝐭𝐡",
+      "name" : "'𝐁𝐨𝐥𝐝 𝐌𝐚𝐭𝐡'"
+    },
+    {
+      "expected" : "pjpxyr",
+      "input" : "é combining",
+      "name" : "'é combining'"
+    },
+    {
+      "expected" : "uqj2we",
+      "input" : "é precomposed",
+      "name" : "'é precomposed'"
+    },
+    {
+      "expected" : "d4dg6z",
+      "input" : "İ dotted capital",
+      "name" : "'İ dotted capital'"
+    },
+    {
+      "expected" : "ya9c4d",
+      "input" : "http://example.com/live/user/pass/123.ts",
+      "name" : "'http://example.com/live/user/pass/123.ts'"
+    },
+    {
+      "expected" : "cx6fl0",
+      "input" : "http://example.com/movie/u/p/1.mkv",
+      "name" : "'http://example.com/movie/u/p/1.mkv'"
+    },
+    {
+      "expected" : "8pj0kw",
+      "input" : "rtp://239.0.0.1:1234",
+      "name" : "'rtp://239.0.0.1:1234'"
+    },
+    {
+      "expected" : "7qoxvf",
+      "input" : "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "name" : "'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    }
+  ],
+  "function" : "StableID.hash",
+  "generatedBy" : "swift",
+  "shape" : "string -> string",
+  "swiftCommit" : "bc2b940"
+}

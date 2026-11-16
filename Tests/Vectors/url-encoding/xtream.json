@@ -1,0 +1,197 @@
+{
+  "cases" : [
+    {
+      "expected" : {
+        "api" : "http://example.com:8080/player_api.php?username=test&password=test&action=get_live_streams",
+        "episode" : "http://example.com:8080/series/test/test/123.mkv",
+        "live" : "http://example.com:8080/live/test/test/123.ts",
+        "liveM3U8" : "http://example.com:8080/live/test/test/123.m3u8",
+        "movie" : "http://example.com:8080/movie/test/test/123.mkv",
+        "timeshift" : "http://example.com:8080/timeshift/test/test/35/2026-10-01:16-25/123.ts"
+      },
+      "input" : {
+        "base" : "http://example.com:8080",
+        "ext" : "mkv",
+        "minutes" : 35,
+        "password" : "test",
+        "serverTimeOffset" : 7200,
+        "start" : "2026-10-01T14:25:00Z",
+        "streamId" : "123",
+        "username" : "test"
+      },
+      "name" : "'test'/'test'"
+    },
+    {
+      "expected" : {
+        "api" : "http://example.com:8080/player_api.php?username=user@mail.com&password=p@ss:w%2Frd%3F%23&action=get_live_streams",
+        "episode" : "http://example.com:8080/series/user@mail.com/p@ss:w%2Frd%3F%23/123.mkv",
+        "live" : "http://example.com:8080/live/user@mail.com/p@ss:w%2Frd%3F%23/123.ts",
+        "liveM3U8" : "http://example.com:8080/live/user@mail.com/p@ss:w%2Frd%3F%23/123.m3u8",
+        "movie" : "http://example.com:8080/movie/user@mail.com/p@ss:w%2Frd%3F%23/123.mkv",
+        "timeshift" : "http://example.com:8080/timeshift/user@mail.com/p@ss:w%2Frd%3F%23/35/2026-10-01:16-25/123.ts"
+      },
+      "input" : {
+        "base" : "http://example.com:8080",
+        "ext" : "mkv",
+        "minutes" : 35,
+        "password" : "p@ss:w/rd?#",
+        "serverTimeOffset" : 7200,
+        "start" : "2026-10-01T14:25:00Z",
+        "streamId" : "123",
+        "username" : "user@mail.com"
+      },
+      "name" : "'user@mail.com'/'p@ss:w/rd?#'"
+    },
+    {
+      "expected" : {
+        "api" : "http://example.com:8080/player_api.php?username=a%20b&password=c%2Bd%26e%3Df&action=get_live_streams",
+        "episode" : "http://example.com:8080/series/a%20b/c+d&e=f/123.mkv",
+        "live" : "http://example.com:8080/live/a%20b/c+d&e=f/123.ts",
+        "liveM3U8" : "http://example.com:8080/live/a%20b/c+d&e=f/123.m3u8",
+        "movie" : "http://example.com:8080/movie/a%20b/c+d&e=f/123.mkv",
+        "timeshift" : "http://example.com:8080/timeshift/a%20b/c+d&e=f/35/2026-10-01:16-25/123.ts"
+      },
+      "input" : {
+        "base" : "http://example.com:8080",
+        "ext" : "mkv",
+        "minutes" : 35,
+        "password" : "c+d&e=f",
+        "serverTimeOffset" : 7200,
+        "start" : "2026-10-01T14:25:00Z",
+        "streamId" : "123",
+        "username" : "a b"
+      },
+      "name" : "'a b'/'c+d&e=f'"
+    },
+    {
+      "expected" : {
+        "api" : "http://example.com:8080/player_api.php?username=%D8%B9%D9%84%D9%8A&password=%D9%83%D9%84%D9%85%D8%A9%20%D8%A7%D9%84%D8%B3%D8%B1&action=get_live_streams",
+        "episode" : "http://example.com:8080/series/%D8%B9%D9%84%D9%8A/%D9%83%D9%84%D9%85%D8%A9%20%D8%A7%D9%84%D8%B3%D8%B1/123.mkv",
+        "live" : "http://example.com:8080/live/%D8%B9%D9%84%D9%8A/%D9%83%D9%84%D9%85%D8%A9%20%D8%A7%D9%84%D8%B3%D8%B1/123.ts",
+        "liveM3U8" : "http://example.com:8080/live/%D8%B9%D9%84%D9%8A/%D9%83%D9%84%D9%85%D8%A9%20%D8%A7%D9%84%D8%B3%D8%B1/123.m3u8",
+        "movie" : "http://example.com:8080/movie/%D8%B9%D9%84%D9%8A/%D9%83%D9%84%D9%85%D8%A9%20%D8%A7%D9%84%D8%B3%D8%B1/123.mkv",
+        "timeshift" : "http://example.com:8080/timeshift/%D8%B9%D9%84%D9%8A/%D9%83%D9%84%D9%85%D8%A9%20%D8%A7%D9%84%D8%B3%D8%B1/35/2026-10-01:16-25/123.ts"
+      },
+      "input" : {
+        "base" : "http://example.com:8080",
+        "ext" : "mkv",
+        "minutes" : 35,
+        "password" : "كلمة السر",
+        "serverTimeOffset" : 7200,
+        "start" : "2026-10-01T14:25:00Z",
+        "streamId" : "123",
+        "username" : "علي"
+      },
+      "name" : "'علي'/'كلمة السر'"
+    },
+    {
+      "expected" : {
+        "api" : "http://example.com:8080/player_api.php?username=emoji%F0%9F%98%80&password=100%25&action=get_live_streams",
+        "episode" : "http://example.com:8080/series/emoji%F0%9F%98%80/100%25/123.mkv",
+        "live" : "http://example.com:8080/live/emoji%F0%9F%98%80/100%25/123.ts",
+        "liveM3U8" : "http://example.com:8080/live/emoji%F0%9F%98%80/100%25/123.m3u8",
+        "movie" : "http://example.com:8080/movie/emoji%F0%9F%98%80/100%25/123.mkv",
+        "timeshift" : "http://example.com:8080/timeshift/emoji%F0%9F%98%80/100%25/35/2026-10-01:16-25/123.ts"
+      },
+      "input" : {
+        "base" : "http://example.com:8080",
+        "ext" : "mkv",
+        "minutes" : 35,
+        "password" : "100%",
+        "serverTimeOffset" : 7200,
+        "start" : "2026-10-01T14:25:00Z",
+        "streamId" : "123",
+        "username" : "emoji😀"
+      },
+      "name" : "'emoji😀'/'100%'"
+    },
+    {
+      "expected" : {
+        "api" : "http://example.com:8080/player_api.php?username=semi;colon&password=comma,here&action=get_live_streams",
+        "episode" : "http://example.com:8080/series/semi;colon/comma,here/123.mkv",
+        "live" : "http://example.com:8080/live/semi;colon/comma,here/123.ts",
+        "liveM3U8" : "http://example.com:8080/live/semi;colon/comma,here/123.m3u8",
+        "movie" : "http://example.com:8080/movie/semi;colon/comma,here/123.mkv",
+        "timeshift" : "http://example.com:8080/timeshift/semi;colon/comma,here/35/2026-10-01:16-25/123.ts"
+      },
+      "input" : {
+        "base" : "http://example.com:8080",
+        "ext" : "mkv",
+        "minutes" : 35,
+        "password" : "comma,here",
+        "serverTimeOffset" : 7200,
+        "start" : "2026-10-01T14:25:00Z",
+        "streamId" : "123",
+        "username" : "semi;colon"
+      },
+      "name" : "'semi;colon'/'comma,here'"
+    },
+    {
+      "expected" : {
+        "api" : "http://example.com:8080/player_api.php?username=tilde~&password=under_score.dot-dash&action=get_live_streams",
+        "episode" : "http://example.com:8080/series/tilde~/under_score.dot-dash/123.mkv",
+        "live" : "http://example.com:8080/live/tilde~/under_score.dot-dash/123.ts",
+        "liveM3U8" : "http://example.com:8080/live/tilde~/under_score.dot-dash/123.m3u8",
+        "movie" : "http://example.com:8080/movie/tilde~/under_score.dot-dash/123.mkv",
+        "timeshift" : "http://example.com:8080/timeshift/tilde~/under_score.dot-dash/35/2026-10-01:16-25/123.ts"
+      },
+      "input" : {
+        "base" : "http://example.com:8080",
+        "ext" : "mkv",
+        "minutes" : 35,
+        "password" : "under_score.dot-dash",
+        "serverTimeOffset" : 7200,
+        "start" : "2026-10-01T14:25:00Z",
+        "streamId" : "123",
+        "username" : "tilde~"
+      },
+      "name" : "'tilde~'/'under_score.dot-dash'"
+    },
+    {
+      "expected" : {
+        "api" : "http://example.com:8080/player_api.php?username=%5Bbrackets%5D&password=%7Bbraces%7D%7Cpipe&action=get_live_streams",
+        "episode" : "http://example.com:8080/series/%5Bbrackets%5D/%7Bbraces%7D%7Cpipe/123.mkv",
+        "live" : "http://example.com:8080/live/%5Bbrackets%5D/%7Bbraces%7D%7Cpipe/123.ts",
+        "liveM3U8" : "http://example.com:8080/live/%5Bbrackets%5D/%7Bbraces%7D%7Cpipe/123.m3u8",
+        "movie" : "http://example.com:8080/movie/%5Bbrackets%5D/%7Bbraces%7D%7Cpipe/123.mkv",
+        "timeshift" : "http://example.com:8080/timeshift/%5Bbrackets%5D/%7Bbraces%7D%7Cpipe/35/2026-10-01:16-25/123.ts"
+      },
+      "input" : {
+        "base" : "http://example.com:8080",
+        "ext" : "mkv",
+        "minutes" : 35,
+        "password" : "{braces}|pipe",
+        "serverTimeOffset" : 7200,
+        "start" : "2026-10-01T14:25:00Z",
+        "streamId" : "123",
+        "username" : "[brackets]"
+      },
+      "name" : "'[brackets]'/'{braces}|pipe'"
+    },
+    {
+      "expected" : {
+        "api" : "http://example.com:8080/player_api.php?username=&password=&action=get_live_streams",
+        "episode" : "http://example.com:8080/series///123.mkv",
+        "live" : "http://example.com:8080/live///123.ts",
+        "liveM3U8" : "http://example.com:8080/live///123.m3u8",
+        "movie" : "http://example.com:8080/movie///123.mkv",
+        "timeshift" : "http://example.com:8080/timeshift///35/2026-10-01:16-25/123.ts"
+      },
+      "input" : {
+        "base" : "http://example.com:8080",
+        "ext" : "mkv",
+        "minutes" : 35,
+        "password" : "",
+        "serverTimeOffset" : 7200,
+        "start" : "2026-10-01T14:25:00Z",
+        "streamId" : "123",
+        "username" : ""
+      },
+      "name" : "''/''"
+    }
+  ],
+  "function" : "XtreamClient.urls",
+  "generatedBy" : "swift",
+  "shape" : "{base, username, password, streamId, ext|null, start, minutes, serverTimeOffset} -> {live, liveM3U8, movie, episode, timeshift, api}",
+  "swiftCommit" : "bc2b940"
+}

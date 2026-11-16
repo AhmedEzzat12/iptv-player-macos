@@ -1,0 +1,177 @@
+{
+  "cases" : [
+    {
+      "expected" : "http://h/live/1.ts?utc=1790864700&lutc=1790877600",
+      "input" : {
+        "channelURL" : "http://h/live/1.ts",
+        "end" : "2026-10-01T15:00:00Z",
+        "now" : "2026-10-01T18:00:00Z",
+        "start" : "2026-10-01T14:25:00Z",
+        "template" : null,
+        "tvgId" : "news.tuner",
+        "type" : "append"
+      },
+      "name" : "append default"
+    },
+    {
+      "expected" : "http://h/live/1.ts?utc=1790864700&lutc=1790877600",
+      "input" : {
+        "channelURL" : "http://h/live/1.ts",
+        "end" : "2026-10-01T15:00:00Z",
+        "now" : "2026-10-01T18:00:00Z",
+        "start" : "2026-10-01T14:25:00Z",
+        "template" : "?utc={utc}&lutc={lutc}",
+        "tvgId" : "news.tuner",
+        "type" : "append"
+      },
+      "name" : "append template"
+    },
+    {
+      "expected" : "http://h/ch/1.m3u8?utc=1790864700&lutc=1790877600",
+      "input" : {
+        "channelURL" : "http://h/ch/1.m3u8",
+        "end" : "2026-10-01T15:00:00Z",
+        "now" : "2026-10-01T18:00:00Z",
+        "start" : "2026-10-01T14:25:00Z",
+        "template" : null,
+        "tvgId" : "news.tuner",
+        "type" : "shift"
+      },
+      "name" : "shift"
+    },
+    {
+      "expected" : "http://h/ch/1.m3u8?token=abc&utc=1790864700&lutc=1790877600",
+      "input" : {
+        "channelURL" : "http://h/ch/1.m3u8?token=abc",
+        "end" : "2026-10-01T15:00:00Z",
+        "now" : "2026-10-01T18:00:00Z",
+        "start" : "2026-10-01T14:25:00Z",
+        "template" : null,
+        "tvgId" : "news.tuner",
+        "type" : "shift"
+      },
+      "name" : "shift with existing query"
+    },
+    {
+      "expected" : "http://h/ch/index-1790864700-2100.m3u8",
+      "input" : {
+        "channelURL" : "http://h/ch/index.m3u8",
+        "end" : "2026-10-01T15:00:00Z",
+        "now" : "2026-10-01T18:00:00Z",
+        "start" : "2026-10-01T14:25:00Z",
+        "template" : null,
+        "tvgId" : "news.tuner",
+        "type" : "flussonic"
+      },
+      "name" : "flussonic index"
+    },
+    {
+      "expected" : "http://h/ch/timeshift_abs-1790864700.ts",
+      "input" : {
+        "channelURL" : "http://h/ch/mpegts",
+        "end" : "2026-10-01T15:00:00Z",
+        "now" : "2026-10-01T18:00:00Z",
+        "start" : "2026-10-01T14:25:00Z",
+        "template" : null,
+        "tvgId" : "news.tuner",
+        "type" : "flussonic"
+      },
+      "name" : "flussonic mpegts"
+    },
+    {
+      "expected" : "http://h/ch/video-1790864700-2100.m3u8",
+      "input" : {
+        "channelURL" : "http://h/ch/video.m3u8",
+        "end" : "2026-10-01T15:00:00Z",
+        "now" : "2026-10-01T18:00:00Z",
+        "start" : "2026-10-01T14:25:00Z",
+        "template" : null,
+        "tvgId" : "news.tuner",
+        "type" : "flussonic"
+      },
+      "name" : "flussonic other"
+    },
+    {
+      "expected" : "http://h/archive/2026/10/01/14-25-00.ts?d=2100",
+      "input" : {
+        "channelURL" : "http://h/live/1.ts",
+        "end" : "2026-10-01T15:00:00Z",
+        "now" : "2026-10-01T18:00:00Z",
+        "start" : "2026-10-01T14:25:00Z",
+        "template" : "http://h/archive/{Y}/{m}/{d}/{H}-{M}-{S}.ts?d={duration}",
+        "tvgId" : "news.tuner",
+        "type" : "default"
+      },
+      "name" : "default full template"
+    },
+    {
+      "expected" : "http://h/a?start=1790864700&dur=35&off=215",
+      "input" : {
+        "channelURL" : "http://h/live/1.ts",
+        "end" : "2026-10-01T15:00:00Z",
+        "now" : "2026-10-01T18:00:00Z",
+        "start" : "2026-10-01T14:25:00Z",
+        "template" : "http://h/a?start={utc}&dur={duration:60}&off={offset:60}",
+        "tvgId" : "news.tuner",
+        "type" : "default"
+      },
+      "name" : "default divided"
+    },
+    {
+      "expected" : "http://h/live/1.ts?start=1790864700&end=1790866800",
+      "input" : {
+        "channelURL" : "http://h/live/1.ts",
+        "end" : "2026-10-01T15:00:00Z",
+        "now" : "2026-10-01T18:00:00Z",
+        "start" : "2026-10-01T14:25:00Z",
+        "template" : "?start={utc}&end={utcend}",
+        "tvgId" : "news.tuner",
+        "type" : "default"
+      },
+      "name" : "default relative template"
+    },
+    {
+      "expected" : "http://h/news.tuner/1790864700.ts",
+      "input" : {
+        "channelURL" : "http://h/live/1.ts",
+        "end" : "2026-10-01T15:00:00Z",
+        "now" : "2026-10-01T18:00:00Z",
+        "start" : "2026-10-01T14:25:00Z",
+        "template" : "http://h/{catchup-id}/{start}.ts",
+        "tvgId" : "news.tuner",
+        "type" : "default"
+      },
+      "name" : "default catchup id"
+    },
+    {
+      "expected" : "http://h/live/1.ts?utc=1790864700&lutc=1790877600",
+      "input" : {
+        "channelURL" : "http://h/live/1.ts",
+        "end" : "2026-10-01T15:00:00Z",
+        "now" : "2026-10-01T18:00:00Z",
+        "start" : "2026-10-01T14:25:00Z",
+        "template" : null,
+        "tvgId" : "news.tuner",
+        "type" : "default"
+      },
+      "name" : "default no template"
+    },
+    {
+      "expected" : "http://h/live/u/p/1.ts?utc=1790864700&lutc=1790877600",
+      "input" : {
+        "channelURL" : "http://h/live/u/p/1.ts",
+        "end" : "2026-10-01T15:00:00Z",
+        "now" : "2026-10-01T18:00:00Z",
+        "start" : "2026-10-01T14:25:00Z",
+        "template" : null,
+        "tvgId" : "news.tuner",
+        "type" : "xtream"
+      },
+      "name" : "xtream type no template"
+    }
+  ],
+  "function" : "CatchupURLBuilder.m3u",
+  "generatedBy" : "swift",
+  "shape" : "{channelURL, type, template|null, tvgId|null, start, end, now (ISO-8601)} -> string",
+  "swiftCommit" : "bc2b940"
+}

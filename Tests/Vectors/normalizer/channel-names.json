@@ -1,0 +1,498 @@
+{
+  "cases" : [
+    {
+      "expected" : "cnn",
+      "input" : "CNN HD",
+      "name" : "'CNN HD'"
+    },
+    {
+      "expected" : "london",
+      "input" : " London",
+      "name" : "' London'"
+    },
+    {
+      "expected" : "cnn",
+      "input" : "CNN Backup",
+      "name" : "'CNN Backup'"
+    },
+    {
+      "expected" : "noidchannel",
+      "input" : "No Id Channel",
+      "name" : "'No Id Channel'"
+    },
+    {
+      "expected" : "panelchannel",
+      "input" : "Panel Channel",
+      "name" : "'Panel Channel'"
+    },
+    {
+      "expected" : "tunernews",
+      "input" : "Tuner News",
+      "name" : "'Tuner News'"
+    },
+    {
+      "expected" : "tunersports",
+      "input" : "Tuner Sports",
+      "name" : "'Tuner Sports'"
+    },
+    {
+      "expected" : "tunermovies",
+      "input" : "Tuner Movies",
+      "name" : "'Tuner Movies'"
+    },
+    {
+      "expected" : "tunerkids",
+      "input" : "Tuner Kids",
+      "name" : "'Tuner Kids'"
+    },
+    {
+      "expected" : "tunersports",
+      "input" : "Tuner Sports 4K",
+      "name" : "'Tuner Sports 4K'"
+    },
+    {
+      "expected" : "cnn",
+      "input" : "US| CNN HD ᴴᴰ",
+      "name" : "'US| CNN HD ᴴᴰ'"
+    },
+    {
+      "expected" : "bbcone",
+      "input" : "UK: BBC One FHD",
+      "name" : "'UK: BBC One FHD'"
+    },
+    {
+      "expected" : "cbcnews",
+      "input" : "[CA] CBC News",
+      "name" : "'[CA] CBC News'"
+    },
+    {
+      "expected" : "mbc1",
+      "input" : "|AR| MBC 1",
+      "name" : "'|AR| MBC 1'"
+    },
+    {
+      "expected" : "mbc2",
+      "input" : "AR: MBC 2 HD",
+      "name" : "'AR: MBC 2 HD'"
+    },
+    {
+      "expected" : "daserste",
+      "input" : "DE | Das Erste HEVC",
+      "name" : "'DE | Das Erste HEVC'"
+    },
+    {
+      "expected" : "tf1",
+      "input" : "(FR) TF1 1080p",
+      "name" : "'(FR) TF1 1080p'"
+    },
+    {
+      "expected" : "beinsports1",
+      "input" : "beIN Sports 1",
+      "name" : "'beIN Sports 1'"
+    },
+    {
+      "expected" : "beinsports2",
+      "input" : "beIN Sports 2",
+      "name" : "'beIN Sports 2'"
+    },
+    {
+      "expected" : "beinsports1",
+      "input" : "beIN SPORTS 1 HD",
+      "name" : "'beIN SPORTS 1 HD'"
+    },
+    {
+      "expected" : "beinsports1plus1",
+      "input" : "beIN Sports 1 +1",
+      "name" : "'beIN Sports 1 +1'"
+    },
+    {
+      "expected" : "canalplus",
+      "input" : "Canal+",
+      "name" : "'Canal+'"
+    },
+    {
+      "expected" : "canalplussport",
+      "input" : "Canal+ Sport",
+      "name" : "'Canal+ Sport'"
+    },
+    {
+      "expected" : "canalplus",
+      "input" : "Canal Plus",
+      "name" : "'Canal Plus'"
+    },
+    {
+      "expected" : "skysportsmainevent",
+      "input" : "Sky Sports Main Event UHD",
+      "name" : "'Sky Sports Main Event UHD'"
+    },
+    {
+      "expected" : "skycinemapremiere",
+      "input" : "Sky Cinema Premiere (Backup)",
+      "name" : "'Sky Cinema Premiere (Backup)'"
+    },
+    {
+      "expected" : "hboeast",
+      "input" : "HBO East",
+      "name" : "'HBO East'"
+    },
+    {
+      "expected" : "hbowest",
+      "input" : "HBO West",
+      "name" : "'HBO West'"
+    },
+    {
+      "expected" : "foxnewslive",
+      "input" : "Fox News Live",
+      "name" : "'Fox News Live'"
+    },
+    {
+      "expected" : "live",
+      "input" : "Live",
+      "name" : "'Live'"
+    },
+    {
+      "expected" : "hd",
+      "input" : "HD",
+      "name" : "'HD'"
+    },
+    {
+      "expected" : "4k",
+      "input" : "4K",
+      "name" : "'4K'"
+    },
+    {
+      "expected" : "vip",
+      "input" : "VIP",
+      "name" : "'VIP'"
+    },
+    {
+      "expected" : "tv",
+      "input" : "TV",
+      "name" : "'TV'"
+    },
+    {
+      "expected" : "espn2",
+      "input" : "ESPN 2 VIP",
+      "name" : "'ESPN 2 VIP'"
+    },
+    {
+      "expected" : "espn2",
+      "input" : "ESPN2",
+      "name" : "'ESPN2'"
+    },
+    {
+      "expected" : "atandtsportsnet",
+      "input" : "AT&T SportsNet",
+      "name" : "'AT&T SportsNet'"
+    },
+    {
+      "expected" : "aande",
+      "input" : "A&E",
+      "name" : "'A&E'"
+    },
+    {
+      "expected" : "natgeowild",
+      "input" : "Nat Geo Wild 720p",
+      "name" : "'Nat Geo Wild 720p'"
+    },
+    {
+      "expected" : "discoverychannel",
+      "input" : "Discovery Channel [Multi-Audio]",
+      "name" : "'Discovery Channel [Multi-Audio]'"
+    },
+    {
+      "expected" : "disneyjunior",
+      "input" : "Disney Junior {RAW}",
+      "name" : "'Disney Junior {RAW}'"
+    },
+    {
+      "expected" : "cartoonnetwork",
+      "input" : "Cartoon Network 50fps",
+      "name" : "'Cartoon Network 50fps'"
+    },
+    {
+      "expected" : "fullwidth",
+      "input" : "Ｆｕｌｌ Ｗｉｄｔｈ ＴＶ",
+      "name" : "'Ｆｕｌｌ Ｗｉｄｔｈ ＴＶ'"
+    },
+    {
+      "expected" : "mbc1",
+      "input" : "ＭＢＣ　１",
+      "name" : "'ＭＢＣ\\u3000１'"
+    },
+    {
+      "expected" : "cafe",
+      "input" : "Café TV",
+      "name" : "'Café TV'"
+    },
+    {
+      "expected" : "telequebec",
+      "input" : "Télé-Québec",
+      "name" : "'Télé-Québec'"
+    },
+    {
+      "expected" : "nunoa",
+      "input" : "Ñuñoa TV",
+      "name" : "'Ñuñoa TV'"
+    },
+    {
+      "expected" : "ardolympia",
+      "input" : "ÄRD Ölympia",
+      "name" : "'ÄRD Ölympia'"
+    },
+    {
+      "expected" : "istanbul",
+      "input" : "İstanbul TV",
+      "name" : "'İstanbul TV'"
+    },
+    {
+      "expected" : "isık",
+      "input" : "Işık TV",
+      "name" : "'Işık TV'"
+    },
+    {
+      "expected" : "ⓣⓥcircled",
+      "input" : "ⓉⓋ Circled",
+      "name" : "'ⓉⓋ Circled'"
+    },
+    {
+      "expected" : "⁵",
+      "input" : "TV ⁵",
+      "name" : "'TV ⁵'"
+    },
+    {
+      "expected" : "channel5²",
+      "input" : "Channel 5 ²",
+      "name" : "'Channel 5 ²'"
+    },
+    {
+      "expected" : "emoji",
+      "input" : "📺 Emoji TV",
+      "name" : "'📺 Emoji TV'"
+    },
+    {
+      "expected" : "usanetwork",
+      "input" : "🇺🇸 USA Network",
+      "name" : "'🇺🇸 USA Network'"
+    },
+    {
+      "expected" : "",
+      "input" : "",
+      "name" : "''"
+    },
+    {
+      "expected" : "",
+      "input" : " ",
+      "name" : "' '"
+    },
+    {
+      "expected" : "",
+      "input" : "!!!",
+      "name" : "'!!!'"
+    },
+    {
+      "expected" : "",
+      "input" : "---",
+      "name" : "'---'"
+    },
+    {
+      "expected" : "123",
+      "input" : "123",
+      "name" : "'123'"
+    },
+    {
+      "expected" : "247news",
+      "input" : "24/7 News",
+      "name" : "'24/7 News'"
+    },
+    {
+      "expected" : "قناةالجزيرة",
+      "input" : "قناة الجزيرة",
+      "name" : "'قناة الجزيرة'"
+    },
+    {
+      "expected" : "الجزيرة",
+      "input" : "الجزيرة HD",
+      "name" : "'الجزيرة HD'"
+    },
+    {
+      "expected" : "الجزيرةالوثائقية",
+      "input" : "الجزيرة الوثائقية",
+      "name" : "'الجزيرة الوثائقية'"
+    },
+    {
+      "expected" : "أبوظبيالرياضية",
+      "input" : "أبوظبي الرياضية",
+      "name" : "'أبوظبي الرياضية'"
+    },
+    {
+      "expected" : "ابوظبيالرياضية",
+      "input" : "ابوظبي الرياضية",
+      "name" : "'ابوظبي الرياضية'"
+    },
+    {
+      "expected" : "إمبيسي",
+      "input" : "إم بي سي",
+      "name" : "'إم بي سي'"
+    },
+    {
+      "expected" : "قناةُالعربيّة",
+      "input" : "قناةُ العربيّة",
+      "name" : "'قناةُ العربيّة'"
+    },
+    {
+      "expected" : "العربية",
+      "input" : "العربية FHD",
+      "name" : "'العربية FHD'"
+    },
+    {
+      "expected" : "روتاناسينماplus2",
+      "input" : "روتانا سينما +2",
+      "name" : "'روتانا سينما +2'"
+    },
+    {
+      "expected" : "mbcمصر",
+      "input" : "MBC مصر",
+      "name" : "'MBC مصر'"
+    },
+    {
+      "expected" : "one",
+      "input" : "ON E",
+      "name" : "'ON E'"
+    },
+    {
+      "expected" : "cbcسفرة",
+      "input" : "CBC سفرة",
+      "name" : "'CBC سفرة'"
+    },
+    {
+      "expected" : "trtturk",
+      "input" : "TRT Türk",
+      "name" : "'TRT Türk'"
+    },
+    {
+      "expected" : "россия1",
+      "input" : "Россия 1",
+      "name" : "'Россия 1'"
+    },
+    {
+      "expected" : "первыиканал",
+      "input" : "Первый канал HD",
+      "name" : "'Первый канал HD'"
+    },
+    {
+      "expected" : "ερτ1",
+      "input" : "ΕΡΤ1",
+      "name" : "'ΕΡΤ1'"
+    },
+    {
+      "expected" : "日本テレビ",
+      "input" : "日本テレビ",
+      "name" : "'日本テレビ'"
+    },
+    {
+      "expected" : "cctv1综合",
+      "input" : "CCTV-1 综合",
+      "name" : "'CCTV-1 综合'"
+    },
+    {
+      "expected" : "kbs1tv",
+      "input" : "KBS 1TV",
+      "name" : "'KBS 1TV'"
+    },
+    {
+      "expected" : "zee",
+      "input" : "ZEE TV ᵁᴴᴰ",
+      "name" : "'ZEE TV ᵁᴴᴰ'"
+    },
+    {
+      "expected" : "starplus",
+      "input" : "Star Plus ʰᵈ",
+      "name" : "'Star Plus ʰᵈ'"
+    },
+    {
+      "expected" : "sonysab",
+      "input" : "Sony SAB (Backup 2)",
+      "name" : "'Sony SAB (Backup 2)'"
+    },
+    {
+      "expected" : "nbc4newyork",
+      "input" : "NBC 4 New York",
+      "name" : "'NBC 4 New York'"
+    },
+    {
+      "expected" : "wabc7",
+      "input" : "WABC 7 (New York)",
+      "name" : "'WABC 7 (New York)'"
+    },
+    {
+      "expected" : "abc",
+      "input" : "ABC (East) HD",
+      "name" : "'ABC (East) HD'"
+    },
+    {
+      "expected" : "supersportpremierleague",
+      "input" : "SuperSport Premier League x265",
+      "name" : "'SuperSport Premier League x265'"
+    },
+    {
+      "expected" : "dazn1",
+      "input" : "DAZN 1 H264",
+      "name" : "'DAZN 1 H264'"
+    },
+    {
+      "expected" : "eurosport1",
+      "input" : "Eurosport 1 576p",
+      "name" : "'Eurosport 1 576p'"
+    },
+    {
+      "expected" : "motorvision",
+      "input" : "Motorvision 2160p",
+      "name" : "'Motorvision 2160p'"
+    },
+    {
+      "expected" : "rai1",
+      "input" : "Rai 1 SD",
+      "name" : "'Rai 1 SD'"
+    },
+    {
+      "expected" : "la1",
+      "input" : "La 1 QHD",
+      "name" : "'La 1 QHD'"
+    },
+    {
+      "expected" : "tv3",
+      "input" : "TV3 8K",
+      "name" : "'TV3 8K'"
+    },
+    {
+      "expected" : "channelwithspaces",
+      "input" : "Channel   With   Spaces",
+      "name" : "'Channel   With   Spaces'"
+    },
+    {
+      "expected" : "uppercasechannel",
+      "input" : "UPPER CASE CHANNEL",
+      "name" : "'UPPER CASE CHANNEL'"
+    },
+    {
+      "expected" : "lowercasechannel",
+      "input" : "lower case channel",
+      "name" : "'lower case channel'"
+    },
+    {
+      "expected" : "mixedcasechannelname",
+      "input" : "Mixed-Case.Channel_Name",
+      "name" : "'Mixed-Case.Channel_Name'"
+    },
+    {
+      "expected" : "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "input" : "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "name" : "'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+  ],
+  "function" : "ChannelNameNormalizer.normalize",
+  "generatedBy" : "swift",
+  "shape" : "string -> string",
+  "swiftCommit" : "bc2b940"
+}
