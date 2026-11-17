@@ -10,6 +10,12 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.Alignment
+import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -22,13 +28,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.DrawerValue
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
-import androidx.tv.material3.NavigationDrawer
-import androidx.tv.material3.NavigationDrawerItem
+import androidx.tv.material3.ModalNavigationDrawer
+import androidx.tv.material3.ClickableSurfaceDefaults
+import androidx.tv.material3.Surface
 import androidx.tv.material3.NavigationDrawerScope
 import androidx.tv.material3.Text
 import androidx.tv.material3.rememberDrawerState
@@ -72,11 +81,24 @@ fun AppShell() {
         if (stack.isNotEmpty()) stack.removeAt(stack.lastIndex) else itemFocus.getValue(selected).requestFocus()
     }
 
+    LaunchedEffect(drawerState.currentValue) {
+        if (drawerState.currentValue == DrawerValue.Open) runCatching { itemFocus.getValue(selected).requestFocus() }
+    }
+
     Box(Modifier.fillMaxSize()) {
-        NavigationDrawer(
+        // Like the Apple TV app's sidebar: a slim icon rail that opens over the page (with a fade) instead of pushing
+        // it aside. Entering it focuses the current section, not whichever icon is level with the focused card.
+        ModalNavigationDrawer(
             drawerState = drawerState,
+            scrimBrush = Brush.horizontalGradient(listOf(Color.Black.copy(alpha = 0.8f), Color.Black.copy(alpha = 0.4f))),
             drawerContent = {
-                Column(Modifier.fillMaxHeight().padding(vertical = 27.dp, horizontal = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                // Open, the rail sits on a solid panel so its titles never mix with the page's text underneath.
+                Column(
+                    Modifier.fillMaxHeight()
+                        .then(if (hasFocus) Modifier.background(TunerColors.surface, RoundedCornerShape(topEnd = 24.dp, bottomEnd = 24.dp)) else Modifier)
+                        .padding(vertical = 27.dp, horizontal = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
                     Section.entries.filter { it != Section.Settings }.forEach { section ->
                         DrawerItem(section, selected, itemFocus.getValue(section)) { if (selected == it) stack.clear() else { selected = it; stack.clear() } }
                     }
@@ -88,7 +110,7 @@ fun AppShell() {
             Box(
                 Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
                     .onFocusChanged { contentHasFocus = it.hasFocus }
-                    .padding(start = 48.dp, end = 24.dp, top = 27.dp, bottom = 0.dp)
+                    .padding(start = RAIL_WIDTH + 32.dp, end = 24.dp, top = 27.dp, bottom = 0.dp)
 
             ) {
                 when (val page = stack.lastOrNull()) {
@@ -115,10 +137,29 @@ fun AppShell() {
 
 @Composable
 private fun NavigationDrawerScope.DrawerItem(section: Section, selected: Section, focusRequester: FocusRequester, onSelect: (Section) -> Unit) {
-    NavigationDrawerItem(
-        selected = section == selected,
+    // A compact pill instead of NavigationDrawerItem (256 dp open, bulky): icon only while the rail is closed,
+    // icon and title at a fixed 200 dp while it's open.
+    val isSelected = section == selected
+    Surface(
         onClick = { onSelect(section) },
-        leadingContent = { Icon(section.icon, contentDescription = null) },
-        modifier = Modifier.focusRequester(focusRequester),
-    ) { Text(stringResource(section.title)) }
+        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(50)),
+        colors = ClickableSurfaceDefaults.colors(
+            containerColor = if (isSelected) Color.White.copy(alpha = 0.12f) else Color.Transparent,
+            contentColor = Color.White.copy(alpha = if (isSelected) 1f else 0.75f),
+            focusedContainerColor = Color.White, focusedContentColor = Color.Black,
+        ),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
+        modifier = Modifier.focusRequester(focusRequester).height(44.dp).then(if (hasFocus) Modifier.width(200.dp) else Modifier.width(48.dp)),
+    ) {
+        Row(Modifier.fillMaxSize().padding(horizontal = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(section.icon, contentDescription = stringResource(section.title), Modifier.size(20.dp))
+            if (hasFocus) {
+                Spacer(Modifier.width(14.dp))
+                Text(stringResource(section.title), style = MaterialTheme.typography.titleSmall, maxLines = 1)
+            }
+        }
+    }
 }
+
+/** Closed rail: 48 dp pills plus 8 dp padding each side. Page content starts after it so titles are never under it. */
+private val RAIL_WIDTH = 64.dp
