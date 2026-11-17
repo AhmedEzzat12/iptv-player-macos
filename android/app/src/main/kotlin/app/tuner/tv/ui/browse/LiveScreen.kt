@@ -209,7 +209,7 @@ fun LiveScreen(onPlay: (PlaybackItem) -> Unit, initial: Library.ChannelScope = L
                                 } else null,
                                 trailingContent = {
                                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                                        if (ch.catchupType != null) Text("⟲", color = Color.White.copy(alpha = 0.55f))
+                                        if (ch.hasCatchup) Text("⟲", color = Color.White.copy(alpha = 0.55f))
                                         if (ch.isFavorite) Text("★", color = TunerColors.accent)
                                     }
                                 },
@@ -222,7 +222,8 @@ fun LiveScreen(onPlay: (PlaybackItem) -> Unit, initial: Library.ChannelScope = L
         }
 
         inspected?.let { (ch, prog) ->
-            val canCatchup = prog.end.isBefore(now) && ch.catchupType != null
+            // Same rule as the Apple guide: started, and still inside the channel's archive (so a live programme can start over).
+            val canCatchup = ch.catchupAvailable(prog, now)
             Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.78f)), contentAlignment = Alignment.Center) {
                 Column(Modifier.width(640.dp).background(TunerColors.surface, RoundedCornerShape(18.dp)).padding(28.dp)) {
                     Text(prog.title, style = MaterialTheme.typography.headlineSmall)
@@ -234,7 +235,7 @@ fun LiveScreen(onPlay: (PlaybackItem) -> Unit, initial: Library.ChannelScope = L
                     Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                         if (canCatchup) {
                             Button(onClick = { inspected = null; onPlay(PlaybackItem.Catchup(ch, prog)) }, modifier = Modifier.initialFocus(prog.stableKey)) {
-                                Text("Play Catchup ⟲")
+                                Text(if (prog.isLive(now)) "Start Over ⟲" else "Play Catchup ⟲")
                             }
                         }
                         Button(onClick = { inspected = null; onPlay(PlaybackItem.Live(ch, channels)) },
@@ -343,7 +344,7 @@ private fun GuideGridView(
                                     val secs = (clampedEnd - clampedStart).coerceAtLeast(600L)
                                     val widthDp = ((secs / 7200f) * 1120f).coerceIn(160f, 1120f).dp
                                     val live = p.isLive(now)
-                                    val pastCatchup = p.end.isBefore(now) && ch.catchupType != null
+                                    val pastCatchup = p.end.isBefore(now) && ch.catchupAvailable(p, now)
                                     Surface(
                                         onClick = {
                                             when {

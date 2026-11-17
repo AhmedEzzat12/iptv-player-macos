@@ -292,7 +292,8 @@ public class SyncService(private val library: Library, private val cacheDir: Fil
         if (manual != null) {
             urls += manual
         } else if (source.autoLoadEPG) {
-            source.discoveredEPGURL?.trim()?.takeIf { it.isNotEmpty() }?.let { urls += it }
+            // The provider's url-tvg must be a web address: a playlist header shouldn't make the app read a local file.
+            source.discoveredEPGURL?.trim()?.takeIf { it.startsWith("http://", true) || it.startsWith("https://", true) }?.let { urls += it }
             if (source.kind == Source.Kind.XTREAM) {
                 val xmltv = XtreamClient(source).urls.xmltvURL()
                 if (xmltv !in urls) urls += xmltv

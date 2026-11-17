@@ -2,6 +2,7 @@
 package app.tuner.core.models
 
 import app.tuner.core.nilIfEmpty
+import java.time.Instant
 
 public enum class CategoryKind(public val raw: String) {
     LIVE("live"), MOVIE("movie"), SERIES("series");
@@ -88,4 +89,14 @@ public data class Channel(
 ) {
     public val displayName: String get() = alias.nilIfEmpty() ?: name
     public val hasCatchup: Boolean get() = catchupType != null && (catchupDays ?: 1) > 0
+
+    /**
+     * A programme that has started and that the provider's archive still holds (`catchupDays` back from now).
+     * Port of LiveGuideStore.catchupAvailable (Sources/Tuner/Views/Live/LiveGuideStore.swift).
+     */
+    public fun catchupAvailable(program: Program, now: Instant): Boolean {
+        if (!hasCatchup || !program.start.isBefore(now)) return false
+        val days = catchupDays
+        return if (days != null && days > 0) !program.start.isBefore(now.minusSeconds(days * 86_400L)) else true
+    }
 }

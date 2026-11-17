@@ -95,6 +95,16 @@ fun PlayerScreen(initial: PlaybackItem, onClose: () -> Unit) {
     var triedM3U8 by remember { mutableStateOf(false) }
     var liveNow by remember { mutableStateOf<Program?>(null) }
     var liveNext by remember { mutableStateOf<Program?>(null) }
+
+    /** Now/next for the live chrome; reloaded when the current programme ends while watching. */
+    suspend fun loadLiveGuide(channel: app.tuner.core.models.Channel) {
+        val key = channel.epgKey ?: return
+        val now = Instant.now()
+        val progs = app.library.programs(listOf(key), now, now.plusSeconds(6 * 3600))[key].orEmpty()
+        liveNow = progs.firstOrNull { it.isLive(now) }
+        liveNext = progs.firstOrNull { !it.start.isBefore(liveNow?.end ?: now) && it != liveNow }
+    }
+
     val focus = remember { FocusRequester() }
 
     val player = remember {
@@ -142,13 +152,7 @@ fun PlayerScreen(initial: PlaybackItem, onClose: () -> Unit) {
         try {
             val stream = when (target) {
                 is PlaybackItem.Live -> {
-                    val key = target.channel.epgKey
-                    if (key != null) {
-                        val now = Instant.now()
-                        val progs = app.library.programs(listOf(key), now, now.plusSeconds(6 * 3600))[key].orEmpty()
-                        liveNow = progs.firstOrNull { it.isLive(now) }
-                        liveNext = progs.firstOrNull { !it.start.isBefore(liveNow?.end ?: now) && it != liveNow }
-                    }
+                    loadLiveGuide(target.channel)
                     app.resolver.live(target.channel, format).also { app.library.recordWatched(target.channel.id) }
                 }
                 is PlaybackItem.Catchup -> app.resolver.catchup(target.channel, target.program).also { app.library.recordWatched(target.channel.id) }
@@ -251,6 +255,10 @@ fun PlayerScreen(initial: PlaybackItem, onClose: () -> Unit) {
             position = player.currentPosition / 1000.0
             duration = player.duration.takeIf { it != C.TIME_UNSET && it > 0 }?.div(1000.0) ?: 0.0
             if (ticks % 18 == 0) saveProgress()
+            (item as? PlaybackItem.Live)?.let { live ->
+                val endsAt = liveNow?.end ?: liveNext?.start
+                if (endsAt != null && !endsAt.isAfter(Instant.now())) loadLiveGuide(live.channel)
+            }
             if (item !is PlaybackItem.Live && duration > 0) {
                 if (item is PlaybackItem.EpisodeItem) upNext = UpNextCountdown.secondsLeft(position, duration, 10)
                 if (position != lastPos || !player.playWhenReady) { lastPos = position; stalledSince = System.currentTimeMillis() }
