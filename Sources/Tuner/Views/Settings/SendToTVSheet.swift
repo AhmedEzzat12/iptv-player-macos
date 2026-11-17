@@ -22,9 +22,10 @@ struct SendToTVSheet: View {
                     #if os(iOS)
                     if QRScannerView.isAvailable && !sent {
                         QRScannerView { code in
+                            // Only fills in the address: the user checks it and taps Send.
                             guard !sending, !sent, PlaylistShare.receiverURL(code) != nil else { return }
                             address = code
-                            send()
+                            error = nil
                         }
                         .frame(height: 260)
                         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))

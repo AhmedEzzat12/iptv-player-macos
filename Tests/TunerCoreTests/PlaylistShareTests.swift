@@ -24,6 +24,9 @@ import Testing
             "http://user@192.168.1.9:8790/\(Self.token)",
             "http://192.168.1.9:8790/a/\(Self.token)",
             "http://192.168.1.999:8790/\(Self.token)",
+            "http://010.0.0.1:8790/\(Self.token)",            // leading zero: octal to some loaders
+            "http://192.168.01.9:8790/\(Self.token)",
+            "http://+10.0.0.1:8790/\(Self.token)",
             "",
         ]
         for text in rejected { #expect(PlaylistShare.receiverURL(text) == nil, "\(text)") }
@@ -72,5 +75,16 @@ import Testing
         await #expect(throws: PlaylistShare.ShareError.rejected(400)) {
             try await PlaylistShare.send(source, to: server.url("/bad"), session: session)
         }
+    }
+
+    /// A 307 would resend the body (with the password) to the redirect target: every redirect is refused.
+    @Test func redirectsAreRefused() async throws {
+        let url = URL(string: "http://192.168.1.9:8790/\(Self.token)")!
+        let response = try #require(HTTPURLResponse(url: url, statusCode: 307, httpVersion: "HTTP/1.1",
+                                                    headerFields: ["Location": "http://evil.example/"]))
+        let task = URLSession.shared.dataTask(with: url)
+        let next = await NoRedirects().urlSession(.shared, task: task, willPerformHTTPRedirection: response,
+                                                  newRequest: URLRequest(url: URL(string: "http://evil.example/")!))
+        #expect(next == nil)
     }
 }

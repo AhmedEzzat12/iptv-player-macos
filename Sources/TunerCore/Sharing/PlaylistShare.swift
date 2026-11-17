@@ -72,8 +72,13 @@ public enum PlaylistShare {
     }
 
     static func isPrivateIPv4(_ host: String) -> Bool {
-        let parts = host.split(separator: ".", omittingEmptySubsequences: false).map { Int($0) }
-        guard parts.count == 4, parts.allSatisfy({ $0.map { (0...255).contains($0) } ?? false }) else { return false }
+        // Canonical dotted decimal only: "010" or "+10" must not pass, since some URL loaders read leading zeros as
+        // octal and would connect somewhere else than the address checked here.
+        let parts = host.split(separator: ".", omittingEmptySubsequences: false).map { part -> Int? in
+            guard let n = Int(part), (0...255).contains(n), String(n) == part else { return nil }
+            return n
+        }
+        guard parts.count == 4, parts.allSatisfy({ $0 != nil }) else { return false }
         let a = parts[0]!, b = parts[1]!
         return a == 10 || (a == 172 && (16...31).contains(b)) || (a == 192 && b == 168)
     }
@@ -89,9 +94,16 @@ public enum PlaylistShare {
     /// Sends `source` to the TV at `url` (from `receiverURL`).
     public static func send(_ source: Source, to url: URL, session: URLSession = .shared) async throws {
         guard canShare(source) else { throw ShareError.localFile }
-        let (_, response) = try await session.data(for: request(SharedPlaylist(source: source), to: url))
+        // Redirects are refused: a 307 would resend the body (with the password) wherever it points.
+        let (_, response) = try await session.data(for: request(SharedPlaylist(source: source), to: url),
+                                                   delegate: NoRedirects())
         let status = (response as? HTTPURLResponse)?.statusCode ?? 0
         if status == 404 { throw ShareError.expired }
         guard (200..<300).contains(status) else { throw ShareError.rejected(status) }
     }
+}
+
+final class NoRedirects: NSObject, URLSessionTaskDelegate, Sendable {
+    func urlSession(_ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse,
+                    newRequest request: URLRequest) async -> URLRequest? { nil }
 }
