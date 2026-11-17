@@ -90,25 +90,19 @@ fun AppShell() {
             drawerState = drawerState,
             scrimBrush = Brush.horizontalGradient(listOf(Color.Black.copy(alpha = 0.8f), Color.Black.copy(alpha = 0.4f))),
             drawerContent = {
-                val currentSection = selected
                 // Open, the rail sits on a solid panel so its titles never mix with the page's text underneath.
                 Column(
                     Modifier.fillMaxHeight()
-                        // Focus enters on the current section directly (moving it afterwards made another icon flash).
-                        .focusProperties {
-                            canFocus = playing == null
-                            onEnter = { if (itemFocus.getValue(currentSection).requestFocus()) cancelFocusChange() }
-                        }
                         .focusGroup()
                         .then(if (hasFocus) Modifier.background(TunerColors.surface, RoundedCornerShape(topEnd = 24.dp, bottomEnd = 24.dp)) else Modifier)
                         .padding(vertical = 27.dp, horizontal = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
                     Section.entries.filter { it != Section.Settings }.forEach { section ->
-                        DrawerItem(section, selected, itemFocus.getValue(section)) { if (selected == it) stack.clear() else { selected = it; stack.clear() } }
+                        DrawerItem(section, selected, itemFocus.getValue(section), playing == null) { if (selected == it) stack.clear() else { selected = it; stack.clear() } }
                     }
                     Spacer(Modifier.weight(1f))
-                    DrawerItem(Section.Settings, selected, itemFocus.getValue(Section.Settings)) { selected = it; stack.clear() }
+                    DrawerItem(Section.Settings, selected, itemFocus.getValue(Section.Settings), playing == null) { selected = it; stack.clear() }
                 }
             },
         ) {
@@ -147,7 +141,7 @@ fun AppShell() {
 }
 
 @Composable
-private fun NavigationDrawerScope.DrawerItem(section: Section, selected: Section, focusRequester: FocusRequester, onSelect: (Section) -> Unit) {
+private fun NavigationDrawerScope.DrawerItem(section: Section, selected: Section, focusRequester: FocusRequester, enabled: Boolean, onSelect: (Section) -> Unit) {
     // A compact pill instead of NavigationDrawerItem (256 dp open, bulky): icon only while the rail is closed,
     // icon and title at a fixed 200 dp while it's open.
     val isSelected = section == selected
@@ -160,7 +154,11 @@ private fun NavigationDrawerScope.DrawerItem(section: Section, selected: Section
             focusedContainerColor = Color.White, focusedContentColor = Color.Black,
         ),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
-        modifier = Modifier.focusRequester(focusRequester).height(44.dp).then(if (hasFocus) Modifier.width(200.dp) else Modifier.width(48.dp)),
+        // While the rail is closed only the current section can take focus, so Left from a page always lands on it
+        // (redirecting focus in onEnter left nothing focused on the TV; moving it afterwards flashed another icon).
+        // Nothing in it takes focus during playback. Don't set canFocus on the column: that makes the column itself
+        // a focus target, and Left then focuses an invisible container.
+        modifier = Modifier.focusRequester(focusRequester).focusProperties { canFocus = enabled && (hasFocus || isSelected) }.height(44.dp).then(if (hasFocus) Modifier.width(200.dp) else Modifier.width(48.dp)),
     ) {
         Row(Modifier.fillMaxSize().padding(horizontal = 14.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(section.icon, contentDescription = stringResource(section.title), Modifier.size(20.dp))
