@@ -51,7 +51,7 @@ public class SyncService(private val library: Library, private val cacheDir: Fil
     } catch (e: CancellationException) {
         throw e
     } catch (e: Exception) {
-        e.message ?: "Couldn't reach the playlist"
+        e.message ?: "Couldn't reach the playlist (${e::class.java.simpleName})"
     }
 
     public suspend fun sync(sourceId: String) {
@@ -68,7 +68,7 @@ public class SyncService(private val library: Library, private val cacheDir: Fil
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                errors += e.message ?: "Channels failed"
+                errors += e.message ?: "Channels failed (${e::class.java.simpleName})"
             }
             // VOD is attempted even if channels failed: a bad live response must not hide movies.
             if (source.includeVOD && source.kind != Source.Kind.M3U) {
