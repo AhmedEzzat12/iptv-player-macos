@@ -40,7 +40,7 @@ struct SendToTVSheet: View {
                         #endif
                         .onSubmit(send)
                 } footer: {
-                    Text("The playlist's link\(source.password == nil ? "" : " and password") go only to the TV, over your home network.")
+                    SettingsFooter("The playlist's \(source.password == nil ? "link goes" : "link and password go") only to the TV, over your home network.")
                 }
                 if sent {
                     Label("Sent. Confirm on the TV to add “\(source.name)”.", systemImage: "checkmark.circle.fill")
@@ -51,9 +51,11 @@ struct SendToTVSheet: View {
                 }
             }
             .formStyle(.grouped)
-            .navigationTitle("Send “\(source.name)” to TV")
             #if os(iOS)
+            .navigationTitle("Send to TV")
             .navigationBarTitleDisplayMode(.inline)
+            #else
+            .navigationTitle("Send “\(source.name)” to TV")
             #endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -66,7 +68,7 @@ struct SendToTVSheet: View {
             }
         }
         #if os(macOS)
-        .frame(width: 460, height: 300)
+        .frame(width: 480, height: 240)
         #endif
     }
 
