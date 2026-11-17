@@ -26,6 +26,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
@@ -81,10 +82,6 @@ fun AppShell() {
         if (stack.isNotEmpty()) stack.removeAt(stack.lastIndex) else itemFocus.getValue(selected).requestFocus()
     }
 
-    LaunchedEffect(drawerState.currentValue) {
-        if (drawerState.currentValue == DrawerValue.Open) runCatching { itemFocus.getValue(selected).requestFocus() }
-    }
-
     Box(Modifier.fillMaxSize()) {
         // Like the Apple TV app's sidebar: a slim icon rail that opens over the page (with a fade) instead of pushing
         // it aside. Entering it focuses the current section, not whichever icon is level with the focused card.
@@ -95,6 +92,9 @@ fun AppShell() {
                 // Open, the rail sits on a solid panel so its titles never mix with the page's text underneath.
                 Column(
                     Modifier.fillMaxHeight()
+                        // Focus enters on the current section directly (moving it afterwards made another icon flash).
+                        .focusProperties { onEnter = { if (itemFocus.getValue(selected).requestFocus()) cancelFocusChange() } }
+                        .focusGroup()
                         .then(if (hasFocus) Modifier.background(TunerColors.surface, RoundedCornerShape(topEnd = 24.dp, bottomEnd = 24.dp)) else Modifier)
                         .padding(vertical = 27.dp, horizontal = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(4.dp),

@@ -93,8 +93,9 @@ fun VodGridScreen(kind: CategoryKind, onOpen: (String) -> Unit) {
         if (items.isEmpty()) {
             Placeholder(if (categories.isEmpty()) "Add a playlist with movies and shows in Settings." else "Nothing in this category.")
         } else {
-            LazyVerticalGrid(GridCells.Adaptive(160.dp), horizontalArrangement = Arrangement.spacedBy(20.dp),
-                verticalArrangement = Arrangement.spacedBy(24.dp), contentPadding = PaddingValues(top = 12.dp, start = 6.dp, bottom = 48.dp, end = 24.dp)) {
+            // Fixed cells: posters are the same 150 dp as on Home in every category (Adaptive stretched them).
+            LazyVerticalGrid(GridCells.FixedSize(150.dp), horizontalArrangement = Arrangement.spacedBy(18.dp),
+                verticalArrangement = Arrangement.spacedBy(24.dp), contentPadding = PaddingValues(top = 12.dp, start = 6.dp, bottom = 48.dp, end = 4.dp)) {
                 itemsIndexed(items, key = { _, it -> it.first }) { index, (id, name, image) ->
                     PosterCard(name, image, onClick = { onOpen(id) })
                     if (index == items.size - 1 && !exhausted) LaunchedEffect(items.size) {
