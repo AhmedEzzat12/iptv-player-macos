@@ -39,4 +39,21 @@ DTS, DTS-HD. Passthrough of surround formats is available even without a receive
 **Skeleton check** (phase 1, `scratch` build): launches, drawer and Back behave as on the emulator, 27 MB PSS.
 Uninstalled afterwards. The owner's TV had no Antenna/Tuner package installed.
 
-Benchmarks (phase 3) and player results (phase 4) go below.
+### Benchmarks and player results (phases 3–4, `scratch` build)
+
+Checked 2026-11-17 against the local test kit over Wi-Fi (`app.antenna.player.scratch`, R8 minified):
+
+| Check | Result | Target |
+|---|---|---|
+| Cold start (`am start -W -S`) | **413 ms** (`TotalTime`, 427 ms `WaitTime`) | < 1.5 s |
+| Memory while browsing (Home, Movies, Live TV) | **38 MB PSS** (139 MB RSS) | < 220 MB PSS |
+| Memory while playing live MPEG-TS (720p H.264 + AAC) | **50 MB PSS** (163 MB RSS) | < 220 MB PSS |
+| Memory while playing 4K HEVC + AC-3 (3840×2160 25 fps) | **60 MB PSS** (175 MB RSS) | < 220 MB PSS |
+| Memory while playing 720p MP4 movie | **67 MB PSS** | < 220 MB PSS |
+| Live TS first frame (`Tuner News`..`Tuner Kids`) | **~1.0 s**, zaps cleanly with D-pad Up/Down | < 2 s |
+| Hardware H.264 + AAC | `c2.mtk.avc.decoder` + `c2.android.aac.decoder`, 25 fps, 0 dropped frames | Hardware |
+| Hardware 4K HEVC (3840×2160 `hvc1`) | `c2.mtk.hevc.decoder`, 25 fps (`ROB: 25/s`), 0 dropped frames | Hardware |
+| Hardware AC-3 audio (`audio/ac3`) | Direct offload to `audio_hw_primary` (`APAF Filter(Ac3)` hardware decode) | Passthrough / hardware |
+| Dead channel (`Tuner Sports 4K`, HTTP 404) | Tries `.ts`, retries once as `.m3u8`, then shows the 404 card | Clean error |
+| Episode playback, Up Next, and resume | Plays `Signal Lost`, shows Up Next above the scrubber, advances on OK, and updates `Resume` on Back | Matches Apple apps |
+| Playlist share server (`Add a Playlist`) | Falls back to an available port when 8790 is busy, confirms on TV, and syncs catalog + posters | Matches spec |

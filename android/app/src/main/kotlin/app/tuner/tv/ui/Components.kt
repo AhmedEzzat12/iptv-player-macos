@@ -14,6 +14,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -29,12 +33,15 @@ import coil3.compose.AsyncImage
 /** A 2:3 poster card with the title under it; the title shows inside the card when there's no artwork. */
 @Composable
 fun PosterCard(title: String, imageURL: String?, subtitle: String? = null, width: Int = 150, onClick: () -> Unit) {
+    var loaded by remember(imageURL) { mutableStateOf(false) }
     Column(Modifier.width(width.dp)) {
         Card(onClick = onClick, modifier = Modifier.fillMaxWidth().aspectRatio(2f / 3f),
             scale = CardDefaults.scale(focusedScale = 1.05f), shape = CardDefaults.shape(RoundedCornerShape(10.dp))) {
             Box(Modifier.fillMaxSize().background(TunerColors.surface), contentAlignment = Alignment.Center) {
-                Text(title, Modifier.padding(10.dp), maxLines = 4, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium)
-                if (imageURL != null) AsyncImage(imageURL, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                if (imageURL == null || !loaded) {
+                    Text(title, Modifier.padding(10.dp), maxLines = 4, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium)
+                }
+                if (imageURL != null) AsyncImage(imageURL, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop, onSuccess = { loaded = true })
             }
         }
         Spacer(Modifier.height(12.dp))
@@ -45,13 +52,19 @@ fun PosterCard(title: String, imageURL: String?, subtitle: String? = null, width
 
 /** A 16:9 card (Continue Watching, channels) with an optional progress bar. */
 @Composable
-fun WideCard(title: String, subtitle: String?, imageURL: String?, progress: Double? = null, width: Int = 260, onClick: () -> Unit) {
+fun WideCard(title: String, subtitle: String?, imageURL: String?, progress: Double? = null, width: Int = 260, fitImage: Boolean = false, onClick: () -> Unit) {
+    var loaded by remember(imageURL) { mutableStateOf(false) }
     Column(Modifier.width(width.dp)) {
         Card(onClick = onClick, modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f),
             scale = CardDefaults.scale(focusedScale = 1.05f), shape = CardDefaults.shape(RoundedCornerShape(10.dp))) {
             Box(Modifier.fillMaxSize().background(TunerColors.surface), contentAlignment = Alignment.Center) {
-                Text(title, Modifier.padding(10.dp), maxLines = 3, overflow = TextOverflow.Ellipsis)
-                if (imageURL != null) AsyncImage(imageURL, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                if (imageURL == null || !loaded) {
+                    Text(title, Modifier.padding(10.dp), maxLines = 3, overflow = TextOverflow.Ellipsis)
+                }
+                if (imageURL != null) {
+                    val mod = if (fitImage) Modifier.fillMaxSize().padding(16.dp) else Modifier.fillMaxSize()
+                    AsyncImage(imageURL, null, mod, contentScale = if (fitImage) ContentScale.Fit else ContentScale.Crop, onSuccess = { loaded = true })
+                }
                 if (progress != null) {
                     Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().height(4.dp).background(Color.White.copy(alpha = 0.25f)))
                     Box(Modifier.align(Alignment.BottomStart).fillMaxWidth(progress.toFloat().coerceIn(0f, 1f)).height(4.dp).background(TunerColors.accent))

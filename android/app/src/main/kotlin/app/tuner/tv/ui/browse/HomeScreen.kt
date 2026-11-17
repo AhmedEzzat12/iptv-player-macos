@@ -75,7 +75,7 @@ fun HomeScreen(onPlay: (PlaybackItem) -> Unit, onOpenMovie: (String) -> Unit, on
         }
         item {
             Shelf("Channels", favorites, { it.id }, focusFirst = cw.isEmpty()) { ch ->
-                WideCard(ch.displayName, ch.number?.let { "Channel $it" }, ch.logoURL, width = 220) { onPlay(PlaybackItem.Live(ch, favorites)) }
+                WideCard(ch.displayName, ch.number?.let { "Channel $it" }, ch.logoURL, width = 220, fitImage = true) { onPlay(PlaybackItem.Live(ch, favorites)) }
             }
         }
         item { Shelf("Recently Added Movies", movies, { it.id }, focusFirst = cw.isEmpty() && favorites.isEmpty()) { m -> PosterCard(m.name, m.posterURL, m.year) { onOpenMovie(m.id) } } }

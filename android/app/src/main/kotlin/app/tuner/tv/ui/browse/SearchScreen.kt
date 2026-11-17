@@ -64,7 +64,7 @@ fun SearchScreen(onPlay: (PlaybackItem) -> Unit, onOpenMovie: (String) -> Unit, 
                     modifier = Modifier.width(720.dp).initialFocus().background(TunerColors.surface, RoundedCornerShape(12.dp)).padding(16.dp))
             }
         }
-        item { Shelf("Channels", channels, { it.id }) { ch -> WideCard(ch.displayName, null, ch.logoURL, width = 220) { onPlay(PlaybackItem.Live(ch, channels)) } } }
+        item { Shelf("Channels", channels, { it.id }) { ch -> WideCard(ch.displayName, null, ch.logoURL, width = 220, fitImage = true) { onPlay(PlaybackItem.Live(ch, channels)) } } }
         item { Shelf("Movies", movies, { it.id }) { m -> PosterCard(m.name, m.posterURL, m.year) { onOpenMovie(m.id) } } }
         item { Shelf("TV Shows", shows, { it.id }) { s -> PosterCard(s.name, s.coverURL, s.year) { onOpenSeries(s.id) } } }
     }

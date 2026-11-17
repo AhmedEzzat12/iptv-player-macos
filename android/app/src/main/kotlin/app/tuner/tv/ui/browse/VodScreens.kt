@@ -132,9 +132,11 @@ fun MovieDetailScreen(id: String, onPlay: (PlaybackItem) -> Unit) {
     var movie by remember { mutableStateOf<Movie?>(null) }
     var meta by remember { mutableStateOf<MediaMetadata?>(null) }
     var progress by remember { mutableStateOf<WatchProgress?>(null) }
+    var revision by remember { mutableStateOf(0) }
+    LaunchedEffect(Unit) { app.database.changes.collect { if (it != Change.GUIDE) revision++ } }
+    LaunchedEffect(id, revision) { progress = app.library.progress(id) }
     LaunchedEffect(id) {
         movie = app.library.movie(id)
-        progress = app.library.progress(id)
         movie?.let { m ->
             app.sync.movieDetails(m)?.let { d -> movie = m.copy(plot = d.plot ?: m.plot, cast = d.cast ?: m.cast, genre = d.genre ?: m.genre,
                 containerExtension = d.containerExtension ?: m.containerExtension, durationSeconds = d.durationSeconds ?: m.durationSeconds) }
@@ -142,7 +144,7 @@ fun MovieDetailScreen(id: String, onPlay: (PlaybackItem) -> Unit) {
         }
     }
     val m = movie ?: return Placeholder("Loading…")
-    val details = listOfNotNull(m.year ?: meta?.year, m.durationSeconds?.let { "${it / 60} min" } ?: meta?.runtimeMinutes?.let { "$it min" },
+    val details = listOfNotNull(m.year ?: meta?.year, m.durationSeconds?.takeIf { it > 0 }?.let { "${(it / 60).coerceAtLeast(1)} min" } ?: meta?.runtimeMinutes?.let { "$it min" },
         (m.rating ?: meta?.rating)?.let { "★ %.1f".format(it) }, m.genre ?: meta?.genres?.joinToString(", ")).joinToString("  ·  ")
     LazyColumn {
         item { Header(m.name, meta, m.backdropURL ?: m.posterURL, details, m.plot) }
@@ -167,11 +169,13 @@ fun SeriesDetailScreen(id: String, onPlay: (PlaybackItem) -> Unit) {
     var episodes by remember { mutableStateOf<List<Episode>>(emptyList()) }
     var progress by remember { mutableStateOf<Map<String, WatchProgress>>(emptyMap()) }
     var season by remember { mutableStateOf<Int?>(null) }
+    var revision by remember { mutableStateOf(0) }
+    LaunchedEffect(Unit) { app.database.changes.collect { if (it != Change.GUIDE) revision++ } }
+    LaunchedEffect(id, revision) { progress = app.library.progress(id, forSeries = true) }
     LaunchedEffect(id) {
         series = app.library.seriesItem(id)
         val s = series ?: return@LaunchedEffect
         episodes = app.library.episodes(id)
-        progress = app.library.progress(id, forSeries = true)
         episodes = app.sync.episodes(s)
         meta = runCatching { app.metadata.metadata(s) }.getOrNull()
     }
@@ -190,15 +194,21 @@ fun SeriesDetailScreen(id: String, onPlay: (PlaybackItem) -> Unit) {
     LazyColumn {
         item { Header(s.name, meta, s.backdropURL ?: s.coverURL, details, s.plot) }
         item {
-            Row(horizontalArrangement = Arrangement.spacedBy(14.dp), modifier = Modifier.padding(vertical = 16.dp).initialFocus(episodes.isNotEmpty())
-                .focusGroup()) {
-                when {
-                    resume != null -> Button(onClick = { onPlay(PlaybackItem.EpisodeItem(resume.first, s, episodes, resume.second)) }) {
-                        Text("Resume S${resume.first.season}, E${resume.first.number}")
+            if (episodes.isNotEmpty()) {
+                val primary = resume ?: upNext?.let { it to null } ?: (episodes.first { it.season == seasons.first() } to null)
+                val label = when {
+                    resume != null -> "Resume S${resume.first.season}, E${resume.first.number}"
+                    upNext != null -> "Play S${upNext.season}, E${upNext.number}"
+                    else -> "Play"
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(14.dp), modifier = Modifier.padding(vertical = 16.dp).focusGroup()) {
+                    Button(onClick = { onPlay(PlaybackItem.EpisodeItem(primary.first, s, episodes, primary.second)) }, modifier = Modifier.initialFocus(s.id)) {
+                        Text(label)
                     }
-                    upNext != null -> Button(onClick = { onPlay(PlaybackItem.EpisodeItem(upNext, s, episodes)) }) { Text("Play S${upNext.season}, E${upNext.number}") }
-                    episodes.isNotEmpty() -> Button(onClick = { onPlay(PlaybackItem.EpisodeItem(episodes.first { it.season == seasons.first() }, s, episodes)) }) {
-                        Text("Play")
+                    if (resume != null) {
+                        OutlinedButton(onClick = { onPlay(PlaybackItem.EpisodeItem(resume.first, s, episodes, null)) }) {
+                            Text("Play from Beginning")
+                        }
                     }
                 }
             }
@@ -215,7 +225,7 @@ fun SeriesDetailScreen(id: String, onPlay: (PlaybackItem) -> Unit) {
                 items(list, key = { it.id }) { e ->
                     val p = progress[e.id]
                     val still = e.imageURL ?: meta?.episode(e.season, e.number)?.stillURL
-                    WideCard("E${e.number} · ${e.title}", e.durationSeconds?.let { "${it / 60} min" }, still,
+                    WideCard("E${e.number} · ${e.title}", e.durationSeconds?.takeIf { it > 0 }?.let { "${(it / 60).coerceAtLeast(1)} min" }, still,
                         progress = p?.let { if (it.completed) 1.0 else it.fraction }) {
                         val start = p?.takeIf { !it.completed && it.position > 10 }?.position
                         onPlay(PlaybackItem.EpisodeItem(e, s, episodes, start))

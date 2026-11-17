@@ -28,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -89,11 +90,15 @@ fun AppShell() {
             drawerState = drawerState,
             scrimBrush = Brush.horizontalGradient(listOf(Color.Black.copy(alpha = 0.8f), Color.Black.copy(alpha = 0.4f))),
             drawerContent = {
+                val currentSection = selected
                 // Open, the rail sits on a solid panel so its titles never mix with the page's text underneath.
                 Column(
                     Modifier.fillMaxHeight()
                         // Focus enters on the current section directly (moving it afterwards made another icon flash).
-                        .focusProperties { onEnter = { if (itemFocus.getValue(selected).requestFocus()) cancelFocusChange() } }
+                        .focusProperties {
+                            canFocus = playing == null
+                            onEnter = { if (itemFocus.getValue(currentSection).requestFocus()) cancelFocusChange() }
+                        }
                         .focusGroup()
                         .then(if (hasFocus) Modifier.background(TunerColors.surface, RoundedCornerShape(topEnd = 24.dp, bottomEnd = 24.dp)) else Modifier)
                         .padding(vertical = 27.dp, horizontal = 8.dp),
@@ -109,6 +114,7 @@ fun AppShell() {
         ) {
             Box(
                 Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
+                    .focusRequester(contentFocus).focusRestorer().focusGroup()
                     .onFocusChanged { contentHasFocus = it.hasFocus }
                     .padding(start = RAIL_WIDTH + 32.dp, end = 24.dp, top = 27.dp, bottom = 0.dp)
 
@@ -129,7 +135,12 @@ fun AppShell() {
                 }
             }
         }
-        playing?.let { item -> PlayerScreen(item, onClose = { playing = null }) }
+        playing?.let { item ->
+            PlayerScreen(item, onClose = {
+                runCatching { contentFocus.requestFocus() }
+                playing = null
+            })
+        }
     }
 
 

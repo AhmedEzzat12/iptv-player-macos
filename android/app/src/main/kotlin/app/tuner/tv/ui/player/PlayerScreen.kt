@@ -155,9 +155,9 @@ fun PlayerScreen(initial: PlaybackItem, onClose: () -> Unit) {
         }
     }
 
-    fun switchTo(target: PlaybackItem) {
+    fun switchTo(target: PlaybackItem, completedCurrent: Boolean = false) {
         scope.launch {
-            saveProgress()
+            saveProgress(completed = completedCurrent)
             item = target
             triedM3U8 = false
             load(target)
@@ -173,10 +173,10 @@ fun PlayerScreen(initial: PlaybackItem, onClose: () -> Unit) {
         lastInput++
     }
 
-    fun nextEpisode(offset: Int): Boolean {
+    fun nextEpisode(offset: Int, completedCurrent: Boolean = false): Boolean {
         val ep = item as? PlaybackItem.EpisodeItem ?: return false
         val next = EpisodeNavigation.neighbor(ep.episode.id, ep.episodes, offset) ?: return false
-        switchTo(ep.copy(episode = next, startAt = null))
+        switchTo(ep.copy(episode = next, startAt = null), completedCurrent = completedCurrent)
         return true
     }
 
@@ -267,7 +267,7 @@ fun PlayerScreen(initial: PlaybackItem, onClose: () -> Unit) {
                 val live = item is PlaybackItem.Live
                 when (event.nativeKeyEvent.keyCode) {
                     KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
-                        if (upNext != null) { nextEpisode(1) } else if (!live && chromeVisible) player.playWhenReady = !player.playWhenReady
+                        if (upNext != null) { nextEpisode(1, completedCurrent = true) } else if (!live && chromeVisible) player.playWhenReady = !player.playWhenReady
                         chromeVisible = !chromeVisible || !player.playWhenReady; true
                     }
                     KeyEvent.KEYCODE_CHANNEL_UP, KeyEvent.KEYCODE_PAGE_UP -> { if (live) zap(-1) else nextEpisode(1); true }
@@ -312,7 +312,8 @@ fun PlayerScreen(initial: PlaybackItem, onClose: () -> Unit) {
         }
 
         upNext?.let { seconds ->
-            Box(Modifier.align(Alignment.BottomEnd).padding(48.dp).background(TunerColors.surface.copy(alpha = 0.95f), androidx.compose.foundation.shape.RoundedCornerShape(14.dp)).padding(20.dp)) {
+            Box(Modifier.align(Alignment.BottomEnd).padding(end = 56.dp, bottom = if (chromeVisible) 136.dp else 48.dp)
+                .background(TunerColors.surface.copy(alpha = 0.95f), androidx.compose.foundation.shape.RoundedCornerShape(14.dp)).padding(20.dp)) {
                 Text("Up Next in $seconds s · press OK to play now", style = MaterialTheme.typography.titleSmall)
             }
         }
