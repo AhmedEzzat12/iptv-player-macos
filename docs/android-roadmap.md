@@ -47,6 +47,18 @@ In order of how much a viewer would miss them:
    TV, Movies or TV Shows (rename, hide); Settings → Hidden shows them again. A hidden category hides its titles
    everywhere, as in Swift. Still to do: custom groups (tables exist since v2) and reordering categories.
 
+## Added 2026-11-17 (owner's list)
+
+- Player options panel shortcuts: **Next / Previous Episode** (named "S1, E5", focused first) on episodes, and **Add to
+  / Remove from Favorites** on live channels (favourites used to need a long press in the channel list). ⏭/⏮ on the
+  remote already changed episode.
+- **Recent searches** on Search (`RecentSearches`, ported from `Preferences.rememberSearch` with tests): chips while
+  nothing is typed, remembered once a result is opened or played, up to 12, with Clear.
+- **IMDb / TMDB ratings** on movie and show pages (`VODRating`, ported from `VODEnrichment.rating`): the online rating
+  with its source wins, the provider's own stays an unlabelled ★.
+- Fixes: refresh froze the app (parsing ran on the main thread), sidebar Back/Right, page-open sidebar flash,
+  show-page backdrop scrolled off the top, keyboard covering the add/edit playlist fields.
+
 ## Phase 4 leftovers: player
 
 - **mpv fallback engine** (LGPL libmpv, 32-bit and 64-bit ARM builds) for streams ExoPlayer can't open, plus the
@@ -88,4 +100,4 @@ In order of how much a viewer would miss them:
 
 The Apple apps have these; the spec's non-goals keep them out of v1: on-device recommendations and natural search,
 Top 10, smart guide matching, downloads, sync with the Apple apps, reminders, audio enhancements, IMDb ratings,
-trailers, learned intros (`SkipLearner`).
+trailers, learned intros (`SkipLearner`). (IMDb ratings landed 2026-11-17.)

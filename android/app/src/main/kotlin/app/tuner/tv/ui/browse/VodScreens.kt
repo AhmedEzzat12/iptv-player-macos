@@ -1,5 +1,6 @@
 package app.tuner.tv.ui.browse
 
+import app.tuner.core.metadata.VODRating
 import app.tuner.tv.ui.KeepInView
 import androidx.activity.compose.BackHandler
 import app.tuner.tv.ui.RenameDialog
@@ -169,7 +170,7 @@ fun MovieDetailScreen(id: String, onPlay: (PlaybackItem) -> Unit) {
     }
     val m = movie ?: return Placeholder("Loading…")
     val details = listOfNotNull(m.year ?: meta?.year, m.durationSeconds?.takeIf { it > 0 }?.let { "${(it / 60).coerceAtLeast(1)} min" } ?: meta?.runtimeMinutes?.let { "$it min" },
-        (m.rating ?: meta?.rating)?.let { "★ %.1f".format(it) }, m.genre ?: meta?.genres?.joinToString(", ")).joinToString("  ·  ")
+        VODRating.of(m.rating, meta)?.text, m.genre ?: meta?.genres?.joinToString(", ")).joinToString("  ·  ")
     // Only scroll when the focused control would be off screen (keeps the backdrop and title in view).
     @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
     androidx.compose.runtime.CompositionLocalProvider(androidx.compose.foundation.gestures.LocalBringIntoViewSpec provides KeepInView) { LazyColumn {
@@ -214,7 +215,7 @@ fun SeriesDetailScreen(id: String, onPlay: (PlaybackItem) -> Unit) {
     val resume = (next as? SmartContinueWatching.Entry.Resume)?.progress?.let { p -> episodes.firstOrNull { it.id == p.mediaId }?.let { it to p.position } }
     val upNext = (next as? SmartContinueWatching.Entry.NextEpisode)?.episode?.let { e -> episodes.firstOrNull { it.id == e.id } }
     val shown = season ?: resume?.first?.season ?: upNext?.season ?: seasons.firstOrNull()
-    val details = listOfNotNull(s.year ?: meta?.year, (s.rating ?: meta?.rating)?.let { "★ %.1f".format(it) },
+    val details = listOfNotNull(s.year ?: meta?.year, VODRating.of(s.rating, meta)?.text,
         s.genre ?: meta?.genres?.joinToString(", "), if (seasons.isNotEmpty()) "${seasons.count { it > 0 }} seasons" else null).joinToString("  ·  ")
 
     // Only scroll when the focused control would be off screen (keeps the backdrop and title in view).

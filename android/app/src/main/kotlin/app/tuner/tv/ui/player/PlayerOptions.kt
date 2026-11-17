@@ -97,8 +97,12 @@ fun ExoPlayer.subtitlesOff() {
 
 private data class Row(val key: String, val title: String, val selected: Boolean, val onClick: () -> Unit)
 
+/** A shortcut at the top of the options panel (next episode, favourite channel…). */
+data class PlayerAction(val title: String, val onClick: () -> Unit)
+
 /**
- * The player's options, a panel on the right like the Apple TV app's: Audio, Subtitles, Picture and Sleep Timer.
+ * The player's options, a panel on the right like the Apple TV app's: shortcuts first (`actions`: next and previous
+ * episode, or add the channel to Favorites), then Audio, Subtitles, Picture and Sleep Timer.
  * Opened with ▼ while the controls are showing (movies and episodes), or with the remote's menu/info/captions
  * key or a long press on OK (live TV, where ▼ changes channel).
  */
@@ -113,10 +117,13 @@ fun PlayerOptionsPanel(
     onSubtitle: (TrackChoice?) -> Unit,
     onAspect: (VideoAspect) -> Unit,
     onSleep: (SleepTimerOption?) -> Unit,
+    actionsTitle: String = "",
+    actions: List<PlayerAction> = emptyList(),
 ) {
     val audio = trackChoices(tracks, C.TRACK_TYPE_AUDIO)
     val subtitles = trackChoices(tracks, C.TRACK_TYPE_TEXT)
     val sections = buildList<Pair<String, List<Row>>> {
+        if (actions.isNotEmpty()) add(actionsTitle to actions.mapIndexed { i, a -> Row("x$i${a.title}", a.title, false, a.onClick) })
         if (audio.size > 1) add("Audio" to audio.map { c -> Row("a${c.label}${c.index}", c.label, c.selected) { onAudio(c) } })
         // Ticks come from what the player has selected (a default or forced track can be on without being picked here).
         add("Subtitles" to (listOf(Row("s-off", "Off", subtitles.none { it.selected }) { onSubtitle(null) }) +
@@ -132,7 +139,9 @@ fun PlayerOptionsPanel(
             add(Row("t-end", if (isLive) "When this programme ends" else "When this ends", timer == SleepTimerOption.EndOfItem) { onSleep(SleepTimerOption.EndOfItem) })
         })
     }
-    val firstSelected = sections.firstOrNull()?.second?.firstOrNull { it.selected }?.key
+    // The first shortcut when there are any (Next Episode is what's usually wanted), else the first section's choice.
+    val firstSelected = if (actions.isNotEmpty()) sections.first().second.first().key
+        else sections.firstOrNull()?.second?.firstOrNull { it.selected }?.key
 
     Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.45f))) {
         LazyColumn(
@@ -154,7 +163,7 @@ fun PlayerOptionsPanel(
                         selected = row.selected,
                         onClick = row.onClick,
                         headlineContent = { Text(row.title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                        trailingContent = { if (row.selected) Text("✓") },
+                        trailingContent = { if (row.selected) Text("✓") else if (row.key.startsWith("x")) Text("›") },
                         modifier = Modifier.fillMaxWidth().initialFocus(enabled = row.key == firstSelected),
                     )
                 }

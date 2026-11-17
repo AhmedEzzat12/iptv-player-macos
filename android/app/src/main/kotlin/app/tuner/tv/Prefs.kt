@@ -29,6 +29,11 @@ class Prefs(context: Context) {
     // Guide & Library
     var liveRefreshHours by int("liveRefreshHours", 6)
     var vodRefreshHours by int("vodRefreshHours", 24)
+    /** Recent searches, newest first (stored one per line; Apple: `recentSearches`). */
+    var recentSearchesRaw by string("recentSearches", "")
+    var recentSearches: List<String>
+        get() = recentSearchesRaw.split('\n').filter { it.isNotBlank() }
+        set(value) { recentSearchesRaw = value.joinToString("\n") }
 
     private fun bool(key: String, default: Boolean) = Pref(store.getBoolean(key, default)) { store.edit().putBoolean(key, it).apply() }
     private fun int(key: String, default: Int) = Pref(store.getInt(key, default)) { store.edit().putInt(key, it).apply() }

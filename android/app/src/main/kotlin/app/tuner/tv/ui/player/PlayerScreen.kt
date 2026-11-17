@@ -107,6 +107,8 @@ fun PlayerScreen(initial: PlaybackItem, onClose: () -> Unit) {
     var liveNext by remember { mutableStateOf<Program?>(null) }
     // Options panel (audio, subtitles, picture, sleep timer) and Skip Intro/Credits.
     var optionsOpen by remember { mutableStateOf(false) }
+    /** The live channel's favourite state, changed from the options panel (the item itself isn't replaced). */
+    var favorite by remember((item as? PlaybackItem.Live)?.channel?.id) { mutableStateOf((item as? PlaybackItem.Live)?.channel?.isFavorite == true) }
     var tracks by remember { mutableStateOf(androidx.media3.common.Tracks.EMPTY) }
     var aspect by remember { mutableStateOf(VideoAspect.FIT) }
     var sleep by remember { mutableStateOf<SleepTimer?>(null) }
@@ -617,7 +619,27 @@ fun PlayerScreen(initial: PlaybackItem, onClose: () -> Unit) {
                 onSubtitle = { c -> if (c == null) player.subtitlesOff() else player.selectTrack(c) },
                 onAspect = { aspect = it },
                 onSleep = { o -> sleep = o?.let { SleepTimer(it) }; if (o == null) { sleepRemaining = null; player.volume = 1f } },
+                actionsTitle = if (item is PlaybackItem.Live) "Channel" else "Episodes",
+                actions = playerActions(item, favorite,
+                    onEpisode = { offset -> optionsOpen = false; nextEpisode(offset) },
+                    onFavorite = { live ->
+                        val on = !favorite
+                        favorite = on
+                        scope.launch { app.library.setFavorite(live.channel.id, on) }
+                    }),
             )
         }
     }
 }
+
+/** The options panel's shortcuts: next and previous episode (named, so the viewer sees where it goes), or the live
+ * channel's favourite toggle. */
+private fun playerActions(item: PlaybackItem, favorite: Boolean, onEpisode: (Int) -> Unit, onFavorite: (PlaybackItem.Live) -> Unit): List<PlayerAction> =
+    when (item) {
+        is PlaybackItem.EpisodeItem -> listOfNotNull(
+            EpisodeNavigation.neighbor(item.episode.id, item.episodes, 1)?.let { PlayerAction("Next Episode · S${it.season}, E${it.number}") { onEpisode(1) } },
+            EpisodeNavigation.neighbor(item.episode.id, item.episodes, -1)?.let { PlayerAction("Previous Episode · S${it.season}, E${it.number}") { onEpisode(-1) } },
+        )
+        is PlaybackItem.Live -> listOf(PlayerAction(if (favorite) "Remove from Favorites" else "Add to Favorites") { onFavorite(item) })
+        else -> emptyList()
+    }

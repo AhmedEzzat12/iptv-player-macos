@@ -1,5 +1,10 @@
 package app.tuner.tv.ui.browse
 
+import app.tuner.core.models.RecentSearches
+import androidx.tv.material3.OutlinedButton
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.layout.Arrangement
 import app.tuner.tv.ui.PageTitle
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
@@ -40,11 +45,18 @@ import app.tuner.tv.ui.WideCard
 import app.tuner.tv.ui.initialFocus
 import kotlinx.coroutines.delay
 
-/** Search: channels, what's on TV, movies and shows by name, 300 ms after typing stops. */
+/**
+ * Search: channels, what's on TV, movies and shows by name, 300 ms after typing stops. With nothing typed, the recent
+ * searches show as chips (a search is remembered once a result from it is opened or played, as in the Apple apps).
+ */
 @Composable
 fun SearchScreen(onPlay: (PlaybackItem) -> Unit, onOpenMovie: (String) -> Unit, onOpenSeries: (String) -> Unit) {
     val app = LocalContext.current.app
     var query by remember { mutableStateOf("") }
+    fun used() { app.prefs.recentSearches = RecentSearches.remember(app.prefs.recentSearches, query) }
+    val play: (PlaybackItem) -> Unit = { used(); onPlay(it) }
+    val openMovie: (String) -> Unit = { used(); onOpenMovie(it) }
+    val openSeries: (String) -> Unit = { used(); onOpenSeries(it) }
     var channels by remember { mutableStateOf<List<Channel>>(emptyList()) }
     var onTv by remember { mutableStateOf<List<Pair<Channel, Program>>>(emptyList()) }
     var movies by remember { mutableStateOf<List<Movie>>(emptyList()) }
@@ -69,16 +81,29 @@ fun SearchScreen(onPlay: (PlaybackItem) -> Unit, onOpenMovie: (String) -> Unit, 
                     modifier = Modifier.width(720.dp).initialFocus().background(TunerColors.surface, RoundedCornerShape(12.dp)).padding(16.dp))
             }
         }
-        item { Shelf("Channels", channels, { it.id }) { ch -> WideCard(ch.displayName, null, ch.logoURL, width = 220, fitImage = true) { onPlay(PlaybackItem.Live(ch, channels)) } } }
+        val recent = app.prefs.recentSearches
+        if (query.isBlank() && recent.isNotEmpty()) {
+            item {
+                Column(Modifier.padding(bottom = 24.dp)) {
+                    Text("Recent Searches", style = MaterialTheme.typography.titleMedium)
+                    Spacer(Modifier.height(10.dp))
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        items(recent, key = { it }) { r -> OutlinedButton(onClick = { query = r }) { Text(r) } }
+                        item(key = "clear") { OutlinedButton(onClick = { app.prefs.recentSearches = emptyList() }) { Text("Clear") } }
+                    }
+                }
+            }
+        }
+        item { Shelf("Channels", channels, { it.id }) { ch -> WideCard(ch.displayName, null, ch.logoURL, width = 220, fitImage = true) { play(PlaybackItem.Live(ch, channels)) } } }
         item {
             Shelf("On TV", onTv, { "${it.first.id}:${it.second.stableKey}" }) { (ch, p) ->
                 WideCard(p.title, "${ch.displayName} · ${fmtClock(p.start)}–${fmtClock(p.end)}", p.iconURL ?: ch.logoURL,
                     progress = if (p.isLive()) p.progress() else null, fitImage = p.iconURL == null) {
-                    onPlay(PlaybackItem.Live(ch, listOf(ch)))
+                    play(PlaybackItem.Live(ch, listOf(ch)))
                 }
             }
         }
-        item { Shelf("Movies", movies, { it.id }) { m -> PosterCard(m.name, m.posterURL, m.year) { onOpenMovie(m.id) } } }
-        item { Shelf("TV Shows", shows, { it.id }) { s -> PosterCard(s.name, s.coverURL, s.year) { onOpenSeries(s.id) } } }
+        item { Shelf("Movies", movies, { it.id }) { m -> PosterCard(m.name, m.posterURL, m.year) { openMovie(m.id) } } }
+        item { Shelf("TV Shows", shows, { it.id }) { s -> PosterCard(s.name, s.coverURL, s.year) { openSeries(s.id) } } }
     }
 }
