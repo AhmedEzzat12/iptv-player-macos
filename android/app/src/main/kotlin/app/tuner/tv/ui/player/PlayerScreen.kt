@@ -121,6 +121,12 @@ fun PlayerScreen(initial: PlaybackItem, onClose: () -> Unit) {
     val failoverTried = remember { HashSet<String>() }
     var recovering by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf<String?>(null) }
+    // Seeking: Left/Right move a scrub target; playback jumps there when the keys pause (Apple TV style).
+    var buffered by remember { mutableDoubleStateOf(0.0) }
+    var scrubTo by remember { mutableStateOf<Double?>(null) }
+    var scrubInput by remember { mutableIntStateOf(0) }
+    var flash by remember { mutableStateOf<Boolean?>(null) }
+    var flashKey by remember { mutableIntStateOf(0) }
 
     /** Now/next for the live chrome; reloaded when the current programme ends while watching. */
     suspend fun loadLiveGuide(channel: app.tuner.core.models.Channel) {
@@ -357,6 +363,7 @@ fun PlayerScreen(initial: PlaybackItem, onClose: () -> Unit) {
             ticks++
             position = player.currentPosition / 1000.0
             duration = player.duration.takeIf { it != C.TIME_UNSET && it > 0 }?.div(1000.0) ?: 0.0
+            buffered = player.bufferedPosition / 1000.0
             if (ticks % 18 == 0) saveProgress()
             sleep?.let { timer ->
                 val itemLeft = if (item is PlaybackItem.Live) liveNow?.end?.let { (it.toEpochMilli() - System.currentTimeMillis()) / 1000.0 }
@@ -414,6 +421,37 @@ fun PlayerScreen(initial: PlaybackItem, onClose: () -> Unit) {
         }
     }
 
+    fun commitScrub() {
+        val to = scrubTo ?: return
+        scrubTo = null
+        player.seekTo((to * 1000).toLong())
+        skipTracker.userSeeked(to, duration.takeIf { it > 0 })
+    }
+
+    /** One scrub step; holding the key speeds up from 10 s to 30 s to 60 s steps. */
+    fun scrub(direction: Int, repeat: Int, base: Long = 10) {
+        val step = when { repeat < 5 -> base; repeat < 15 -> base * 3; else -> base * 6 }
+        val from = scrubTo ?: position
+        val max = if (duration > 0) duration - 1 else Double.MAX_VALUE
+        scrubTo = (from + direction * step).coerceIn(0.0, max)
+        chromeVisible = true
+        scrubInput++
+    }
+
+    LaunchedEffect(scrubInput) {
+        if (scrubTo != null) { delay(700); commitScrub() }
+    }
+
+    fun togglePlay() {
+        player.playWhenReady = !player.playWhenReady
+        flash = player.playWhenReady
+        flashKey++
+    }
+
+    LaunchedEffect(flashKey) {
+        if (flash != null) { delay(650); flash = null }
+    }
+
     // A notice on a movie or episode ("Skipped intro") goes away by itself; live notices clear when playback resumes.
     LaunchedEffect(status) {
         if (status != null && item !is PlaybackItem.Live) { delay(3000); status = null }
@@ -453,18 +491,22 @@ fun PlayerScreen(initial: PlaybackItem, onClose: () -> Unit) {
                 }
                 when (code) {
                     KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
-                        if (upNext != null) { nextEpisode(1, completedCurrent = true) } else if (!live && chromeVisible) player.playWhenReady = !player.playWhenReady
-                        chromeVisible = !chromeVisible || !player.playWhenReady; true
+                        when {
+                            scrubTo != null -> commitScrub()
+                            upNext != null -> nextEpisode(1, completedCurrent = true)
+                            !live && chromeVisible -> togglePlay()
+                        }
+                        chromeVisible = !chromeVisible || !player.playWhenReady || scrubTo != null; true
                     }
                     KeyEvent.KEYCODE_CHANNEL_UP, KeyEvent.KEYCODE_PAGE_UP -> { if (live) zap(-1) else nextEpisode(1); true }
                     KeyEvent.KEYCODE_CHANNEL_DOWN, KeyEvent.KEYCODE_PAGE_DOWN -> { if (live) zap(1) else nextEpisode(-1); true }
                     KeyEvent.KEYCODE_DPAD_UP -> { if (live) { zap(-1); true } else { chromeVisible = true; true } }
                     KeyEvent.KEYCODE_DPAD_DOWN -> { if (live) { zap(1); true } else { chromeVisible = true; true } }
-                    KeyEvent.KEYCODE_DPAD_LEFT -> { if (!live) { val to = (player.currentPosition - 10_000).coerceAtLeast(0); player.seekTo(to); skipTracker.userSeeked(to / 1000.0, duration); chromeVisible = true }; true }
-                    KeyEvent.KEYCODE_DPAD_RIGHT -> { if (!live) { val to = player.currentPosition + 10_000; player.seekTo(to); skipTracker.userSeeked(to / 1000.0, duration); chromeVisible = true }; true }
-                    KeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> { if (!live) player.seekTo(player.currentPosition + 30_000); true }
-                    KeyEvent.KEYCODE_MEDIA_REWIND -> { if (!live) player.seekTo((player.currentPosition - 30_000).coerceAtLeast(0)); true }
-                    KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> { player.playWhenReady = !player.playWhenReady; chromeVisible = true; true }
+                    KeyEvent.KEYCODE_DPAD_LEFT -> { if (!live) scrub(-1, event.nativeKeyEvent.repeatCount); true }
+                    KeyEvent.KEYCODE_DPAD_RIGHT -> { if (!live) scrub(1, event.nativeKeyEvent.repeatCount); true }
+                    KeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> { if (!live) scrub(1, event.nativeKeyEvent.repeatCount, base = 30); true }
+                    KeyEvent.KEYCODE_MEDIA_REWIND -> { if (!live) scrub(-1, event.nativeKeyEvent.repeatCount, base = 30); true }
+                    KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> { togglePlay(); chromeVisible = true; true }
                     KeyEvent.KEYCODE_MEDIA_PLAY -> { player.playWhenReady = true; true }
                     KeyEvent.KEYCODE_MEDIA_PAUSE -> { player.playWhenReady = false; chromeVisible = true; true }
                     KeyEvent.KEYCODE_MEDIA_NEXT -> { if (live) zap(1) else nextEpisode(1); true }
@@ -487,7 +529,11 @@ fun PlayerScreen(initial: PlaybackItem, onClose: () -> Unit) {
                 ?: Modifier.fillMaxSize(),
         )
 
-        if (chromeVisible || message != null) Chrome(item, position, duration, buffering, player.playWhenReady, liveNow, liveNext)
+        if (message == null && status == null) {
+            PlayerCenterIndicator(buffering = buffering && scrubTo == null, paused = !player.playWhenReady && !buffering && flash == null && item !is PlaybackItem.Live)
+        }
+        flash?.let { PlayPauseFlash(it) }
+        if ((chromeVisible || message != null) && !optionsOpen) PlayerChrome(item, position, duration, buffered, scrubTo, liveNow, liveNext)
 
         message?.let {
             Box(Modifier.align(Alignment.Center).background(TunerColors.surface.copy(alpha = 0.92f), androidx.compose.foundation.shape.RoundedCornerShape(16.dp)).padding(28.dp)) {
@@ -534,55 +580,4 @@ fun PlayerScreen(initial: PlaybackItem, onClose: () -> Unit) {
             )
         }
     }
-}
-
-@Composable
-private fun Chrome(
-    item: PlaybackItem,
-    position: Double,
-    duration: Double,
-    buffering: Boolean,
-    playing: Boolean,
-    liveNow: Program?,
-    liveNext: Program?,
-) {
-    Box(Modifier.fillMaxSize()) {
-        Column(
-            Modifier.align(Alignment.BottomStart).fillMaxWidth()
-                .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.85f))))
-                .padding(start = 56.dp, end = 56.dp, bottom = 40.dp, top = 60.dp),
-        ) {
-            Text(item.title, style = MaterialTheme.typography.headlineMedium)
-            item.subtitle?.let { Text(it, color = Color.White.copy(alpha = 0.7f)) }
-            if (item is PlaybackItem.Live && liveNow != null) {
-                Spacer(Modifier.height(6.dp))
-                Text("${liveNow.title}  ·  ${fmtClock(liveNow.start)}–${fmtClock(liveNow.end)}" +
-                    (liveNext?.let { "   ·   Next: ${it.title}" } ?: ""), color = Color.White.copy(alpha = 0.82f))
-                Spacer(Modifier.height(6.dp))
-                Box(Modifier.fillMaxWidth().height(4.dp).background(Color.White.copy(alpha = 0.25f))) {
-                    Box(Modifier.fillMaxWidth(liveNow.progress().toFloat()).height(4.dp).background(TunerColors.accent))
-                }
-            }
-            Spacer(Modifier.height(14.dp))
-            if (item is PlaybackItem.Live) {
-                Text(if (buffering) "Loading…" else "LIVE  ·  ▲▼ change channel  ·  hold OK for audio, subtitles and more", color = TunerColors.accent)
-            } else {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                    Text(if (buffering) "…" else if (playing) "▶" else "❚❚", style = MaterialTheme.typography.titleMedium)
-                    Text(time(position))
-                    Box(Modifier.weight(1f).height(5.dp).background(Color.White.copy(alpha = 0.25f))) {
-                        if (duration > 0) Box(Modifier.fillMaxWidth((position / duration).toFloat().coerceIn(0f, 1f)).height(5.dp).background(TunerColors.accent))
-                    }
-                    Text(if (duration > 0) "-" + time(duration - position) else "")
-                }
-                Spacer(Modifier.height(8.dp))
-                Text("▼ Audio, subtitles and more", color = Color.White.copy(alpha = 0.6f), style = MaterialTheme.typography.bodySmall)
-            }
-        }
-    }
-}
-
-private fun time(seconds: Double): String {
-    val s = seconds.toLong().coerceAtLeast(0)
-    return if (s >= 3600) "%d:%02d:%02d".format(s / 3600, s % 3600 / 60, s % 60) else "%d:%02d".format(s / 60, s % 60)
 }
