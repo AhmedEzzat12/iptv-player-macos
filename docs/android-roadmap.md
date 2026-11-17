@@ -38,8 +38,11 @@ In order of how much a viewer would miss them:
    ended or dropped live stream; the player fails over to the same channel in another playlist
    (`Library.alternateChannels`, as in Swift), else reconnects with 1–5 s backoff up to 10 times, with a notice.
    Still to do: `EngineMemory` (with the mpv engine), stall timeout / attempts / auto-failover in Settings.
-6. **Settings**: preferences in DataStore (live format TS/HLS, quick reopen time, metadata on/off, parental),
-   playlist edit/rename/delete/refresh now, user agent.
+6. **Settings**: partly done 2026-11-17. Settings now has Playlists (Refresh; Remove asks first), Playback (live
+   stream format, automatic failover, resume, autoplay next episode, Up Next countdown, skip intro and credits:
+   button / automatic / off) and Guide & Library (refresh intervals), stored in SharedPreferences with the Apple
+   names and defaults (`Prefs.kt`; DataStore wasn't needed). Still to do: edit/rename a playlist, quick reopen time,
+   metadata on/off, parental controls, user agent, stall timeout and attempts.
 7. **Organise**: hide and rename categories and channels, groups, context menu on long press (today long press only
    toggles a favourite).
 

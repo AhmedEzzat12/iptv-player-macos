@@ -188,7 +188,10 @@ fun PlayerScreen(initial: PlaybackItem, onClose: () -> Unit) {
         }
     }
 
-    suspend fun load(target: PlaybackItem, format: XtreamURLs.LiveFormat = XtreamURLs.LiveFormat.TS, automatic: Boolean = false) {
+    suspend fun load(target: PlaybackItem, requestedFormat: XtreamURLs.LiveFormat? = null, automatic: Boolean = false) {
+        // Settings → Playback → Live stream format: TS first (HLS if it fails), or HLS only.
+        if (requestedFormat == null && app.prefs.liveFormat == "hls") triedM3U8 = true
+        val format = requestedFormat ?: if (triedM3U8) XtreamURLs.LiveFormat.M3U8 else XtreamURLs.LiveFormat.TS
         if (target is PlaybackItem.Live) {
             if (!automatic) { originalChannel = target.channel; failoverTried.clear(); failoverTried += target.channel.id; status = null }
             watchdog.started(System.currentTimeMillis() / 1000.0, isRetry = automatic)
@@ -213,7 +216,7 @@ fun PlayerScreen(initial: PlaybackItem, onClose: () -> Unit) {
                 is PlaybackItem.MovieItem -> app.resolver.movie(target.movie)
                 is PlaybackItem.EpisodeItem -> app.resolver.episode(target.episode)
             }
-            val startAt = when (target) {
+            val startAt = if (!app.prefs.resumePlayback) null else when (target) {
                 is PlaybackItem.MovieItem -> target.startAt
                 is PlaybackItem.EpisodeItem -> target.startAt
                 is PlaybackItem.Live, is PlaybackItem.Catchup -> null
@@ -240,13 +243,13 @@ fun PlayerScreen(initial: PlaybackItem, onClose: () -> Unit) {
         scope.launch {
             try {
                 val base = originalChannel ?: live.channel
-                val alternates = runCatching { app.library.alternateChannels(base) }.getOrDefault(emptyList())
+                val alternates = if (!app.prefs.autoFailover) emptyList() else runCatching { app.library.alternateChannels(base) }.getOrDefault(emptyList())
                 val next = (listOf(base) + alternates).firstOrNull { it.id !in failoverTried }
                 if (next != null) {
                     failoverTried += next.id
                     status = "Switching to ${next.displayName}…"
                     item = live.copy(channel = next)
-                    load(item, if (triedM3U8) XtreamURLs.LiveFormat.M3U8 else XtreamURLs.LiveFormat.TS, automatic = true)
+                    load(item, automatic = true)
                     return@launch
                 }
                 val attempt = watchdog.nextRetry()
@@ -263,7 +266,7 @@ fun PlayerScreen(initial: PlaybackItem, onClose: () -> Unit) {
                 failoverTried.clear()
                 failoverTried += base.id
                 item = live.copy(channel = base)
-                load(item, if (triedM3U8) XtreamURLs.LiveFormat.M3U8 else XtreamURLs.LiveFormat.TS, automatic = true)
+                load(item, automatic = true)
             } finally {
                 recovering = false
             }
@@ -305,7 +308,7 @@ fun PlayerScreen(initial: PlaybackItem, onClose: () -> Unit) {
                 if (state == Player.STATE_ENDED && item is PlaybackItem.Live) { streamDied("The stream ended"); return }
                 if (state == Player.STATE_ENDED) scope.launch {
                     saveProgress(completed = true)
-                    if (sleep?.isEndOfItem == true || !nextEpisode(1)) onClose()
+                    if (sleep?.isEndOfItem == true || !app.prefs.autoplayNextEpisode || !nextEpisode(1)) onClose()
                 }
             }
 
@@ -368,7 +371,14 @@ fun PlayerScreen(initial: PlaybackItem, onClose: () -> Unit) {
             }
             skipRaw?.let { raw ->
                 if (!skipApplied && duration > 0) { skipTracker.setSegments(SkipSegments.merge(raw, duration)); skipApplied = true }
-                skipPrompt = if (skipApplied) skipTracker.update(position, duration, SkipMode.BUTTON, autoSkipCredits = false).first else null
+                if (skipApplied) {
+                    val (prompt, action) = skipTracker.update(position, duration, app.prefs.skipSegments, autoSkipCredits = false)
+                    skipPrompt = prompt
+                    if (action is SkipTracker.Action.AutoSkip) {
+                        player.seekTo((action.segment.resolvedEnd(duration) * 1000).toLong())
+                        status = when (action.segment.kind) { SkipSegment.Kind.CREDITS -> "Skipped credits"; SkipSegment.Kind.RECAP -> "Skipped recap"; else -> "Skipped intro" }
+                    }
+                } else skipPrompt = null
             }
             if (ticks % 2 == 0 && item is PlaybackItem.Live && message == null && !recovering) {
                 val state = player.playbackState
@@ -384,11 +394,12 @@ fun PlayerScreen(initial: PlaybackItem, onClose: () -> Unit) {
                 if (endsAt != null && !endsAt.isAfter(Instant.now())) loadLiveGuide(live.channel)
             }
             if (item !is PlaybackItem.Live && duration > 0) {
-                if (item is PlaybackItem.EpisodeItem) upNext = if (sleep?.isEndOfItem == true) null else UpNextCountdown.secondsLeft(position, duration, 10)
+                if (item is PlaybackItem.EpisodeItem) upNext = if (sleep?.isEndOfItem == true || !app.prefs.autoplayNextEpisode || app.prefs.upNextCountdown == 0) null
+                    else UpNextCountdown.secondsLeft(position, duration, app.prefs.upNextCountdown)
                 if (position != lastPos || !player.playWhenReady) { lastPos = position; stalledSince = System.currentTimeMillis() }
                 if (player.playWhenReady && EndOfMediaStall.hasEnded(position, duration, (System.currentTimeMillis() - stalledSince) / 1000.0)) {
                     saveProgress(completed = true)
-                    if (sleep?.isEndOfItem == true || !nextEpisode(1)) onClose()
+                    if (sleep?.isEndOfItem == true || !app.prefs.autoplayNextEpisode || !nextEpisode(1)) onClose()
                     stalledSince = System.currentTimeMillis()
                 }
             }
@@ -401,6 +412,11 @@ fun PlayerScreen(initial: PlaybackItem, onClose: () -> Unit) {
             delay(5000)
             if (player.isPlaying) chromeVisible = false
         }
+    }
+
+    // A notice on a movie or episode ("Skipped intro") goes away by itself; live notices clear when playback resumes.
+    LaunchedEffect(status) {
+        if (status != null && item !is PlaybackItem.Live) { delay(3000); status = null }
     }
 
     BackHandler {

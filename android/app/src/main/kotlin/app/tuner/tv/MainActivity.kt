@@ -11,7 +11,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // Playlists older than their refresh interval update shortly after launch (Swift: AppModel's refresh loop).
-        app.scope.launch { kotlinx.coroutines.delay(3000); runCatching { app.sync.refreshStale() } }
+        app.scope.launch { kotlinx.coroutines.delay(3000); runCatching { app.sync.refreshStale(app.prefs.liveRefreshHours, app.prefs.vodRefreshHours) } }
         setContent {
             TunerTheme {
                 AppShell()

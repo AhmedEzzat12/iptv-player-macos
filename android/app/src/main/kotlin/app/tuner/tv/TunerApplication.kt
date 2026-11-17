@@ -24,6 +24,7 @@ class TunerApplication : Application(), SingletonImageLoader.Factory {
     val sync by lazy { SyncService(library, cacheDir) }
     val resolver by lazy { StreamResolver(library, sync) }
     val metadata by lazy { MetadataService(library) }
+    val prefs by lazy { Prefs(this) }
     val skips by lazy { SkipSegmentService(library.skipCache) }
 
     /** Posters and logos dominate memory on TV boxes: a bounded memory cache. */
