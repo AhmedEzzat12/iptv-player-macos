@@ -21,6 +21,7 @@ struct SettingsPlaylistsPane: View {
     /// Global feeds downloading for the first time (added here or from the online guides sheet).
     @ViewState private var downloadingFeeds: Set<String> = []
     @ViewState private var browsingGuides = false
+    @ViewState private var sendingToTV: Source?
 
     var body: some View {
         Form {
@@ -38,6 +39,7 @@ struct SettingsPlaylistsPane: View {
                             canMoveDown: index < model.sources.count - 1,
                             onEdit: { editing = SourceEditorRequest(source: source, kind: source.kind) },
                             onExport: { export(source) },
+                            onSendToTV: { sendingToTV = source },
                             onDelete: { pendingDelete = source },
                             onMove: { move(index, by: $0) },
                             onDropSource: { reorder($0, onto: index) }
@@ -72,6 +74,9 @@ struct SettingsPlaylistsPane: View {
         .task(id: model.guideRevision) { await reloadFeeds() }
         .sheet(item: $editing) { request in
             SourceEditorView(request: request).environment(model)
+        }
+        .sheet(item: $sendingToTV) { source in
+            SendToTVSheet(source: source)
         }
         .sheet(isPresented: $browsingGuides) {
             SettingsOnlineGuidesSheet(feeds: feeds, downloading: downloadingFeeds, add: addGlobalFeed)
@@ -217,6 +222,7 @@ private struct SettingsSourceRow: View {
     let canMoveDown: Bool
     let onEdit: () -> Void
     let onExport: () -> Void
+    let onSendToTV: () -> Void
     let onDelete: () -> Void
     let onMove: (Int) -> Void
     let onDropSource: (String) -> Void
@@ -388,6 +394,8 @@ private struct SettingsSourceRow: View {
             .disabled(sync != nil || !source.enabled)
         Button("Export M3U…", action: onExport)
             .disabled(source.channelCount == 0 || source.kind == .stalker || isExporting)
+        Button("Send to TV…", action: onSendToTV)
+            .disabled(source.needsPassword || !PlaylistShare.canShare(source))
         Divider()
         Button("Delete…", role: .destructive, action: onDelete)
     }

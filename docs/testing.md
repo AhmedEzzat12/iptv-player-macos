@@ -371,6 +371,17 @@ and a pull held for the hold time must (`get_live_streams` and friends appear). 
   app, so drive the drags with full-screen control (`left_mouse_down`, a few `mouse_move`s, `left_mouse_up`). The
   hero stops rotating while the pointer is over it. With the setting off the same drags do nothing.
 
+## Send to TV
+
+Needs the Google TV emulator (`android/scripts/emulator.sh`, debug app installed) or a scratch build on a TV.
+
+1. On the TV app: Settings → Add a Playlist. The QR code and the address (`http://<ip>:8790/<token>`) appear.
+2. iPhone/iPad on the same network as a real TV: Settings → Playlists → "…" → Send to TV…, scan the code. The TV
+   asks "Add this playlist?". A second send with the same code says it was used or expired.
+3. Against the emulator (its address isn't reachable from other devices): `adb forward tcp:8790 tcp:8790`, then POST
+   the JSON to `http://127.0.0.1:8790/<token>` with curl (`PlaylistShareTests` checks the JSON the app sends).
+   `favicon.ico` requests are ignored; 5 other wrong requests from one address make the TV ignore that address.
+
 ## Testing iCloud sync
 
 Sync only needs a folder both copies can read and write, so tests use a plain scratch folder instead of iCloud Drive

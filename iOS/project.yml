@@ -73,6 +73,7 @@ targets:
         NSAppTransportSecurity:
           NSAllowsArbitraryLoads: true
         NSLocalNetworkUsageDescription: Antenna connects to IPTV servers and media on your local network.
+        NSCameraUsageDescription: Antenna uses the camera to scan the code on your TV when you send it a playlist.
         UIFileSharingEnabled: true
         # Only standard HTTPS (and hashing): exempt, so App Store Connect skips the export-compliance questions.
         ITSAppUsesNonExemptEncryption: false

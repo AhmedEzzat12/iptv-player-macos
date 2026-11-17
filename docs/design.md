@@ -370,6 +370,16 @@ File format (schema 1; `updatedAt` in ms since 1970; `deleted` records have no v
  ]}
 ```
 
+### Send to TV (`PlaylistShare`)
+
+Sends a saved playlist to the Google TV app, which shows a QR code for `http://<lan-ip>:<port>/<22-char token>` on its
+Add a Playlist screen (`android/…/share/PlaylistShareServer.kt`). The phone POSTs `SharedPlaylist` JSON (the source's
+URL, credentials, guide and backup URLs; no sync state). `PlaylistShare.receiverURL` accepts only plain HTTP to a
+private IPv4 address (10/8, 172.16/12, 192.168/16) with a 22-character alphanumeric token and nothing else in the
+URL, so a QR code from anywhere else can't send the password to a server on the internet. 404 means the code was used
+or expired. The scanner is VisionKit's `DataScannerViewController` (iPhone/iPad only, `iOS/Sources/Support/QRScannerView.swift`);
+the Mac types the address.
+
 ## Architecture
 
 ```

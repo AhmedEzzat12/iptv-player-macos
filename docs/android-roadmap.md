@@ -24,9 +24,9 @@ Not checked yet: the owner's TCL TV (32-bit, 2.4 GB RAM).
 
 In order of how much a viewer would miss them:
 
-1. **Send to TV from Antenna on iPhone/iPad**: scan the TV's QR code and send a saved playlist as
-   `SharedPlaylist` JSON. Protocol: `android/app/…/share/PlaylistShareServer.kt`.
-2. **TCL TV pass**: scratch build on the TV (`android/scripts/install-scratch.sh`), playback of the owner's kinds of
+1. ~~**Send to TV from Antenna on iPhone/iPad**~~ done 2026-11-17 (`PlaylistShare`, Settings → Playlists → "…" →
+   Send to TV…). Checked with Swift's JSON against the emulator; not yet with a phone and a real TV.
+2. **TCL TV pass** (and the first real phone → TV send): scratch build on the TV (`android/scripts/install-scratch.sh`), playback of the owner's kinds of
    streams, memory (target in the spec → Performance targets), then uninstall. Results go in `docs/android-devices.md`.
 3. **Guide**: XMLTV ingest into Room (the parser and `GuideParse` are ported already), now/next on the channel list,
    the guide grid, and catchup playback (`CatchupURLBuilder` is ported).

@@ -172,6 +172,7 @@ devices from Xcode, with a free Apple ID or a paid developer account.
 | Downloads | `~/Movies/Tuner Downloads` (choose in Settings) | Files › On My iPhone › Antenna › Downloads (not in iCloud backups) |
 | iCloud sync | `iCloud Drive/Tuner Sync` (or a folder you choose) | Choose the same folder once in the Files picker |
 | Updates | Automatic (Sparkle) | Reinstall from the checkout (below) |
+| Send to TV | Type the address the TV shows | Scan the TV's code with the camera, or type the address |
 
 Everything else — sources, sync, guide, metadata, categories, search, episodes and Up Next, downloads —
 is the same code on both.
@@ -263,6 +264,11 @@ scripts/android-backlog.sh
 A commit hook (`scripts/hooks/commit-msg`) can enforce the line; it stays off until the Android app is finished.
 
 `Tests/Vectors/` holds test cases both ports must pass (see its README).
+
+**Send to TV.** In Settings → Playlists, a playlist's "…" menu → **Send to TV…** sends it to Antenna on a Google TV:
+on the TV choose Add a Playlist, then scan its QR code (iPhone/iPad) or type the address shown under it. The playlist
+(with its password) goes straight to the TV over the home network as plain HTTP, never through a server; the TV's
+one-time code limits who can send, and the TV asks before adding it. Playlists from a local file can't be sent.
 
 ## Releasing
 
