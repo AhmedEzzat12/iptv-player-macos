@@ -56,6 +56,7 @@ import app.tuner.tv.ui.browse.SeriesDetailScreen
 import app.tuner.tv.ui.browse.VodGridScreen
 import app.tuner.tv.ui.player.PlayerScreen
 import app.tuner.tv.ui.settings.AddPlaylistScreen
+import app.tuner.tv.ui.settings.EditPlaylistScreen
 import app.tuner.tv.ui.settings.PlaylistsScreen
 
 /** A page pushed on top of a section's top page. */
@@ -63,6 +64,7 @@ sealed class Page {
     data class MovieDetail(val id: String) : Page()
     data class SeriesDetail(val id: String) : Page()
     object AddPlaylist : Page()
+    data class EditPlaylist(val id: String) : Page()
 }
 
 /**
@@ -129,6 +131,7 @@ fun AppShell() {
                     is Page.MovieDetail -> MovieDetailScreen(page.id, play)
                     is Page.SeriesDetail -> SeriesDetailScreen(page.id, play)
                     Page.AddPlaylist -> AddPlaylistScreen(onDone = { stack.removeAt(stack.lastIndex) })
+                    is Page.EditPlaylist -> EditPlaylistScreen(page.id, onDone = { stack.removeAt(stack.lastIndex) })
                     null -> when (selected) {
                         Section.Home -> HomeScreen(play, { open(Page.MovieDetail(it)) }, { open(Page.SeriesDetail(it)) }, { open(Page.AddPlaylist) })
                         Section.Live -> LiveScreen(play)
@@ -136,7 +139,7 @@ fun AppShell() {
                         Section.Shows -> VodGridScreen(CategoryKind.SERIES) { open(Page.SeriesDetail(it)) }
                         Section.Favorites -> LiveScreen(play, Library.ChannelScope.Favorites)
                         Section.Search -> SearchScreen(play, { open(Page.MovieDetail(it)) }, { open(Page.SeriesDetail(it)) })
-                        Section.Settings -> PlaylistsScreen(onAdd = { open(Page.AddPlaylist) })
+                        Section.Settings -> PlaylistsScreen(onAdd = { open(Page.AddPlaylist) }, onEdit = { open(Page.EditPlaylist(it)) })
                     }
                 }
             }

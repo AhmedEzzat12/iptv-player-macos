@@ -1,5 +1,10 @@
 package app.tuner.tv.ui.settings
 
+import androidx.compose.foundation.layout.ime
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
 import app.tuner.core.models.Channel
 import app.tuner.core.models.CategoryKind
 import androidx.compose.foundation.layout.PaddingValues
@@ -65,7 +70,7 @@ import java.util.Date
 
 /** Settings: Playlists (status, Refresh, Remove, Add a Playlist), then Playback and Guide & Library options. */
 @Composable
-fun PlaylistsScreen(onAdd: () -> Unit) {
+fun PlaylistsScreen(onAdd: () -> Unit, onEdit: (String) -> Unit) {
     val app = LocalContext.current.app
     val prefs = app.prefs
     val scope = rememberCoroutineScope()
@@ -101,6 +106,7 @@ fun PlaylistsScreen(onAdd: () -> Unit) {
                     Spacer(Modifier.height(12.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         OutlinedButton(onClick = { scope.launch { app.sync.sync(s.id); revision++ } }) { Text("Refresh") }
+                        OutlinedButton(onClick = { onEdit(s.id) }) { Text("Edit") }
                         OutlinedButton(onClick = { pendingRemove = s }) { Text("Remove") }
                     }
                 }
@@ -288,6 +294,67 @@ private fun qr(text: String, size: Int): Bitmap {
 }
 
 /** The on-TV form: one field per row, the on-screen keyboard for each. */
+/**
+ * Edit a playlist (Apple: the source editor): name, address, account, guide address, and whether it adds live TV
+ * and movies & shows. An empty password field keeps the saved password. Saving refreshes the playlist.
+ */
+@Composable
+fun EditPlaylistScreen(id: String, onDone: () -> Unit) {
+    val app = LocalContext.current.app
+    val scope = rememberCoroutineScope()
+    var source by remember { mutableStateOf<Source?>(null) }
+    LaunchedEffect(id) { source = app.library.source(id) }
+    val s = source ?: return
+    var name by remember(s.id) { mutableStateOf(s.name) }
+    var url by remember(s.id) { mutableStateOf(s.url) }
+    var username by remember(s.id) { mutableStateOf(s.username ?: "") }
+    var password by remember(s.id) { mutableStateOf("") }
+    var mac by remember(s.id) { mutableStateOf(s.mac ?: "") }
+    var epg by remember(s.id) { mutableStateOf(s.epgURL ?: "") }
+    var includeLive by remember(s.id) { mutableStateOf(s.includeLive) }
+    var includeVOD by remember(s.id) { mutableStateOf(s.includeVOD) }
+    var error by remember { mutableStateOf<String?>(null) }
+
+    LazyColumn(verticalArrangement = Arrangement.spacedBy(14.dp), contentPadding = PaddingValues(bottom = 48.dp)) {
+        item { PageTitle("Edit Playlist") }
+        item { Text(s.kind.displayName, color = Color.White.copy(alpha = 0.6f)) }
+        item { Field("Name", name, initialFocus = true) { name = it } }
+        item { Field(when (s.kind) { Source.Kind.M3U -> "Playlist URL"; Source.Kind.STALKER -> "Portal URL"; else -> "Server URL" }, url, KeyboardType.Uri) { url = it } }
+        if (s.kind == Source.Kind.XTREAM) {
+            item { Field("Username", username) { username = it } }
+            item { Field(if (s.password != null) "Password (leave empty to keep it)" else "Password", password, secret = true) { password = it } }
+        }
+        if (s.kind == Source.Kind.STALKER) item { Field("MAC address", mac) { mac = it.uppercase() } }
+        item { Field("Guide (XMLTV) URL, optional", epg, KeyboardType.Uri) { epg = it } }
+        item {
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedButton(onClick = { includeLive = !includeLive }) { Text("Live TV: " + if (includeLive) "On" else "Off") }
+                if (s.kind != Source.Kind.M3U) OutlinedButton(onClick = { includeVOD = !includeVOD }) { Text("Movies & Shows: " + if (includeVOD) "On" else "Off") }
+            }
+        }
+        item {
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Button(onClick = {
+                    if (url.isBlank()) { error = "Enter the playlist's address."; return@Button }
+                    val updated = s.copy(
+                        name = name.ifBlank { s.kind.displayName }, url = url.trim(), username = username.trim().ifEmpty { null },
+                        password = password.ifEmpty { s.password }, mac = mac.trim().ifEmpty { null }, epgURL = epg.trim().ifEmpty { null },
+                        includeLive = includeLive, includeVOD = includeVOD,
+                        needsPassword = s.needsPassword && password.isEmpty(),
+                    )
+                    scope.launch {
+                        app.library.save(updated)
+                        app.scope.launch { runCatching { app.sync.sync(updated.id) } }
+                        onDone()
+                    }
+                }) { Text("Save") }
+                OutlinedButton(onClick = onDone) { Text("Cancel") }
+            }
+        }
+        error?.let { item { Text(it, color = Color(0xFFFF6E6E)) } }
+    }
+}
+
 @Composable
 private fun TypeItIn(status: String?, onAdd: (Source) -> Unit) {
     var kind by remember { mutableStateOf(Source.Kind.XTREAM) }
@@ -329,20 +396,62 @@ private fun TypeItIn(status: String?, onAdd: (Source) -> Unit) {
     }
 }
 
+/**
+ * A text setting for a remote: a button showing the value until OK is pressed, then an editable field with the
+ * keyboard (Done or Back ends editing). Moving through a form never pops the keyboard up on its own.
+ */
 @Composable
-private fun Field(label: String, value: String, keyboard: KeyboardType = KeyboardType.Text, secret: Boolean = false, onChange: (String) -> Unit) {
-    var focused by remember { mutableStateOf(false) }
+private fun Field(label: String, value: String, keyboard: KeyboardType = KeyboardType.Text, secret: Boolean = false, initialFocus: Boolean = false, onChange: (String) -> Unit) {
+    var editing by remember { mutableStateOf(false) }
+    val editor = remember { androidx.compose.ui.focus.FocusRequester() }
+    val button = remember { androidx.compose.ui.focus.FocusRequester() }
+    var returnFocus by remember { mutableStateOf(false) }
     Column {
         Text(label, color = Color.White.copy(alpha = 0.7f))
         Spacer(Modifier.height(6.dp))
-        BasicTextField(
-            value, onChange, singleLine = true,
-            textStyle = TextStyle(color = Color.White, fontSize = 22.sp),
-            cursorBrush = SolidColor(TunerColors.accent),
-            visualTransformation = if (secret) PasswordVisualTransformation() else VisualTransformation.None,
-            keyboardOptions = KeyboardOptions(keyboardType = keyboard, autoCorrectEnabled = false),
-            modifier = Modifier.width(720.dp).onFocusChanged { focused = it.isFocused }
-                .background(if (focused) Color.White.copy(alpha = 0.18f) else TunerColors.surface, RoundedCornerShape(10.dp)).padding(14.dp),
-        )
+        if (editing) {
+            var focused by remember { mutableStateOf(false) }
+            BasicTextField(
+                value, onChange, singleLine = true,
+                textStyle = TextStyle(color = Color.White, fontSize = 22.sp),
+                cursorBrush = SolidColor(TunerColors.accent),
+                visualTransformation = if (secret) PasswordVisualTransformation() else VisualTransformation.None,
+                keyboardOptions = KeyboardOptions(keyboardType = keyboard, autoCorrectEnabled = false, imeAction = androidx.compose.ui.text.input.ImeAction.Done),
+                keyboardActions = androidx.compose.foundation.text.KeyboardActions(onDone = { editing = false }),
+                modifier = Modifier.width(720.dp).focusRequester(editor)
+                    .onFocusChanged { if (focused && !it.isFocused) editing = false; focused = it.isFocused }
+                    .onPreviewKeyEvent { e ->
+                        val down = e.type == androidx.compose.ui.input.key.KeyEventType.KeyDown
+                        if (down && (e.key == androidx.compose.ui.input.key.Key.DirectionDown || e.key == androidx.compose.ui.input.key.Key.DirectionUp)) {
+                            editing = false; true
+                        } else false
+                    }
+                    .background(Color.White.copy(alpha = 0.18f), RoundedCornerShape(10.dp)).padding(14.dp),
+            )
+            LaunchedEffect(Unit) { editor.requestFocus() }
+            // Closing the keyboard (Back) ends editing, so the D-pad moves through the form again.
+            val imeVisible = androidx.compose.foundation.layout.WindowInsets.Companion.ime.getBottom(androidx.compose.ui.platform.LocalDensity.current) > 0
+            var imeWasVisible by remember { mutableStateOf(false) }
+            LaunchedEffect(imeVisible) {
+                if (imeVisible) imeWasVisible = true else if (imeWasVisible) editing = false
+            }
+        } else {
+            val shown = if (secret && value.isNotEmpty()) "•".repeat(value.length) else value
+            androidx.tv.material3.Surface(
+                onClick = { editing = true },
+                shape = androidx.tv.material3.ClickableSurfaceDefaults.shape(RoundedCornerShape(10.dp)),
+                colors = androidx.tv.material3.ClickableSurfaceDefaults.colors(
+                    containerColor = TunerColors.surface, contentColor = Color.White,
+                    focusedContainerColor = Color.White, focusedContentColor = Color.Black,
+                ),
+                scale = androidx.tv.material3.ClickableSurfaceDefaults.scale(focusedScale = 1f),
+                modifier = Modifier.width(720.dp).focusRequester(button).initialFocus(enabled = initialFocus),
+            ) {
+                Text(shown.ifEmpty { " " }, fontSize = 22.sp, maxLines = 1, modifier = Modifier.padding(14.dp))
+            }
+            // Back on the field after editing.
+            LaunchedEffect(Unit) { if (returnFocus) { returnFocus = false; runCatching { button.requestFocus() } } }
+        }
+        LaunchedEffect(editing) { if (editing) returnFocus = true }
     }
 }
