@@ -145,10 +145,11 @@ fun AppShell() {
             }
         }
         playing?.let { item ->
-            PlayerScreen(item, onClose = {
+            // A new title (e.g. from Google TV's Continue watching row) restarts the player rather than being ignored.
+            androidx.compose.runtime.key(item) { PlayerScreen(item, onClose = {
                 runCatching { contentFocus.requestFocus() }
                 playing = null
-            })
+            }) }
         }
     }
 

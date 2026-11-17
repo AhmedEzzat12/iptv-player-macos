@@ -46,6 +46,8 @@ class PlaylistShareServer(private val scope: CoroutineScope, private val onRecei
     private var socket: ServerSocket? = null
     private var job: Job? = null
     private var expiresAt = 0L
+    /** Set by the first accepted submission: the code works once, even for two requests arriving together. */
+    private val used = java.util.concurrent.atomic.AtomicBoolean(false)
     // Bad requests per client address: a client that keeps guessing is ignored, the others can still submit.
     private val failures = java.util.concurrent.ConcurrentHashMap<String, Int>()
     val token: String = randomToken()
@@ -90,7 +92,7 @@ class PlaylistShareServer(private val scope: CoroutineScope, private val onRecei
         val peer = client.inetAddress?.hostAddress ?: "?"
         val requested = path.trimEnd('/').removePrefix("/").substringBefore('?')
         val blocked = (failures[peer] ?: 0) >= 5
-        val valid = !blocked && requested == token && System.currentTimeMillis() < expiresAt
+        val valid = !blocked && requested == token && System.currentTimeMillis() < expiresAt && !used.get()
         if (!valid) {
             // Browsers ask for these on their own; they aren't guesses.
             if (requested != "favicon.ico" && requested != "robots.txt") failures.merge(peer, 1, Int::plus)
@@ -101,7 +103,11 @@ class PlaylistShareServer(private val scope: CoroutineScope, private val onRecei
             "GET" -> respond(out, 200, "text/html; charset=utf-8", page())
             "POST" -> {
                 val length = headers["content-length"]?.toIntOrNull()?.coerceAtMost(64 * 1024) ?: 0
-                val body = String(input.readNBytes(length), Charsets.UTF_8)
+                // Not InputStream.readNBytes: it needs Android 13 and the app supports Android 9.
+                val bytes = ByteArray(length)
+                var n = 0
+                while (n < length) { val r = input.read(bytes, n, length - n); if (r < 0) break; n += r }
+                val body = String(bytes, 0, n, Charsets.UTF_8)
                 val shared = runCatching {
                     if (headers["content-type"]?.startsWith("application/json") == true) json.decodeFromString(SharedPlaylist.serializer(), body)
                     else fromForm(body)
@@ -111,6 +117,7 @@ class PlaylistShareServer(private val scope: CoroutineScope, private val onRecei
                     respond(out, 400, "application/json", """{"ok":false,"error":"Missing name, type or URL"}""")
                     return
                 }
+                if (!used.compareAndSet(false, true)) { respond(out, 404, "text/plain", "Not found"); return }
                 expiresAt = 0 // one submission per code
                 onReceived(source)
                 if (headers["content-type"]?.startsWith("application/json") == true) respond(out, 200, "application/json", """{"ok":true}""")

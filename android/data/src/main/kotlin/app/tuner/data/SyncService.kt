@@ -39,6 +39,8 @@ public class SyncService(private val library: Library, private val cacheDir: Fil
 
     private val lock = Mutex()
     private val running = HashSet<String>()
+    /** Asked to sync while already syncing (e.g. the playlist was edited): run once more when the current one ends. */
+    private val again = HashSet<String>()
     private val stalkerClients = HashMap<String, StalkerClient>()
 
     public suspend fun stalkerClient(source: Source): StalkerClient = lock.withLock {
@@ -64,7 +66,7 @@ public class SyncService(private val library: Library, private val cacheDir: Fil
     public suspend fun sync(sourceId: String) {
         val source = library.source(sourceId) ?: return
         if (!source.enabled || source.needsPassword) return
-        if (!lock.withLock { running.add(sourceId) }) return
+        if (!lock.withLock { running.add(sourceId).also { if (!it) again.add(sourceId) } }) return
         try {
             val errors = mutableListOf<String>()
             var liveOK = false
@@ -108,7 +110,8 @@ public class SyncService(private val library: Library, private val cacheDir: Fil
             })
             _progress.value = Progress(sourceId, if (errors.isEmpty()) "Done" else "Failed", errors.joinToString("\n").ifEmpty { null }, done = true)
         } finally {
-            lock.withLock { running.remove(sourceId) }
+            val repeat = lock.withLock { running.remove(sourceId); again.remove(sourceId) }
+            if (repeat) sync(sourceId)
         }
     }
 
@@ -121,7 +124,8 @@ public class SyncService(private val library: Library, private val cacheDir: Fil
             if (hours == 0) continue
             val last = s.lastSyncedAt?.toEpochMilli() ?: 0
             val lastVod = s.lastVODSyncedAt?.toEpochMilli() ?: 0
-            if (now - last > hours * 3_600_000L || (s.kind != Source.Kind.M3U && now - lastVod > vodHours * 3_600_000L)) {
+            // vodHours 0 = movies & shows refresh manually (it used to mean "always stale").
+            if (now - last > hours * 3_600_000L || (s.kind != Source.Kind.M3U && vodHours > 0 && now - lastVod > vodHours * 3_600_000L)) {
                 sync(s.id)
             } else if (s.includeLive && s.enabled && !s.needsPassword && feedsBySource[s.id].isNullOrEmpty()) {
                 runCatching { syncGuide(s) }

@@ -336,13 +336,16 @@ fun EditPlaylistScreen(id: String, onDone: () -> Unit) {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Button(onClick = {
                     if (url.isBlank()) { error = "Enter the playlist's address."; return@Button }
-                    val updated = s.copy(
-                        name = name.ifBlank { s.kind.displayName }, url = url.trim(), username = username.trim().ifEmpty { null },
-                        password = password.ifEmpty { s.password }, mac = mac.trim().ifEmpty { null }, epgURL = epg.trim().ifEmpty { null },
-                        includeLive = includeLive, includeVOD = includeVOD,
-                        needsPassword = s.needsPassword && password.isEmpty(),
-                    )
                     scope.launch {
+                        // Apply the edits to the playlist as it is now: a refresh may have updated its counts and sync
+                        // times since this page opened, and those mustn't be rolled back.
+                        val current = app.library.source(s.id) ?: s
+                        val updated = current.copy(
+                            name = name.ifBlank { s.kind.displayName }, url = url.trim(), username = username.trim().ifEmpty { null },
+                            password = password.ifEmpty { current.password }, mac = mac.trim().ifEmpty { null }, epgURL = epg.trim().ifEmpty { null },
+                            includeLive = includeLive, includeVOD = includeVOD,
+                            needsPassword = current.needsPassword && password.isEmpty(),
+                        )
                         app.library.save(updated)
                         app.scope.launch { runCatching { app.sync.sync(updated.id) } }
                         onDone()

@@ -38,7 +38,7 @@ enum class VideoAspect(val title: String) {
     FIT("Fit"), FILL("Fill (crop)"), STRETCH("Stretch"), RATIO_16X9("16:9"), RATIO_4X3("4:3");
 
     /** How PlayerView scales the video inside its frame. */
-    val resizeMode: Int get() = when (this) {
+    val resizeMode: Int @OptIn(UnstableApi::class) get() = when (this) {
         FIT -> AspectRatioFrameLayout.RESIZE_MODE_FIT
         FILL -> AspectRatioFrameLayout.RESIZE_MODE_ZOOM
         STRETCH, RATIO_16X9, RATIO_4X3 -> AspectRatioFrameLayout.RESIZE_MODE_FILL
@@ -105,7 +105,6 @@ private data class Row(val key: String, val title: String, val selected: Boolean
 @Composable
 fun PlayerOptionsPanel(
     tracks: Tracks,
-    subtitlesOn: Boolean,
     aspect: VideoAspect,
     sleep: SleepTimer?,
     sleepRemaining: Double?,
@@ -119,8 +118,9 @@ fun PlayerOptionsPanel(
     val subtitles = trackChoices(tracks, C.TRACK_TYPE_TEXT)
     val sections = buildList<Pair<String, List<Row>>> {
         if (audio.size > 1) add("Audio" to audio.map { c -> Row("a${c.label}${c.index}", c.label, c.selected) { onAudio(c) } })
-        add("Subtitles" to (listOf(Row("s-off", "Off", !subtitlesOn || subtitles.none { it.selected }) { onSubtitle(null) }) +
-            subtitles.map { c -> Row("s${c.label}${c.index}", c.label, subtitlesOn && c.selected) { onSubtitle(c) } }))
+        // Ticks come from what the player has selected (a default or forced track can be on without being picked here).
+        add("Subtitles" to (listOf(Row("s-off", "Off", subtitles.none { it.selected }) { onSubtitle(null) }) +
+            subtitles.map { c -> Row("s${c.label}${c.index}", c.label, c.selected) { onSubtitle(c) } }))
         add("Picture" to VideoAspect.entries.map { a -> Row("p${a.name}", a.title, a == aspect) { onAspect(a) } })
         val timer = sleep?.option
         add("Sleep Timer" to buildList {

@@ -108,7 +108,6 @@ fun PlayerScreen(initial: PlaybackItem, onClose: () -> Unit) {
     // Options panel (audio, subtitles, picture, sleep timer) and Skip Intro/Credits.
     var optionsOpen by remember { mutableStateOf(false) }
     var tracks by remember { mutableStateOf(androidx.media3.common.Tracks.EMPTY) }
-    var subtitlesOn by remember { mutableStateOf(false) }
     var aspect by remember { mutableStateOf(VideoAspect.FIT) }
     var sleep by remember { mutableStateOf<SleepTimer?>(null) }
     var sleepRemaining by remember { mutableStateOf<Double?>(null) }
@@ -128,6 +127,8 @@ fun PlayerScreen(initial: PlaybackItem, onClose: () -> Unit) {
     var scrubInput by remember { mutableIntStateOf(0) }
     var flash by remember { mutableStateOf<Boolean?>(null) }
     var flashKey by remember { mutableIntStateOf(0) }
+    // OK acts on release, so holding it only opens the options (and doesn't first pause or skip).
+    var okLongPressed by remember { mutableStateOf(false) }
 
     /** Now/next for the live chrome; reloaded when the current programme ends while watching. */
     suspend fun loadLiveGuide(channel: app.tuner.core.models.Channel) {
@@ -346,7 +347,8 @@ fun PlayerScreen(initial: PlaybackItem, onClose: () -> Unit) {
                 // Xtream live is asked as TS first; retry once as HLS before giving up (docs/android-parity.md).
                 if (live != null && !triedM3U8 && live.channel.providerStreamId != null) {
                     triedM3U8 = true
-                    scope.launch { load(live, XtreamURLs.LiveFormat.M3U8) }
+                    // An internal retry: keep the failover state (original channel, tried copies, attempt count).
+                    scope.launch { load(live, XtreamURLs.LiveFormat.M3U8, automatic = true) }
                     return
                 }
                 val code = (error.cause as? androidx.media3.datasource.HttpDataSource.InvalidResponseCodeException)?.responseCode
@@ -481,6 +483,24 @@ fun PlayerScreen(initial: PlaybackItem, onClose: () -> Unit) {
         if (status != null && item !is PlaybackItem.Live) { delay(3000); status = null }
     }
 
+    fun okPressed() {
+        lastInput++
+        val live = item is PlaybackItem.Live
+        val prompt = skipPrompt
+        // Skip only when the button is on screen (it shows for a few seconds, then only with the controls).
+        if (prompt != null && prompt.isFresh && !chromeVisible && upNext == null) {
+            player.seekTo((prompt.segment.resolvedEnd(duration.takeIf { it > 0 }) * 1000).toLong())
+            skipPrompt = null
+            return
+        }
+        when {
+            scrubTo != null -> commitScrub()
+            upNext != null -> nextEpisode(1, completedCurrent = true)
+            !live && chromeVisible -> togglePlay()
+        }
+        chromeVisible = !chromeVisible || !player.playWhenReady || scrubTo != null
+    }
+
     BackHandler {
         if (optionsOpen) { optionsOpen = false; focus.requestFocus() }
         else if (chromeVisible && player.isPlaying) chromeVisible = false
@@ -490,6 +510,12 @@ fun PlayerScreen(initial: PlaybackItem, onClose: () -> Unit) {
     Box(
         Modifier.fillMaxSize().background(Color.Black).focusRequester(focus).focusable()
             .onPreviewKeyEvent { event ->
+                val ok = event.nativeKeyEvent.keyCode.let { it == KeyEvent.KEYCODE_DPAD_CENTER || it == KeyEvent.KEYCODE_ENTER }
+                if (ok && event.type == KeyEventType.KeyUp) {
+                    // The release that ends a long press (the panel is open by then) does nothing else.
+                    if (okLongPressed) { okLongPressed = false; return@onPreviewKeyEvent true }
+                    if (!optionsOpen) { okPressed(); return@onPreviewKeyEvent true }
+                }
                 if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
                 lastInput++
                 // The panel's rows take the D-pad while it's open. Back closes it here: left to the panel, Compose would
@@ -505,23 +531,13 @@ fun PlayerScreen(initial: PlaybackItem, onClose: () -> Unit) {
                 val openOptions = code == KeyEvent.KEYCODE_MENU || code == KeyEvent.KEYCODE_INFO || code == KeyEvent.KEYCODE_CAPTIONS ||
                     ((code == KeyEvent.KEYCODE_DPAD_CENTER || code == KeyEvent.KEYCODE_ENTER) && event.nativeKeyEvent.repeatCount == 1) ||
                     (code == KeyEvent.KEYCODE_DPAD_DOWN && !live && chromeVisible)
-                if (openOptions) { optionsOpen = true; chromeVisible = false; return@onPreviewKeyEvent true }
-                if ((code == KeyEvent.KEYCODE_DPAD_CENTER || code == KeyEvent.KEYCODE_ENTER) && event.nativeKeyEvent.repeatCount > 0) return@onPreviewKeyEvent true
-                val prompt = skipPrompt
-                if (prompt != null && !chromeVisible && (code == KeyEvent.KEYCODE_DPAD_CENTER || code == KeyEvent.KEYCODE_ENTER)) {
-                    player.seekTo((prompt.segment.resolvedEnd(duration.takeIf { it > 0 }) * 1000).toLong())
-                    skipPrompt = null
-                    return@onPreviewKeyEvent true
+                if (openOptions) {
+                    if (ok) okLongPressed = true
+                    optionsOpen = true; chromeVisible = false; return@onPreviewKeyEvent true
                 }
+                // OK itself acts on release (see above).
+                if (ok) return@onPreviewKeyEvent true
                 when (code) {
-                    KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
-                        when {
-                            scrubTo != null -> commitScrub()
-                            upNext != null -> nextEpisode(1, completedCurrent = true)
-                            !live && chromeVisible -> togglePlay()
-                        }
-                        chromeVisible = !chromeVisible || !player.playWhenReady || scrubTo != null; true
-                    }
                     KeyEvent.KEYCODE_CHANNEL_UP, KeyEvent.KEYCODE_PAGE_UP -> { if (live) zap(-1) else nextEpisode(1); true }
                     KeyEvent.KEYCODE_CHANNEL_DOWN, KeyEvent.KEYCODE_PAGE_DOWN -> { if (live) zap(1) else nextEpisode(-1); true }
                     KeyEvent.KEYCODE_DPAD_UP -> { if (live) { zap(-1); true } else { chromeVisible = true; true } }
@@ -595,10 +611,10 @@ fun PlayerScreen(initial: PlaybackItem, onClose: () -> Unit) {
 
         if (optionsOpen) {
             PlayerOptionsPanel(
-                tracks = tracks, subtitlesOn = subtitlesOn, aspect = aspect, sleep = sleep, sleepRemaining = sleepRemaining,
+                tracks = tracks, aspect = aspect, sleep = sleep, sleepRemaining = sleepRemaining,
                 isLive = item is PlaybackItem.Live,
                 onAudio = { player.selectTrack(it) },
-                onSubtitle = { c -> if (c == null) { player.subtitlesOff(); subtitlesOn = false } else { player.selectTrack(c); subtitlesOn = true } },
+                onSubtitle = { c -> if (c == null) player.subtitlesOff() else player.selectTrack(c) },
                 onAspect = { aspect = it },
                 onSleep = { o -> sleep = o?.let { SleepTimer(it) }; if (o == null) { sleepRemaining = null; player.volume = 1f } },
             )

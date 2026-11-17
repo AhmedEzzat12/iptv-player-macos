@@ -58,7 +58,7 @@ public class XtreamURLs(base: String, public val username: String, public val pa
             val query = uri.rawQuery ?: return null
             val items = query.split('&').mapNotNull { pair ->
                 val i = pair.indexOf('=')
-                if (i < 0) null else pair.substring(0, i) to java.net.URLDecoder.decode(pair.substring(i + 1).replace("+", "%2B"), Charsets.UTF_8)
+                if (i < 0) null else pair.substring(0, i) to java.net.URLDecoder.decode(pair.substring(i + 1).replace("+", "%2B"), "UTF-8") // the Charset overload needs Android 13
             }
             val user = items.firstOrNull { it.first == "username" }?.second ?: return null
             val pass = items.firstOrNull { it.first == "password" }?.second ?: return null
