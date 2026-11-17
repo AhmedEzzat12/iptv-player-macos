@@ -30,7 +30,13 @@ import java.io.File
 import java.time.Instant
 import java.util.UUID
 
-/** Orchestrates provider sync: fetch → replace rows → status. One sync per source at a time. */
+/**
+ * Orchestrates provider sync: fetch → replace rows → status. One sync per source at a time.
+ *
+ * Every entry point runs on `Dispatchers.Default`: downloads already move to IO, but parsing a panel's JSON (tens of
+ * thousands of channels and titles) happens in the caller's context, and a screen's coroutine scope is the main
+ * thread, which froze the whole app during a refresh.
+ */
 public class SyncService(private val library: Library, private val cacheDir: File) {
     public data class Progress(val sourceId: String, val step: String, val error: String? = null, val done: Boolean = false)
 
@@ -48,7 +54,9 @@ public class SyncService(private val library: Library, private val cacheDir: Fil
     }
 
     /** Validates credentials without writing anything (the editor's Test button). Returns a user-facing error or null. */
-    public suspend fun test(source: Source): String? = try {
+    public suspend fun test(source: Source): String? = withContext(Dispatchers.Default) { testNow(source) }
+
+    private suspend fun testNow(source: Source): String? = try {
         when (source.kind) {
             Source.Kind.XTREAM -> XtreamClient(source).authenticate().let { null }
             Source.Kind.STALKER -> StalkerClient(source).liveCategories(source.id).let { null }
@@ -63,7 +71,9 @@ public class SyncService(private val library: Library, private val cacheDir: Fil
         e.message ?: "Couldn't reach the playlist (${e::class.java.simpleName})"
     }
 
-    public suspend fun sync(sourceId: String) {
+    public suspend fun sync(sourceId: String): Unit = withContext(Dispatchers.Default) { syncNow(sourceId) }
+
+    private suspend fun syncNow(sourceId: String) {
         val source = library.source(sourceId) ?: return
         if (!source.enabled || source.needsPassword) return
         if (!lock.withLock { running.add(sourceId).also { if (!it) again.add(sourceId) } }) return
@@ -111,12 +121,16 @@ public class SyncService(private val library: Library, private val cacheDir: Fil
             _progress.value = Progress(sourceId, if (errors.isEmpty()) "Done" else "Failed", errors.joinToString("\n").ifEmpty { null }, done = true)
         } finally {
             val repeat = lock.withLock { running.remove(sourceId); again.remove(sourceId) }
-            if (repeat) sync(sourceId)
+            if (repeat) syncNow(sourceId)
         }
     }
 
     /** Sources whose data is older than their refresh interval (global defaults: live 6 h, VOD 24 h; 0 = manual). */
-    public suspend fun refreshStale(liveHours: Int = 6, vodHours: Int = 24) {
+    public suspend fun refreshStale(liveHours: Int = 6, vodHours: Int = 24): Unit = withContext(Dispatchers.Default) {
+        refreshStaleNow(liveHours, vodHours)
+    }
+
+    private suspend fun refreshStaleNow(liveHours: Int, vodHours: Int) {
         val now = System.currentTimeMillis()
         val feedsBySource = library.epgFeeds().groupBy { it.sourceId }
         for (s in library.sources()) {
@@ -126,7 +140,7 @@ public class SyncService(private val library: Library, private val cacheDir: Fil
             val lastVod = s.lastVODSyncedAt?.toEpochMilli() ?: 0
             // vodHours 0 = movies & shows refresh manually (it used to mean "always stale").
             if (now - last > hours * 3_600_000L || (s.kind != Source.Kind.M3U && vodHours > 0 && now - lastVod > vodHours * 3_600_000L)) {
-                sync(s.id)
+                syncNow(s.id)
             } else if (s.includeLive && s.enabled && !s.needsPassword && feedsBySource[s.id].isNullOrEmpty()) {
                 runCatching { syncGuide(s) }
             }
@@ -219,7 +233,10 @@ public class SyncService(private val library: Library, private val cacheDir: Fil
     }
 
     /** Fetches (and stores) a show's episodes; falls back to what's stored when the fetch fails. */
-    public suspend fun episodes(series: Series): List<app.tuner.core.models.Episode> {
+    public suspend fun episodes(series: Series): List<app.tuner.core.models.Episode> =
+        withContext(Dispatchers.Default) { episodesNow(series) }
+
+    private suspend fun episodesNow(series: Series): List<app.tuner.core.models.Episode> {
         val source = library.source(series.sourceId) ?: return library.episodes(series.id)
         val fetched = runCatching {
             when (source.kind) {
@@ -233,14 +250,20 @@ public class SyncService(private val library: Library, private val cacheDir: Fil
     }
 
     /** Lazily fetched movie details (plot, cast…), Xtream only. */
-    public suspend fun movieDetails(movie: app.tuner.core.models.Movie): VODDetails? {
+    public suspend fun movieDetails(movie: app.tuner.core.models.Movie): VODDetails? =
+        withContext(Dispatchers.Default) { movieDetailsNow(movie) }
+
+    private suspend fun movieDetailsNow(movie: app.tuner.core.models.Movie): VODDetails? {
         val source = library.source(movie.sourceId) ?: return null
         if (source.kind != Source.Kind.XTREAM) return null
         return runCatching { XtreamClient(source).vodInfo(movie) }.getOrNull()
     }
 
     /** Stalker: a VOD category's items on first open. */
-    public suspend fun loadStalkerCategory(sourceId: String, kind: CategoryKind, categoryId: String) {
+    public suspend fun loadStalkerCategory(sourceId: String, kind: CategoryKind, categoryId: String): Unit =
+        withContext(Dispatchers.Default) { loadStalkerCategoryNow(sourceId, kind, categoryId) }
+
+    private suspend fun loadStalkerCategoryNow(sourceId: String, kind: CategoryKind, categoryId: String) {
         val source = library.source(sourceId) ?: return
         if (source.kind != Source.Kind.STALKER) return
         val raw = categoryId.substringAfter("${sourceId}_${if (kind == CategoryKind.SERIES) "series" else "vod"}_")
