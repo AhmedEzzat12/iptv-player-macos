@@ -1,5 +1,8 @@
 package app.tuner.tv.ui.settings
 
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.ime
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.input.key.type
@@ -105,7 +108,7 @@ fun PlaylistsScreen(onAdd: () -> Unit, onEdit: (String) -> Unit) {
                     s.lastError?.let { Text(it, color = Color(0xFFFF6E6E), maxLines = 3) }
                     Spacer(Modifier.height(12.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        OutlinedButton(onClick = { scope.launch { app.sync.sync(s.id); revision++ } }) { Text("Refresh") }
+                        OutlinedButton(onClick = { scope.launch { app.sync.sync(s.id); revision++ } }) { Text("Refresh") } // sync runs off the main thread
                         OutlinedButton(onClick = { onEdit(s.id) }) { Text("Edit") }
                         OutlinedButton(onClick = { pendingRemove = s }) { Text("Remove") }
                     }
@@ -315,7 +318,7 @@ fun EditPlaylistScreen(id: String, onDone: () -> Unit) {
     var includeVOD by remember(s.id) { mutableStateOf(s.includeVOD) }
     var error by remember { mutableStateOf<String?>(null) }
 
-    LazyColumn(verticalArrangement = Arrangement.spacedBy(14.dp), contentPadding = PaddingValues(bottom = 48.dp)) {
+    LazyColumn(Modifier.imePadding(), verticalArrangement = Arrangement.spacedBy(14.dp), contentPadding = PaddingValues(bottom = 240.dp)) {
         item { PageTitle("Edit Playlist") }
         item { Text(s.kind.displayName, color = Color.White.copy(alpha = 0.6f)) }
         item { Field("Name", name, initialFocus = true) { name = it } }
@@ -366,7 +369,9 @@ private fun TypeItIn(status: String?, onAdd: (Source) -> Unit) {
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var mac by remember { mutableStateOf("") }
-    LazyColumn(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+    // imePadding: the TV keyboard covers the bottom half without resizing the window, so the list makes room for it
+    // and the field being edited can scroll above it (`Field` brings itself into view).
+    LazyColumn(Modifier.imePadding(), verticalArrangement = Arrangement.spacedBy(14.dp), contentPadding = PaddingValues(bottom = 240.dp)) {
         item { PageTitle("Add a Playlist") }
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -409,7 +414,10 @@ private fun Field(label: String, value: String, keyboard: KeyboardType = Keyboar
     val editor = remember { androidx.compose.ui.focus.FocusRequester() }
     val button = remember { androidx.compose.ui.focus.FocusRequester() }
     var returnFocus by remember { mutableStateOf(false) }
-    Column {
+    val inView = remember { androidx.compose.foundation.relocation.BringIntoViewRequester() }
+    var fieldSize by remember { mutableStateOf(androidx.compose.ui.unit.IntSize.Zero) }
+    val below = with(androidx.compose.ui.platform.LocalDensity.current) { 220.dp.toPx() }
+    Column(Modifier.bringIntoViewRequester(inView).onSizeChanged { fieldSize = it }) {
         Text(label, color = Color.White.copy(alpha = 0.7f))
         Spacer(Modifier.height(6.dp))
         if (editing) {
@@ -436,7 +444,14 @@ private fun Field(label: String, value: String, keyboard: KeyboardType = Keyboar
             val imeVisible = androidx.compose.foundation.layout.WindowInsets.Companion.ime.getBottom(androidx.compose.ui.platform.LocalDensity.current) > 0
             var imeWasVisible by remember { mutableStateOf(false) }
             LaunchedEffect(imeVisible) {
-                if (imeVisible) imeWasVisible = true else if (imeWasVisible) editing = false
+                if (imeVisible) {
+                    imeWasVisible = true
+                    // The list has just shrunk for the keyboard: scroll this field above it.
+                    kotlinx.coroutines.delay(80)
+                    // The field plus a band under it as tall as the keyboard's top part: the keyboard reports less
+                    // than it covers, so bringing just the field into view left it half under the suggestion bar.
+                    inView.bringIntoView(androidx.compose.ui.geometry.Rect(0f, 0f, fieldSize.width.toFloat(), fieldSize.height + below))
+                } else if (imeWasVisible) editing = false
             }
         } else {
             val shown = if (secret && value.isNotEmpty()) "•".repeat(value.length) else value

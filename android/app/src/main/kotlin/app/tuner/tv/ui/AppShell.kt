@@ -35,6 +35,11 @@ import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.DrawerValue
@@ -69,7 +74,8 @@ sealed class Page {
 
 /**
  * The frame: a left drawer (collapsed to icons, expands when focused), the selected section with its own back stack, and
- * the full-screen player above everything. Back pops the page, then focuses the drawer; Back on the drawer leaves the app.
+ * the full-screen player above everything. Back closes the open drawer (back to the page), pops a page, then goes to
+ * Home; Back on Home leaves the app. (Back on the drawer used to leave the app, which closed it by accident.)
  */
 @Composable
 fun AppShell() {
@@ -93,8 +99,12 @@ fun AppShell() {
         }
     }
 
-    BackHandler(enabled = playing == null && (stack.isNotEmpty() || contentHasFocus)) {
-        if (stack.isNotEmpty()) stack.removeAt(stack.lastIndex) else itemFocus.getValue(selected).requestFocus()
+    BackHandler(enabled = playing == null && (stack.isNotEmpty() || (contentHasFocus && selected != Section.Home))) {
+        if (stack.isNotEmpty()) stack.removeAt(stack.lastIndex) else selected = Section.Home
+    }
+    // Registered last, so it wins while the drawer is open: Back closes it and returns to the page.
+    BackHandler(enabled = playing == null && drawerState.currentValue == DrawerValue.Open) {
+        runCatching { contentFocus.requestFocus() }
     }
 
     Box(Modifier.fillMaxSize()) {
@@ -107,6 +117,13 @@ fun AppShell() {
                 // Open, the rail sits on a solid panel so its titles never mix with the page's text underneath.
                 Column(
                     Modifier.fillMaxHeight()
+                        // Right leaves the open drawer for the page (focus search found nothing to the right of the
+                        // rail, so the drawer stayed open).
+                        .onPreviewKeyEvent { e ->
+                            if (e.type == KeyEventType.KeyDown && e.key == Key.DirectionRight) {
+                                runCatching { contentFocus.requestFocus() }; true
+                            } else false
+                        }
                         .focusGroup()
                         .then(if (hasFocus) Modifier.background(TunerColors.surface, RoundedCornerShape(topEnd = 24.dp, bottomEnd = 24.dp)) else Modifier)
                         .padding(vertical = 27.dp, horizontal = 8.dp),

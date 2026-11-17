@@ -3,6 +3,7 @@ package app.tuner.tv.ui
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -20,8 +21,13 @@ fun Modifier.initialFocus(key: Any? = Unit, enabled: Boolean = true): Modifier {
     if (!enabled) return this
     val requester = remember { FocusRequester() }
     LaunchedEffect(key) {
-        delay(120)
-        runCatching { requester.requestFocus() }
+        // As soon as the control is laid out (the next frame): waiting longer left focus with nothing on the page, so
+        // it landed on the drawer, which opened and closed again (a flash of the sidebar on every new page).
+        withFrameNanos { }
+        if (runCatching { requester.requestFocus() }.isFailure) {
+            delay(120)
+            runCatching { requester.requestFocus() }
+        }
     }
     return focusRequester(requester)
 }
@@ -39,4 +45,21 @@ fun Modifier.bleedStart(amount: Dp = FocusBleed): Modifier = layout { measurable
     val wide = if (constraints.hasBoundedWidth) constraints.copy(maxWidth = constraints.maxWidth + px, minWidth = constraints.minWidth + px) else constraints
     val placeable = measurable.measure(wide)
     layout((placeable.width - px).coerceAtLeast(0), placeable.height) { placeable.place(-px, 0) }
+}
+
+/**
+ * Scrolls a list only as far as needed to show the focused control. Android TV's default pulls the focused item
+ * toward the upper third, which on the movie and show pages scrolled the backdrop and title off the top as soon as
+ * the page opened, although Play was already on screen.
+ */
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+val KeepInView: androidx.compose.foundation.gestures.BringIntoViewSpec = object : androidx.compose.foundation.gestures.BringIntoViewSpec {
+    override fun calculateScrollDistance(offset: Float, size: Float, containerSize: Float): Float {
+        val end = offset + size
+        return when {
+            offset >= 0f && end <= containerSize -> 0f
+            offset < 0f || size > containerSize -> offset
+            else -> end - containerSize
+        }
+    }
 }

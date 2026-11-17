@@ -1,5 +1,6 @@
 package app.tuner.tv.ui.browse
 
+import app.tuner.tv.ui.KeepInView
 import androidx.activity.compose.BackHandler
 import app.tuner.tv.ui.RenameDialog
 import app.tuner.tv.ui.MenuAction
@@ -169,7 +170,9 @@ fun MovieDetailScreen(id: String, onPlay: (PlaybackItem) -> Unit) {
     val m = movie ?: return Placeholder("Loading…")
     val details = listOfNotNull(m.year ?: meta?.year, m.durationSeconds?.takeIf { it > 0 }?.let { "${(it / 60).coerceAtLeast(1)} min" } ?: meta?.runtimeMinutes?.let { "$it min" },
         (m.rating ?: meta?.rating)?.let { "★ %.1f".format(it) }, m.genre ?: meta?.genres?.joinToString(", ")).joinToString("  ·  ")
-    LazyColumn {
+    // Only scroll when the focused control would be off screen (keeps the backdrop and title in view).
+    @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+    androidx.compose.runtime.CompositionLocalProvider(androidx.compose.foundation.gestures.LocalBringIntoViewSpec provides KeepInView) { LazyColumn {
         item { Header(m.name, meta, m.backdropURL ?: m.posterURL, details, m.plot) }
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(14.dp), modifier = Modifier.padding(top = 16.dp)) {
@@ -181,7 +184,7 @@ fun MovieDetailScreen(id: String, onPlay: (PlaybackItem) -> Unit) {
             }
         }
         m.cast?.let { item { Text("Cast: $it", Modifier.padding(top = 20.dp), color = Color.White.copy(alpha = 0.7f), maxLines = 2) } }
-    }
+    } }
 }
 
 @Composable
@@ -214,7 +217,9 @@ fun SeriesDetailScreen(id: String, onPlay: (PlaybackItem) -> Unit) {
     val details = listOfNotNull(s.year ?: meta?.year, (s.rating ?: meta?.rating)?.let { "★ %.1f".format(it) },
         s.genre ?: meta?.genres?.joinToString(", "), if (seasons.isNotEmpty()) "${seasons.count { it > 0 }} seasons" else null).joinToString("  ·  ")
 
-    LazyColumn {
+    // Only scroll when the focused control would be off screen (keeps the backdrop and title in view).
+    @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+    androidx.compose.runtime.CompositionLocalProvider(androidx.compose.foundation.gestures.LocalBringIntoViewSpec provides KeepInView) { LazyColumn {
         item { Header(s.name, meta, s.backdropURL ?: s.coverURL, details, s.plot) }
         item {
             if (episodes.isNotEmpty()) {
@@ -258,7 +263,7 @@ fun SeriesDetailScreen(id: String, onPlay: (PlaybackItem) -> Unit) {
                 }
             }
         }
-    }
+    } }
 }
 
 private fun minutes(seconds: Double): String {
