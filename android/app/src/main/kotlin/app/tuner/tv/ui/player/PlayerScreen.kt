@@ -58,6 +58,7 @@ import androidx.tv.material3.Text
 import app.tuner.core.models.EndOfMediaStall
 import app.tuner.core.models.EpisodeNavigation
 import app.tuner.core.models.MediaKind
+import app.tuner.core.models.Program
 import app.tuner.core.models.UpNextCountdown
 import app.tuner.core.models.WatchProgress
 import app.tuner.core.net.HttpClient
@@ -66,9 +67,11 @@ import app.tuner.data.PlayableStream
 import app.tuner.tv.app
 import app.tuner.tv.ui.PlaybackItem
 import app.tuner.tv.ui.TunerColors
+import app.tuner.tv.ui.browse.fmtClock
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.time.Instant
 
 /**
  * Full-screen player (appendix C, first slice): ExoPlayer with per-stream headers; Xtream live asked as TS, retried as
@@ -90,6 +93,8 @@ fun PlayerScreen(initial: PlaybackItem, onClose: () -> Unit) {
     var buffering by remember { mutableStateOf(true) }
     var upNext by remember { mutableStateOf<Int?>(null) }
     var triedM3U8 by remember { mutableStateOf(false) }
+    var liveNow by remember { mutableStateOf<Program?>(null) }
+    var liveNext by remember { mutableStateOf<Program?>(null) }
     val focus = remember { FocusRequester() }
 
     val player = remember {
@@ -122,7 +127,7 @@ fun PlayerScreen(initial: PlaybackItem, onClose: () -> Unit) {
             is PlaybackItem.EpisodeItem -> WatchProgress(it.episode.id, MediaKind.EPISODE, it.episode.sourceId, seriesId = it.series.id,
                 title = it.series.name, subtitle = "S${it.episode.season}, E${it.episode.number} · ${it.episode.title}",
                 posterURL = it.episode.imageURL ?: it.series.backdropURL ?: it.series.coverURL, position = p, duration = d)
-            is PlaybackItem.Live -> return
+            is PlaybackItem.Live, is PlaybackItem.Catchup -> return
         }
         app.library.saveProgress(record)
     }
@@ -131,17 +136,29 @@ fun PlayerScreen(initial: PlaybackItem, onClose: () -> Unit) {
         message = null
         buffering = true
         upNext = null
+        liveNow = null
+        liveNext = null
         player.stop() // close the old stream first: single-connection accounts refuse a second one
         try {
             val stream = when (target) {
-                is PlaybackItem.Live -> app.resolver.live(target.channel, format).also { app.library.recordWatched(target.channel.id) }
+                is PlaybackItem.Live -> {
+                    val key = target.channel.epgKey
+                    if (key != null) {
+                        val now = Instant.now()
+                        val progs = app.library.programs(listOf(key), now, now.plusSeconds(6 * 3600))[key].orEmpty()
+                        liveNow = progs.firstOrNull { it.isLive(now) }
+                        liveNext = progs.firstOrNull { !it.start.isBefore(liveNow?.end ?: now) && it != liveNow }
+                    }
+                    app.resolver.live(target.channel, format).also { app.library.recordWatched(target.channel.id) }
+                }
+                is PlaybackItem.Catchup -> app.resolver.catchup(target.channel, target.program).also { app.library.recordWatched(target.channel.id) }
                 is PlaybackItem.MovieItem -> app.resolver.movie(target.movie)
                 is PlaybackItem.EpisodeItem -> app.resolver.episode(target.episode)
             }
             val startAt = when (target) {
                 is PlaybackItem.MovieItem -> target.startAt
                 is PlaybackItem.EpisodeItem -> target.startAt
-                is PlaybackItem.Live -> null
+                is PlaybackItem.Live, is PlaybackItem.Catchup -> null
             }
             player.setMediaSource(mediaSource(stream))
             player.prepare()
@@ -299,7 +316,7 @@ fun PlayerScreen(initial: PlaybackItem, onClose: () -> Unit) {
             modifier = Modifier.fillMaxSize(),
         )
 
-        if (chromeVisible || message != null) Chrome(item, position, duration, buffering, player.playWhenReady)
+        if (chromeVisible || message != null) Chrome(item, position, duration, buffering, player.playWhenReady, liveNow, liveNext)
 
         message?.let {
             Box(Modifier.align(Alignment.Center).background(TunerColors.surface.copy(alpha = 0.92f), androidx.compose.foundation.shape.RoundedCornerShape(16.dp)).padding(28.dp)) {
@@ -321,7 +338,15 @@ fun PlayerScreen(initial: PlaybackItem, onClose: () -> Unit) {
 }
 
 @Composable
-private fun Chrome(item: PlaybackItem, position: Double, duration: Double, buffering: Boolean, playing: Boolean) {
+private fun Chrome(
+    item: PlaybackItem,
+    position: Double,
+    duration: Double,
+    buffering: Boolean,
+    playing: Boolean,
+    liveNow: Program?,
+    liveNext: Program?,
+) {
     Box(Modifier.fillMaxSize()) {
         Column(
             Modifier.align(Alignment.BottomStart).fillMaxWidth()
@@ -330,6 +355,15 @@ private fun Chrome(item: PlaybackItem, position: Double, duration: Double, buffe
         ) {
             Text(item.title, style = MaterialTheme.typography.headlineMedium)
             item.subtitle?.let { Text(it, color = Color.White.copy(alpha = 0.7f)) }
+            if (item is PlaybackItem.Live && liveNow != null) {
+                Spacer(Modifier.height(6.dp))
+                Text("${liveNow.title}  ·  ${fmtClock(liveNow.start)}–${fmtClock(liveNow.end)}" +
+                    (liveNext?.let { "   ·   Next: ${it.title}" } ?: ""), color = Color.White.copy(alpha = 0.82f))
+                Spacer(Modifier.height(6.dp))
+                Box(Modifier.fillMaxWidth().height(4.dp).background(Color.White.copy(alpha = 0.25f))) {
+                    Box(Modifier.fillMaxWidth(liveNow.progress().toFloat()).height(4.dp).background(TunerColors.accent))
+                }
+            }
             Spacer(Modifier.height(14.dp))
             if (item is PlaybackItem.Live) {
                 Text(if (buffering) "Loading…" else "LIVE  ·  ▲▼ change channel", color = TunerColors.accent)

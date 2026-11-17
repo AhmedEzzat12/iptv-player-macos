@@ -1,8 +1,11 @@
-// Port of Sources/TunerCore/Services/SyncService.swift @ 666f598 (guide ingest comes later).
+// Port of Sources/TunerCore/Services/SyncService.swift and GuideService.swift @ 666f598.
 package app.tuner.data
 
 import android.content.ContentValues
 import app.tuner.core.models.CategoryKind
+import app.tuner.core.models.EPGChannel
+import app.tuner.core.models.EPGFeed
+import app.tuner.core.models.Program
 import app.tuner.core.models.Series
 import app.tuner.core.models.Source
 import app.tuner.core.models.VODDetails
@@ -10,8 +13,10 @@ import app.tuner.core.net.HttpClient
 import app.tuner.core.net.HttpException
 import app.tuner.core.parsing.Gzip
 import app.tuner.core.parsing.M3UParser
+import app.tuner.core.parsing.XMLTVParser
 import app.tuner.core.providers.StalkerClient
 import app.tuner.core.providers.XtreamClient
+import app.tuner.core.services.GuideParse
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -22,6 +27,8 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.time.Instant
+import java.util.UUID
 
 /** Orchestrates provider sync: fetch → replace rows → status. One sync per source at a time. */
 public class SyncService(private val library: Library, private val cacheDir: File) {
@@ -81,6 +88,17 @@ public class SyncService(private val library: Library, private val cacheDir: Fil
                     errors += "Movies & series: ${e.message}"
                 }
             }
+            if (source.includeLive) {
+                _progress.value = Progress(sourceId, "Updating TV guide…")
+                try {
+                    val fresh = library.source(sourceId) ?: source
+                    syncGuide(fresh)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (_: Exception) {
+                    // Guide errors are recorded on the feed row; don't fail the playlist sync itself.
+                }
+            }
             val now = System.currentTimeMillis()
             library.updateStatus(sourceId, ContentValues().apply {
                 put("lastError", errors.joinToString("\n").ifEmpty { null })
@@ -97,12 +115,17 @@ public class SyncService(private val library: Library, private val cacheDir: Fil
     /** Sources whose data is older than their refresh interval (global defaults: live 6 h, VOD 24 h; 0 = manual). */
     public suspend fun refreshStale(liveHours: Int = 6, vodHours: Int = 24) {
         val now = System.currentTimeMillis()
+        val feedsBySource = library.epgFeeds().groupBy { it.sourceId }
         for (s in library.sources()) {
             val hours = s.refreshHours ?: liveHours
             if (hours == 0) continue
             val last = s.lastSyncedAt?.toEpochMilli() ?: 0
             val lastVod = s.lastVODSyncedAt?.toEpochMilli() ?: 0
-            if (now - last > hours * 3_600_000L || (s.kind != Source.Kind.M3U && now - lastVod > vodHours * 3_600_000L)) sync(s.id)
+            if (now - last > hours * 3_600_000L || (s.kind != Source.Kind.M3U && now - lastVod > vodHours * 3_600_000L)) {
+                sync(s.id)
+            } else if (s.includeLive && s.enabled && !s.needsPassword && feedsBySource[s.id].isNullOrEmpty()) {
+                runCatching { syncGuide(s) }
+            }
         }
     }
 
@@ -230,5 +253,152 @@ public class SyncService(private val library: Library, private val cacheDir: Fil
             try { file.readBytes() } finally { file.delete() }
         }
         if (Gzip.isGzipped(bytes)) Gzip.decompress(bytes) else bytes
+    }
+
+    /** Downloads and ingests a source's XMLTV / Stalker guide feeds and resolves channel EPG keys. */
+    public suspend fun syncGuide(source: Source): String? = withContext(Dispatchers.IO) {
+        val errors = mutableListOf<String>()
+        val attempted = HashSet<String>()
+        val shiftSeconds = (source.epgTimeshiftHours * 3600).toLong()
+
+        if (source.kind == Source.Kind.STALKER && source.autoLoadEPG && source.epgURL.isNullOrBlank()) {
+            val feed = EPGFeed("${source.id}#stalker", source.url, source.id, 0)
+            attempted.add(feed.id)
+            try {
+                library.saveFeed(feed)
+                val entries = stalkerClient(source).epg(hours = 72)
+                val channels = LinkedHashMap<String, EPGChannel>()
+                val programmes = ArrayList<Program>(entries.size)
+                val counts = HashMap<String, Int>()
+                for (e in entries) {
+                    val key = "${feed.id}|${e.channelId}"
+                    if (!channels.containsKey(e.channelId)) channels[e.channelId] = EPGChannel(feed.id, e.channelId, e.channelId, null)
+                    programmes.add(Program(epgKey = key, start = e.start.plusSeconds(shiftSeconds), end = e.stop.plusSeconds(shiftSeconds),
+                        title = e.title, summary = e.desc))
+                    counts[key] = (counts[key] ?: 0) + 1
+                }
+                library.replaceGuide(feed.id, channels.values.toList(), programmes, counts)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                val msg = e.message ?: "Portal guide failed"
+                errors += msg
+                runCatching { library.recordFeedError(feed.id, msg) }
+            }
+        }
+
+        val urls = mutableListOf<String>()
+        val manual = source.epgURL?.trim()?.takeIf { it.isNotEmpty() }
+        if (manual != null) {
+            urls += manual
+        } else if (source.autoLoadEPG) {
+            source.discoveredEPGURL?.trim()?.takeIf { it.isNotEmpty() }?.let { urls += it }
+            if (source.kind == Source.Kind.XTREAM) {
+                val xmltv = XtreamClient(source).urls.xmltvURL()
+                if (xmltv !in urls) urls += xmltv
+            }
+        }
+        for (extra in source.extraEPGURLs) {
+            val u = extra.trim()
+            if (u.isNotEmpty() && u !in urls) urls += u
+        }
+
+        for ((index, url) in urls.withIndex()) {
+            val feed = EPGFeed("${source.id}#$index", url, source.id, index)
+            attempted.add(feed.id)
+            try {
+                library.saveFeed(feed)
+                ingestXmltv(feed, source.userAgent, shiftSeconds)
+                if (index == 0 && manual == null && source.discoveredEPGURL != url) {
+                    library.updateStatus(source.id, ContentValues().apply { put("discoveredEPGURL", url) })
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                val msg = e.message ?: "Guide failed"
+                errors += msg
+                runCatching { library.recordFeedError(feed.id, msg) }
+            }
+        }
+
+        for (old in library.epgFeeds()) {
+            if (old.sourceId == source.id && old.id !in attempted) library.deleteFeed(old.id)
+        }
+        library.resolveEPGKeys()
+        library.pruneProgrammes(Instant.now().minusSeconds(GuideParse.PAST_RETENTION_SECONDS))
+        errors.joinToString("\n").ifEmpty { null }
+    }
+
+    public suspend fun addGlobalFeed(url: String): String? = withContext(Dispatchers.IO) {
+        val cleaned = url.trim().let { if (!it.contains("://")) "https://$it" else it }
+        val existing = library.epgFeeds().filter { it.sourceId == null }
+        if (existing.any { it.url == cleaned }) return@withContext null
+        val priority = (existing.maxOfOrNull { it.priority } ?: -1) + 1
+        val feed = EPGFeed("global#${UUID.randomUUID().toString().uppercase()}", cleaned, null, priority)
+        library.saveFeed(feed)
+        try {
+            ingestXmltv(feed, null, 0)
+            library.resolveEPGKeys()
+            null
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            val msg = e.message ?: "Couldn't load guide"
+            runCatching { library.recordFeedError(feed.id, msg) }
+            msg
+        }
+    }
+
+    public suspend fun refreshGlobalFeeds(): String? = withContext(Dispatchers.IO) {
+        val errors = mutableListOf<String>()
+        for (feed in library.epgFeeds().filter { it.sourceId == null }) {
+            try {
+                ingestXmltv(feed, null, 0)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                val msg = e.message ?: "Couldn't load guide"
+                errors += msg
+                runCatching { library.recordFeedError(feed.id, msg) }
+            }
+        }
+        library.resolveEPGKeys()
+        errors.joinToString("\n").ifEmpty { null }
+    }
+
+    private suspend fun ingestXmltv(feed: EPGFeed, userAgent: String?, shiftSeconds: Long) {
+        val u = feed.url.trim()
+        val downloaded: File
+        val deleteDownloaded: Boolean
+        if (u.startsWith("file://") || u.startsWith("/")) {
+            downloaded = File(if (u.startsWith("file://")) java.net.URI(u).path else u)
+            deleteDownloaded = false
+        } else {
+            downloaded = HttpClient(userAgent, timeoutSeconds = 120).download(u, directory = cacheDir)
+            deleteDownloaded = true
+        }
+        var decompressed: File? = null
+        try {
+            val xmlFile = if (Gzip.isGzipped(downloaded)) {
+                File(cacheDir, "tuner-xmltv-${UUID.randomUUID()}.xml").also { out ->
+                    Gzip.decompress(downloaded, out)
+                    decompressed = out
+                }
+            } else downloaded
+            val now = Instant.now()
+            val wanted = library.wantedGuideSet()
+            val result = GuideParse.parse(
+                file = xmlFile, feedId = feed.id, wanted = wanted, shiftSeconds = shiftSeconds,
+                windowStart = now.minusSeconds(GuideParse.PAST_RETENTION_SECONDS),
+                windowEnd = now.plusSeconds(GuideParse.FUTURE_RETENTION_SECONDS),
+            )
+            if (!result.sawGuide && !XMLTVParser.looksLikeXMLTV(xmlFile)) {
+                throw HttpException.AuthFailed("Not an XMLTV guide")
+            }
+            library.replaceGuide(feed.id, result.channels, result.programmes, result.counts)
+        } finally {
+            if (deleteDownloaded) downloaded.delete()
+            decompressed?.delete()
+        }
     }
 }

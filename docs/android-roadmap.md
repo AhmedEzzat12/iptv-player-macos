@@ -27,8 +27,9 @@ In order of how much a viewer would miss them:
    QR code with Antenna on the owner's iPhone.
 2. ~~**TCL TV pass**~~ done 2026-11-17 (`docs/android-devices.md`): 413 ms cold start, 38 MB PSS browsing, 50 MB PSS
    live TS, 60 MB PSS 4K HEVC + AC-3 (hardware `c2.mtk.hevc.decoder` and audio HAL AC-3 offload), 67 MB PSS movie.
-3. **Guide**: XMLTV ingest into Room (the parser and `GuideParse` are ported already), now/next on the channel list,
-   the guide grid, and catchup playback (`CatchupURLBuilder` is ported).
+3. ~~**Guide**~~ done 2026-11-17: XMLTV and Stalker ingest into Room (`epgFeed`, `epgChannel`, `program`), EPG key
+   resolution, now/next and progress bar on the channel list, the TV Guide grid with 2-hour windows, and catchup
+   playback (`PlaybackItem.Catchup`).
 4. **Player controls**: audio and subtitle track menu, Skip Intro / Skip Credits buttons (`SkipSegmentService` is
    ported), aspect/zoom, sleep timer.
 5. **Live robustness**: stall watchdog, reconnect, failover to backup URLs, `EngineMemory` (remember which engine

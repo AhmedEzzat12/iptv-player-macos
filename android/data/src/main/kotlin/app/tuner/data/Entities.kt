@@ -95,3 +95,35 @@ data class MediaMetadataEntity(@PrimaryKey val mediaId: String, val kind: String
 
 @Entity(tableName = "skipSegmentCache")
 data class SkipSegmentCacheEntity(@PrimaryKey val mediaId: String, val json: String, val fetchedAt: Long)
+
+@Entity(tableName = "epgFeed", indices = [Index("sourceId", name = "epgFeed_source")],
+    foreignKeys = [ForeignKey(SourceEntity::class, ["id"], ["sourceId"], onDelete = CASCADE)])
+data class EpgFeedEntity(
+    @PrimaryKey val id: String, val url: String, val sourceId: String?, val priority: Int,
+    val lastFetchedAt: Long? = null, val lastError: String? = null, val channelCount: Int = 0, val programCount: Int = 0,
+)
+
+@Entity(tableName = "epgChannel",
+    indices = [Index("feedId", name = "epgChannel_feed"), Index("normalizedName", name = "epgChannel_normalized")],
+    foreignKeys = [ForeignKey(EpgFeedEntity::class, ["id"], ["feedId"], onDelete = CASCADE)])
+data class EpgChannelEntity(
+    @PrimaryKey val key: String, val feedId: String, val xmltvId: String, val displayName: String,
+    val normalizedName: String, val iconURL: String?, val programCount: Int = 0,
+)
+
+@Entity(tableName = "program",
+    indices = [Index("epgKey", "start", name = "program_epgKey_start"), Index("end", name = "program_end"), Index("feedId", name = "program_feed")],
+    foreignKeys = [ForeignKey(EpgFeedEntity::class, ["id"], ["feedId"], onDelete = CASCADE)])
+data class ProgramEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0, val feedId: String, val epgKey: String,
+    val start: Long, val end: Long, val title: String, val subtitle: String? = null,
+    val summary: String? = null, val category: String? = null, val iconURL: String? = null, val episode: String? = null,
+)
+
+@Entity(tableName = "customGroup")
+data class CustomGroupEntity(@PrimaryKey val id: String, val name: String, val sortIndex: Int)
+
+@Entity(tableName = "customGroupMember", primaryKeys = ["groupId", "channelId"],
+    indices = [Index("groupId", name = "customGroupMember_group")],
+    foreignKeys = [ForeignKey(CustomGroupEntity::class, ["id"], ["groupId"], onDelete = CASCADE)])
+data class CustomGroupMemberEntity(val groupId: String, val channelId: String, val sortIndex: Int)

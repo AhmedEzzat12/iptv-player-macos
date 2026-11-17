@@ -13,14 +13,18 @@ import app.tuner.core.models.Category
 import app.tuner.core.models.CategoryKind
 import app.tuner.core.models.Channel
 import app.tuner.core.models.ContinueWatchingItem
+import app.tuner.core.models.EPGChannel
+import app.tuner.core.models.EPGFeed
 import app.tuner.core.models.Episode
 import app.tuner.core.models.MediaKind
 import app.tuner.core.models.Movie
+import app.tuner.core.models.Program
 import app.tuner.core.models.Series
 import app.tuner.core.models.SmartContinueWatching
 import app.tuner.core.models.Source
 import app.tuner.core.models.WatchProgress
 import app.tuner.core.parsing.ChannelNameNormalizer
+import app.tuner.core.services.GuideParse
 import app.tuner.core.skip.SkipSegment
 import app.tuner.core.skip.SkipSegmentCache
 import app.tuner.core.skip.SkipSegmentCacheEntry
@@ -37,6 +41,7 @@ public class Library(private val database: AppDatabase) : MetadataCache {
     private val lib get() = database.library()
     private val user get() = database.user()
     private val caches get() = database.caches()
+    private val guideDao get() = database.guide()
 
     /** Runs `block` in one transaction, then tells screens what changed. */
     private suspend fun <T> write(change: Change?, block: suspend () -> T): T =
@@ -317,6 +322,172 @@ public class Library(private val database: AppDatabase) : MetadataCache {
         override suspend fun save(segments: List<SkipSegment>, mediaId: String, at: Long) {
             caches.saveSkip(SkipSegmentCacheEntity(mediaId, json.encodeToString(serializer, segments.map(SkipSegmentJson::of)), at))
         }
+    }
+
+    // Guide (XMLTV / Stalker EPG)
+
+    public suspend fun epgFeeds(): List<EPGFeed> = guideDao.feeds().map { e ->
+        EPGFeed(e.id, e.url, e.sourceId, e.priority, e.lastFetchedAt?.let(Instant::ofEpochMilli), e.lastError, e.channelCount, e.programCount)
+    }
+
+    public suspend fun saveFeed(feed: EPGFeed): Unit = write(Change.GUIDE) {
+        guideDao.upsertFeed(EpgFeedEntity(feed.id, feed.url, feed.sourceId, feed.priority, feed.lastFetchedAt?.toEpochMilli(),
+            feed.lastError, feed.channelCount, feed.programCount))
+    }
+
+    public suspend fun recordFeedError(feedId: String, error: String): Unit = write(Change.GUIDE) {
+        val values = ContentValues().apply { put("lastError", error); put("lastFetchedAt", System.currentTimeMillis()) }
+        database.openHelper.writableDatabase.update("epgFeed", SQLiteDatabase.CONFLICT_NONE, values, "id = ?", arrayOf(feedId))
+    }
+
+    public suspend fun deleteFeed(id: String): Unit = write(Change.GUIDE) { guideDao.deleteFeed(id) }
+
+    public suspend fun wantedGuideSet(): GuideParse.Wanted {
+        val ids = HashSet<String>()
+        val names = HashSet<String>()
+        val db = database.openHelper.readableDatabase
+        db.query("SELECT c.tvgId, c.normalizedName, p.epgIdOverride FROM channel c LEFT JOIN channelPref p ON p.channelId = c.id").use { cur ->
+            while (cur.moveToNext()) {
+                cur.getString(0)?.takeIf { it.isNotEmpty() }?.let { ids.add(it.lowercase()) }
+                cur.getString(1)?.takeIf { it.isNotEmpty() }?.let { names.add(it) }
+                cur.getString(2)?.takeIf { it.isNotEmpty() }?.let { ids.add(it.lowercase()) }
+            }
+        }
+        return GuideParse.Wanted(ids, names)
+    }
+
+    public suspend fun replaceGuide(
+        feedId: String,
+        channels: List<EPGChannel>,
+        programmes: List<Program>,
+        counts: Map<String, Int>,
+    ): Unit = write(Change.GUIDE) {
+        guideDao.deleteProgrammes(feedId)
+        guideDao.deleteEpgChannels(feedId)
+        guideDao.insertEpgChannels(channels.map { c ->
+            EpgChannelEntity(c.key, feedId, c.xmltvId, c.displayName, c.normalizedName, c.iconURL, counts[c.key] ?: 0)
+        })
+        for (chunk in programmes.chunked(5_000)) {
+            guideDao.insertProgrammes(chunk.map { p ->
+                ProgramEntity(0, feedId, p.epgKey, p.start.epochSecond, p.end.epochSecond, p.title, p.subtitle, p.summary, p.category, p.iconURL, p.episode)
+            })
+        }
+        val values = ContentValues().apply {
+            put("lastFetchedAt", System.currentTimeMillis())
+            putNull("lastError")
+            put("channelCount", channels.size)
+            put("programCount", programmes.size)
+        }
+        database.openHelper.writableDatabase.update("epgFeed", SQLiteDatabase.CONFLICT_NONE, values, "id = ?", arrayOf(feedId))
+    }
+
+    /** Recomputes `channel.epgKey`: override → Stalker native → tvg-id → normalised name, preferring keys with programmes and own-source feeds. */
+    public suspend fun resolveEPGKeys(): Unit = write(Change.GUIDE) {
+        val db = database.openHelper.writableDatabase
+        data class Candidate(val key: String, val feedId: String, val hasPrograms: Boolean)
+        val feedSource = HashMap<String, String?>()
+        val feedPriority = HashMap<String, Int>()
+        db.query("SELECT id, sourceId, priority FROM epgFeed").use { cur ->
+            while (cur.moveToNext()) {
+                val id = cur.getString(0)
+                feedSource[id] = if (cur.isNull(1)) null else cur.getString(1)
+                feedPriority[id] = cur.getInt(2)
+            }
+        }
+        val byId = HashMap<String, MutableList<Candidate>>()
+        val byName = HashMap<String, MutableList<Candidate>>()
+        val stalkerKeys = HashSet<String>()
+        db.query("SELECT key, feedId, xmltvId, normalizedName, programCount FROM epgChannel").use { cur ->
+            while (cur.moveToNext()) {
+                val key = cur.getString(0)
+                val feedId = cur.getString(1)
+                val xmltvId = cur.getString(2)
+                val norm = cur.getString(3)
+                val c = Candidate(key, feedId, cur.getInt(4) > 0)
+                byId.getOrPut(xmltvId.lowercase()) { mutableListOf() }.add(c)
+                if (norm.isNotEmpty()) byName.getOrPut(norm) { mutableListOf() }.add(c)
+                if (feedId.endsWith("#stalker")) stalkerKeys.add(key)
+            }
+        }
+        fun rank(c: Candidate, sourceId: String): Int {
+            val owner = feedSource[c.feedId]
+            val tier = when (owner) { sourceId -> 0; null -> 1; else -> 2 }
+            return (if (c.hasPrograms) 0 else 100_000) + tier * 10_000 + (feedPriority[c.feedId] ?: 99)
+        }
+        fun best(list: List<Candidate>?, sourceId: String): String? = list?.minByOrNull { rank(it, sourceId) }?.key
+
+        val updates = mutableListOf<Pair<String, String?>>()
+        db.query("""SELECT c.id, c.sourceId, c.tvgId, c.normalizedName, c.providerStreamId, c.epgKey, p.epgIdOverride
+            FROM channel c LEFT JOIN channelPref p ON p.channelId = c.id""").use { cur ->
+            while (cur.moveToNext()) {
+                val id = cur.getString(0)
+                val sourceId = cur.getString(1)
+                val tvgId = if (cur.isNull(2)) null else cur.getString(2)
+                val norm = cur.getString(3)
+                val sid = if (cur.isNull(4)) null else cur.getString(4)
+                val oldKey = if (cur.isNull(5)) null else cur.getString(5)
+                val override = if (cur.isNull(6)) null else cur.getString(6)
+                var key: String? = null
+                if (!override.isNullOrEmpty()) key = best(byId[override.lowercase()], sourceId) ?: if ('|' in override) override else null
+                if (key == null && !sid.isNullOrEmpty()) {
+                    val sk = "$sourceId#stalker|$sid"
+                    if (sk in stalkerKeys) key = sk
+                }
+                if (key == null && !tvgId.isNullOrBlank()) key = best(byId[tvgId.lowercase()], sourceId)
+                if (key == null) key = best(byName[norm], sourceId)
+                if (key != oldKey) updates.add(id to key)
+            }
+        }
+        if (updates.isNotEmpty()) {
+            val stmt = db.compileStatement("UPDATE channel SET epgKey = ? WHERE id = ?")
+            for ((id, key) in updates) {
+                if (key == null) stmt.bindNull(1) else stmt.bindString(1, key)
+                stmt.bindString(2, id)
+                stmt.executeUpdateDelete()
+            }
+        }
+    }
+
+    public suspend fun pruneProgrammes(endedBefore: Instant): Unit = guideDao.pruneProgrammes(endedBefore.epochSecond)
+
+    /** Programmes overlapping `[from, to)` grouped by EPG key, sorted by start, overlaps trimmed. */
+    public suspend fun programs(epgKeys: List<String>, from: Instant, to: Instant): Map<String, List<Program>> {
+        val unique = epgKeys.distinct().filter { it.isNotEmpty() }
+        if (unique.isEmpty()) return emptyMap()
+        val lo = from.epochSecond
+        val hi = to.epochSecond
+        val map = HashMap<String, MutableList<Program>>()
+        for (chunk in unique.chunked(400)) {
+            val marks = chunk.joinToString(",") { "?" }
+            val args = Array<Any>(chunk.size + 2) { i -> if (i < chunk.size) chunk[i] else if (i == chunk.size) hi else lo }
+            val rows = guideDao.programmes(SimpleSQLiteQuery(
+                "SELECT * FROM program WHERE epgKey IN ($marks) AND start < ? AND end > ? ORDER BY epgKey, start", args))
+            for (r in rows) map.getOrPut(r.epgKey) { mutableListOf() }.add(program(r))
+        }
+        return map.mapValues { (_, list) -> trimOverlaps(list) }
+    }
+
+    public suspend fun searchPrograms(query: String, from: Instant = Instant.now(), hours: Long = 72, limit: Int = 200): List<Program> {
+        val w = words(query)
+        if (w.isEmpty()) return emptyList()
+        val args = mutableListOf<Any>(from.epochSecond, from.plusSeconds(hours * 3600).epochSecond)
+        val conds = w.map { "(title LIKE ? OR subtitle LIKE ?)" }
+        for (word in w) { args.add("%$word%"); args.add("%$word%") }
+        val sql = "SELECT * FROM program WHERE end > ? AND start < ? AND ${conds.joinToString(" AND ")} AND epgKey IN (SELECT epgKey FROM channel WHERE epgKey IS NOT NULL) ORDER BY start LIMIT $limit"
+        return guideDao.programmes(SimpleSQLiteQuery(sql, args.toTypedArray())).map(::program)
+    }
+
+    public suspend fun epgChannels(matching: String, limit: Int = 100): List<EPGChannel> =
+        guideDao.searchEpgChannels("%${matching.trim()}%", limit).map { EPGChannel(it.feedId, it.xmltvId, it.displayName, it.iconURL) }
+
+    private fun program(r: ProgramEntity) = Program(
+        id = r.id, epgKey = r.epgKey, start = Instant.ofEpochSecond(r.start), end = Instant.ofEpochSecond(r.end),
+        title = r.title, subtitle = r.subtitle, summary = r.summary, category = r.category, iconURL = r.iconURL, episode = r.episode,
+    )
+
+    public companion object {
+        /** Clamps each programme's end to the next programme's start so cells never overlap. */
+        public fun trimOverlaps(list: List<Program>): List<Program> = GuideParse.trimOverlaps(list)
     }
 }
 

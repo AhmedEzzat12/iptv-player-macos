@@ -90,4 +90,19 @@ public object GuideParse {
         result.channels = channelsById.values.toList()
         return result
     }
+
+    /** Clamps each programme's end to the next programme's start so cells never overlap. */
+    public fun trimOverlaps(list: List<Program>): List<Program> {
+        if (list.size <= 1) return list
+        val out = ArrayList<Program>(list.size)
+        for (p in list) {
+            val last = out.lastOrNull()
+            if (last != null) {
+                if (!p.start.isAfter(last.start)) continue
+                if (last.end.isAfter(p.start)) out[out.lastIndex] = last.copy(end = p.start)
+            }
+            out.add(p)
+        }
+        return out
+    }
 }

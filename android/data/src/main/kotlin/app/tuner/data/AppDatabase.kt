@@ -6,6 +6,7 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -15,17 +16,19 @@ import kotlinx.coroutines.flow.asSharedFlow
 public enum class Change { LIBRARY, USER, GUIDE }
 
 @Database(
-    version = 1,
+    version = 2,
     exportSchema = true,
     entities = [SourceEntity::class, CategoryEntity::class, CategoryPrefEntity::class, ChannelEntity::class, ChannelPrefEntity::class,
         MovieEntity::class, SeriesEntity::class, EpisodeEntity::class, WatchProgressEntity::class, VodFavoriteEntity::class,
-        HistoryEntity::class, MediaMetadataEntity::class, SkipSegmentCacheEntity::class],
+        HistoryEntity::class, MediaMetadataEntity::class, SkipSegmentCacheEntity::class,
+        EpgFeedEntity::class, EpgChannelEntity::class, ProgramEntity::class, CustomGroupEntity::class, CustomGroupMemberEntity::class],
 )
 public abstract class AppDatabase : RoomDatabase() {
     internal abstract fun sources(): SourceDao
     internal abstract fun library(): LibraryDao
     internal abstract fun user(): UserDao
     internal abstract fun caches(): CacheDao
+    internal abstract fun guide(): GuideDao
 
     private val _changes = MutableSharedFlow<Change>(extraBufferCapacity = 16)
     public val changes: SharedFlow<Change> get() = _changes.asSharedFlow()
@@ -44,7 +47,25 @@ public abstract class AppDatabase : RoomDatabase() {
         /** In-memory database for tests. */
         public fun inMemory(context: Context): AppDatabase = build(Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java))
 
+        private val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""CREATE TABLE IF NOT EXISTS `epgFeed` (`id` TEXT NOT NULL, `url` TEXT NOT NULL, `sourceId` TEXT, `priority` INTEGER NOT NULL, `lastFetchedAt` INTEGER, `lastError` TEXT, `channelCount` INTEGER NOT NULL, `programCount` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`sourceId`) REFERENCES `source`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE)""")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `epgFeed_source` ON `epgFeed` (`sourceId`)")
+                db.execSQL("""CREATE TABLE IF NOT EXISTS `epgChannel` (`key` TEXT NOT NULL, `feedId` TEXT NOT NULL, `xmltvId` TEXT NOT NULL, `displayName` TEXT NOT NULL, `normalizedName` TEXT NOT NULL, `iconURL` TEXT, `programCount` INTEGER NOT NULL, PRIMARY KEY(`key`), FOREIGN KEY(`feedId`) REFERENCES `epgFeed`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE)""")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `epgChannel_feed` ON `epgChannel` (`feedId`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `epgChannel_normalized` ON `epgChannel` (`normalizedName`)")
+                db.execSQL("""CREATE TABLE IF NOT EXISTS `program` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `feedId` TEXT NOT NULL, `epgKey` TEXT NOT NULL, `start` INTEGER NOT NULL, `end` INTEGER NOT NULL, `title` TEXT NOT NULL, `subtitle` TEXT, `summary` TEXT, `category` TEXT, `iconURL` TEXT, `episode` TEXT, FOREIGN KEY(`feedId`) REFERENCES `epgFeed`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE)""")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `program_epgKey_start` ON `program` (`epgKey`, `start`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `program_end` ON `program` (`end`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `program_feed` ON `program` (`feedId`)")
+                db.execSQL("""CREATE TABLE IF NOT EXISTS `customGroup` (`id` TEXT NOT NULL, `name` TEXT NOT NULL, `sortIndex` INTEGER NOT NULL, PRIMARY KEY(`id`))""")
+                db.execSQL("""CREATE TABLE IF NOT EXISTS `customGroupMember` (`groupId` TEXT NOT NULL, `channelId` TEXT NOT NULL, `sortIndex` INTEGER NOT NULL, PRIMARY KEY(`groupId`, `channelId`), FOREIGN KEY(`groupId`) REFERENCES `customGroup`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE)""")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `customGroupMember_group` ON `customGroupMember` (`groupId`)")
+            }
+        }
+
         private fun build(builder: Builder<AppDatabase>): AppDatabase = builder
+            .addMigrations(MIGRATION_1_2)
             // WAL explicitly: Room's automatic mode picks TRUNCATE on low-RAM devices, which includes many TV boxes.
             .setJournalMode(JournalMode.WRITE_AHEAD_LOGGING)
             .addCallback(object : Callback() {

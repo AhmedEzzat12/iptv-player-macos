@@ -100,4 +100,23 @@ class XMLTVParserTest {
         val r = GuideParse.parse(Fixtures.file("sample.xml"), "f", null, 3600, Instant.MIN, Instant.MAX)
         assertEquals(XMLTVDate.parse("20260101130000 +0000"), r.programmes.first().start)
     }
+
+    @Test fun trimOverlapsClampsEndAndDropsDuplicateStart() {
+        val t0 = Instant.ofEpochSecond(1_000)
+        val t1 = Instant.ofEpochSecond(2_000)
+        val t2 = Instant.ofEpochSecond(2_500)
+        val t3 = Instant.ofEpochSecond(3_600)
+        val list = listOf(
+            app.tuner.core.models.Program(epgKey = "f|a", start = t0, end = t2, title = "First"),
+            app.tuner.core.models.Program(epgKey = "f|a", start = t0, end = t3, title = "DuplicateStart"),
+            app.tuner.core.models.Program(epgKey = "f|a", start = t1, end = t3, title = "Second"),
+        )
+        val trimmed = GuideParse.trimOverlaps(list)
+        assertEquals(2, trimmed.size)
+        assertEquals("First", trimmed[0].title)
+        assertEquals(t1, trimmed[0].end)
+        assertEquals("Second", trimmed[1].title)
+        assertEquals(t1, trimmed[1].start)
+        assertEquals(t3, trimmed[1].end)
+    }
 }

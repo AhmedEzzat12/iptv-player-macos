@@ -66,3 +66,18 @@ interface CacheDao {
     @Query("SELECT * FROM skipSegmentCache WHERE mediaId = :mediaId") suspend fun skip(mediaId: String): SkipSegmentCacheEntity?
     @Upsert suspend fun saveSkip(e: SkipSegmentCacheEntity)
 }
+
+@Dao
+interface GuideDao {
+    @Query("SELECT * FROM epgFeed ORDER BY sourceId IS NULL, priority, id") suspend fun feeds(): List<EpgFeedEntity>
+    @Upsert suspend fun upsertFeed(feed: EpgFeedEntity)
+    @Query("DELETE FROM epgFeed WHERE id = :id") suspend fun deleteFeed(id: String)
+    @Query("DELETE FROM program WHERE feedId = :feedId") suspend fun deleteProgrammes(feedId: String)
+    @Query("DELETE FROM epgChannel WHERE feedId = :feedId") suspend fun deleteEpgChannels(feedId: String)
+    @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun insertEpgChannels(items: List<EpgChannelEntity>)
+    @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun insertProgrammes(items: List<ProgramEntity>)
+    @Query("DELETE FROM program WHERE end < :endedBefore") suspend fun pruneProgrammes(endedBefore: Long)
+    @RawQuery suspend fun programmes(query: SupportSQLiteQuery): List<ProgramEntity>
+    @Query("SELECT * FROM epgChannel WHERE displayName LIKE :pattern OR xmltvId LIKE :pattern ORDER BY programCount DESC, displayName COLLATE NOCASE LIMIT :limit")
+    suspend fun searchEpgChannels(pattern: String, limit: Int): List<EpgChannelEntity>
+}
