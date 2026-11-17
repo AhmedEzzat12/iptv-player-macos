@@ -30,8 +30,10 @@ In order of how much a viewer would miss them:
 3. ~~**Guide**~~ done 2026-11-17: XMLTV and Stalker ingest into Room (`epgFeed`, `epgChannel`, `program`), EPG key
    resolution, now/next and progress bar on the channel list, the TV Guide grid with 2-hour windows, and catchup
    playback (`PlaybackItem.Catchup`).
-4. **Player controls**: audio and subtitle track menu, Skip Intro / Skip Credits buttons (`SkipSegmentService` is
-   ported), aspect/zoom, sleep timer.
+4. ~~**Player controls**~~ done 2026-11-17: an options panel (▼ with the controls up on movies and episodes; hold OK
+   or the menu/info/captions key on live TV) with Audio, Subtitles, Picture (the Apple aspect choices) and Sleep
+   Timer (`SleepTimer` ported with its tests, volume fade, "when this ends"). Skip Intro / Credits / Recap button from
+   `SkipSegmentService` (button mode only; Settings → Playback's automatic mode comes with the settings work).
 5. **Live robustness**: stall watchdog, reconnect, failover to backup URLs, `EngineMemory` (remember which engine
    worked for a channel).
 6. **Settings**: preferences in DataStore (live format TS/HLS, quick reopen time, metadata on/off, parental),

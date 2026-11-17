@@ -2,6 +2,7 @@ package app.tuner.tv
 
 import android.app.Application
 import app.tuner.core.metadata.MetadataService
+import app.tuner.core.skip.SkipSegmentService
 import app.tuner.data.AppDatabase
 import app.tuner.data.Library
 import app.tuner.data.StreamResolver
@@ -23,6 +24,7 @@ class TunerApplication : Application(), SingletonImageLoader.Factory {
     val sync by lazy { SyncService(library, cacheDir) }
     val resolver by lazy { StreamResolver(library, sync) }
     val metadata by lazy { MetadataService(library) }
+    val skips by lazy { SkipSegmentService(library.skipCache) }
 
     /** Posters and logos dominate memory on TV boxes: a bounded memory cache. */
     override fun newImageLoader(context: PlatformContext): ImageLoader = ImageLoader.Builder(context)
