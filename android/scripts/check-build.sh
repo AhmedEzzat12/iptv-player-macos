@@ -5,3 +5,5 @@ set -euo pipefail
 source "$(dirname "$0")/env.sh"
 cd "$ANDROID_DIR"
 ./gradlew --console=plain :core:test :data:testDebugUnitTest :player:testDebugUnitTest :app:assembleDebug "$@"
+# JUnit silently skips @Test methods that return a value: make sure every written test ran.
+python3 -I scripts/check-tests-ran.py core data player

@@ -22,7 +22,8 @@ work: `scripts/android-backlog.sh`. Mechanism: `docs/superpowers/specs/google-tv
 | Continue Watching | `Models/SmartContinueWatching.swift` | `models/SmartContinueWatching.kt` | 666f598 | 21 tests; DB suite in phase 3 |
 | Skip segments | `Skip/SkipSegments.swift` | `skip/SkipSegments.kt` | 666f598 | vectors; SkipLearner not in v1 |
 | Fingerprint | `CloudSync/SourceFingerprint.swift` | `sync/SourceFingerprint.kt` | 666f598 | vectors |
-| Metadata, skip lookups | `Metadata/*`, `Skip/SkipSegmentService.swift` | — | — | **not yet ported** (rest of phase 2) |
+| Metadata | `Metadata/MediaMetadata, MetadataHTTP, TitleMatcher, CinemetaClient, TMDBClient, TVmazeClient, MetadataService` | `metadata/*.kt` | 666f598 | 37 tests + vectors; cache behind `MetadataCache` (Room in phase 3) |
+| Skip lookups | `Skip/SkipSegmentService.swift` | `skip/SkipSegmentService.kt` | 666f598 | 7 tests; cache behind `SkipSegmentCache`; no learned intros (v1) |
 
 ## Deliberate differences
 

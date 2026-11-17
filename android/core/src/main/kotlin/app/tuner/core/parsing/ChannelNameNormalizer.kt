@@ -51,7 +51,10 @@ public object ChannelNameNormalizer {
      * Greek and Cyrillic letters only (Arabic harakat, hamza and Japanese dakuten survive, as the vectors show),
      * lowercased, full-width forms narrowed.
      */
-    internal fun fold(s: String): String {
+    internal fun fold(s: String): String = foldKeepingCase(s).lowercase()
+
+    /** `fold` without the lowercasing (Apple's `.diacriticInsensitive, .widthInsensitive`). */
+    internal fun foldKeepingCase(s: String): String {
         val decomposed = Normalizer.normalize(s, Normalizer.Form.NFD)
         val out = StringBuilder(decomposed.length)
         var baseScript: Character.UnicodeScript? = null
@@ -63,7 +66,7 @@ public object ChannelNameNormalizer {
                 out.appendCodePoint(narrow(cp))
             }
         }
-        return Normalizer.normalize(out, Normalizer.Form.NFC).lowercase()
+        return Normalizer.normalize(out, Normalizer.Form.NFC)
     }
 
     private val STRIPPED_SCRIPTS = setOf(
