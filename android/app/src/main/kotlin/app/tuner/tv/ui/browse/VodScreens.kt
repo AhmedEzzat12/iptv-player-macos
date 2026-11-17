@@ -214,7 +214,9 @@ fun SeriesDetailScreen(id: String, onPlay: (PlaybackItem) -> Unit) {
             }
         }
         if (seasons.size > 1) item {
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            // Room around the chips (as on the Movies page): a focused chip grows and otherwise overlaps the buttons
+            // above and the episodes below, and its edges are clipped.
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(vertical = 8.dp, horizontal = 4.dp)) {
                 items(seasons) { n -> FilterChip(selected = n == shown, onClick = { season = n }) { Text(if (n == 0) "Specials" else "Season $n") } }
             }
         }
