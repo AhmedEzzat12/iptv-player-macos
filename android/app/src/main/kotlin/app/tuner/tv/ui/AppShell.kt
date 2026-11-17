@@ -86,6 +86,7 @@ fun AppShell() {
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val itemFocus = remember { Section.entries.associateWith { FocusRequester() } }
     val contentFocus = remember { FocusRequester() }
+    val sectionState = androidx.compose.runtime.saveable.rememberSaveableStateHolder()
 
     fun open(page: Page) { stack.add(page) }
     val play: (PlaybackItem) -> Unit = { playing = it }
@@ -149,15 +150,17 @@ fun AppShell() {
                     is Page.SeriesDetail -> SeriesDetailScreen(page.id, play)
                     Page.AddPlaylist -> AddPlaylistScreen(onDone = { stack.removeAt(stack.lastIndex) })
                     is Page.EditPlaylist -> EditPlaylistScreen(page.id, onDone = { stack.removeAt(stack.lastIndex) })
-                    null -> when (selected) {
+                    // Each section's state (search text, grid scroll) survives a page pushed over it.
+                    null -> sectionState.SaveableStateProvider(selected.name) { when (selected) {
                         Section.Home -> HomeScreen(play, { open(Page.MovieDetail(it)) }, { open(Page.SeriesDetail(it)) }, { open(Page.AddPlaylist) })
                         Section.Live -> LiveScreen(play)
                         Section.Movies -> VodGridScreen(CategoryKind.MOVIE) { open(Page.MovieDetail(it)) }
                         Section.Shows -> VodGridScreen(CategoryKind.SERIES) { open(Page.SeriesDetail(it)) }
                         Section.Favorites -> LiveScreen(play, Library.ChannelScope.Favorites)
-                        Section.Search -> SearchScreen(play, { open(Page.MovieDetail(it)) }, { open(Page.SeriesDetail(it)) })
+                        Section.Search -> SearchScreen(play, { open(Page.MovieDetail(it)) }, { open(Page.SeriesDetail(it)) },
+                            focusSidebar = { runCatching { itemFocus.getValue(Section.Search).requestFocus() } })
                         Section.Settings -> PlaylistsScreen(onAdd = { open(Page.AddPlaylist) }, onEdit = { open(Page.EditPlaylist(it)) })
-                    }
+                    } }
                 }
             }
         }

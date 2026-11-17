@@ -1,5 +1,15 @@
 package app.tuner.tv.ui.browse
 
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.platform.LocalFocusManager
 import app.tuner.core.models.RecentSearches
 import androidx.tv.material3.OutlinedButton
 import androidx.compose.foundation.lazy.items
@@ -50,9 +60,13 @@ import kotlinx.coroutines.delay
  * searches show as chips (a search is remembered once a result from it is opened or played, as in the Apple apps).
  */
 @Composable
-fun SearchScreen(onPlay: (PlaybackItem) -> Unit, onOpenMovie: (String) -> Unit, onOpenSeries: (String) -> Unit) {
+fun SearchScreen(onPlay: (PlaybackItem) -> Unit, onOpenMovie: (String) -> Unit, onOpenSeries: (String) -> Unit, focusSidebar: () -> Unit = {}) {
     val app = LocalContext.current.app
-    var query by remember { mutableStateOf("") }
+    val focusManager = LocalFocusManager.current
+    // The field's value with its cursor (Left at the start of the text leaves the field for the sidebar).
+    // Saveable (AppShell keeps each section's state): coming back from a result keeps the search and its results.
+    var field by rememberSaveable(stateSaver = TextFieldValue.Saver) { mutableStateOf(TextFieldValue("")) }
+    val query = field.text
     fun used() { app.prefs.recentSearches = RecentSearches.remember(app.prefs.recentSearches, query) }
     val play: (PlaybackItem) -> Unit = { used(); onPlay(it) }
     val openMovie: (String) -> Unit = { used(); onOpenMovie(it) }
@@ -76,9 +90,19 @@ fun SearchScreen(onPlay: (PlaybackItem) -> Unit, onOpenMovie: (String) -> Unit, 
             Column(Modifier.padding(bottom = 24.dp)) {
                 PageTitle("Search")
                 Spacer(Modifier.height(12.dp))
-                BasicTextField(query, { query = it }, singleLine = true, textStyle = TextStyle(color = Color.White, fontSize = 24.sp),
+                BasicTextField(field, { field = it }, singleLine = true, textStyle = TextStyle(color = Color.White, fontSize = 24.sp),
                     cursorBrush = SolidColor(TunerColors.accent),
-                    modifier = Modifier.width(720.dp).initialFocus().background(TunerColors.surface, RoundedCornerShape(12.dp)).padding(16.dp))
+                    modifier = Modifier.width(720.dp).initialFocus()
+                        // A text field keeps Down for itself (it never moved on to the results): send it to the results.
+                        .onPreviewKeyEvent { e ->
+                            // and Left at the start of the text to the sidebar (the field kept Left for its cursor, so the only
+                            // way out of Search was Back).
+                            if (e.type != KeyEventType.KeyDown) false
+                            else if (e.key == Key.DirectionDown) { focusManager.moveFocus(FocusDirection.Down); true }
+                            else if (e.key == Key.DirectionLeft && field.selection.collapsed && field.selection.start == 0) { focusSidebar(); true }
+                            else false
+                        }
+                        .background(TunerColors.surface, RoundedCornerShape(12.dp)).padding(16.dp))
             }
         }
         val recent = app.prefs.recentSearches
@@ -88,7 +112,7 @@ fun SearchScreen(onPlay: (PlaybackItem) -> Unit, onOpenMovie: (String) -> Unit, 
                     Text("Recent Searches", style = MaterialTheme.typography.titleMedium)
                     Spacer(Modifier.height(10.dp))
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        items(recent, key = { it }) { r -> OutlinedButton(onClick = { query = r }) { Text(r) } }
+                        items(recent, key = { it }) { r -> OutlinedButton(onClick = { field = TextFieldValue(r, TextRange(r.length)) }) { Text(r) } }
                         item(key = "clear") { OutlinedButton(onClick = { app.prefs.recentSearches = emptyList() }) { Text("Clear") } }
                     }
                 }

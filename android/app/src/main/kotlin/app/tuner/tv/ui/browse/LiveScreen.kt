@@ -1,5 +1,6 @@
 package app.tuner.tv.ui.browse
 
+import androidx.tv.material3.LocalContentColor
 import app.tuner.tv.ui.RenameDialog
 import app.tuner.tv.ui.MenuAction
 import app.tuner.tv.ui.ItemMenu
@@ -203,29 +204,31 @@ fun LiveScreen(onPlay: (PlaybackItem) -> Unit, initial: Library.ChannelScope = L
                                 headlineContent = {
                                     Text((ch.number?.let { "$it  " } ?: "") + ch.displayName, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                 },
+                                // Secondary text follows the row's content colour (dark on the white focused row; it was
+                                // fixed white and vanished there).
                                 supportingContent = if (current != null || next != null) {
                                     {
                                         Column(Modifier.padding(top = 2.dp)) {
                                             if (current != null) {
                                                 Text("${current.title}  ·  ${fmtClock(current.start)}–${fmtClock(current.end)}",
-                                                    maxLines = 1, overflow = TextOverflow.Ellipsis, color = Color.White.copy(alpha = 0.78f),
+                                                    maxLines = 1, overflow = TextOverflow.Ellipsis, color = LocalContentColor.current.copy(alpha = 0.78f),
                                                     style = MaterialTheme.typography.bodySmall)
                                                 Spacer(Modifier.height(4.dp))
-                                                Box(Modifier.width(240.dp).height(3.dp).background(Color.White.copy(alpha = 0.2f))) {
+                                                Box(Modifier.width(240.dp).height(3.dp).background(LocalContentColor.current.copy(alpha = 0.2f))) {
                                                     Box(Modifier.fillMaxWidth(current.progress(now).toFloat()).height(3.dp).background(TunerColors.accent))
                                                 }
                                             }
                                             if (next != null) {
                                                 Spacer(Modifier.height(2.dp))
                                                 Text("Next · ${fmtClock(next.start)}  ${next.title}", maxLines = 1, overflow = TextOverflow.Ellipsis,
-                                                    color = Color.White.copy(alpha = 0.55f), style = MaterialTheme.typography.bodySmall)
+                                                    color = LocalContentColor.current.copy(alpha = 0.6f), style = MaterialTheme.typography.bodySmall)
                                             }
                                         }
                                     }
                                 } else null,
                                 trailingContent = {
                                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                                        if (ch.hasCatchup) Text("⟲", color = Color.White.copy(alpha = 0.55f))
+                                        if (ch.hasCatchup) Text("⟲", color = LocalContentColor.current.copy(alpha = 0.6f))
                                         if (ch.isFavorite) Text("★", color = TunerColors.accent)
                                     }
                                 },

@@ -107,6 +107,7 @@ fun PlayerScreen(initial: PlaybackItem, onClose: () -> Unit) {
     var liveNext by remember { mutableStateOf<Program?>(null) }
     // Options panel (audio, subtitles, picture, sleep timer) and Skip Intro/Credits.
     var optionsOpen by remember { mutableStateOf(false) }
+    var backClosedPanel by remember { mutableStateOf(false) }
     /** The live channel's favourite state, changed from the options panel (the item itself isn't replaced). */
     var favorite by remember((item as? PlaybackItem.Live)?.channel?.id) { mutableStateOf((item as? PlaybackItem.Live)?.channel?.isFavorite == true) }
     var tracks by remember { mutableStateOf(androidx.media3.common.Tracks.EMPTY) }
@@ -518,16 +519,22 @@ fun PlayerScreen(initial: PlaybackItem, onClose: () -> Unit) {
                     if (okLongPressed) { okLongPressed = false; return@onPreviewKeyEvent true }
                     if (!optionsOpen) { okPressed(); return@onPreviewKeyEvent true }
                 }
-                if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
-                lastInput++
-                // The panel's rows take the D-pad while it's open. Back closes it here: left to the panel, Compose would
-                // only move focus out of it and keep it open.
-                if (optionsOpen) {
-                    if (event.nativeKeyEvent.keyCode != KeyEvent.KEYCODE_BACK) return@onPreviewKeyEvent false
-                    optionsOpen = false
-                    focus.requestFocus()
+                // Back with the panel open: both halves of the press are taken here and the panel closes on the release.
+                // Closing it on the press let the release reach the BackHandler, which then closed the player too (one
+                // press, two steps back).
+                if (event.nativeKeyEvent.keyCode == KeyEvent.KEYCODE_BACK && (optionsOpen || backClosedPanel)) {
+                    if (event.type == KeyEventType.KeyDown) backClosedPanel = true
+                    else if (event.type == KeyEventType.KeyUp && backClosedPanel) {
+                        backClosedPanel = false
+                        optionsOpen = false
+                        focus.requestFocus()
+                    }
                     return@onPreviewKeyEvent true
                 }
+                if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                lastInput++
+                // The panel's rows take the D-pad while it's open (Back is handled above).
+                if (optionsOpen) return@onPreviewKeyEvent false
                 val live = item is PlaybackItem.Live
                 val code = event.nativeKeyEvent.keyCode
                 val openOptions = code == KeyEvent.KEYCODE_MENU || code == KeyEvent.KEYCODE_INFO || code == KeyEvent.KEYCODE_CAPTIONS ||

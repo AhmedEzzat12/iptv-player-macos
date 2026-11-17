@@ -1,5 +1,6 @@
 package app.tuner.tv.ui.settings
 
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.layout.imePadding
@@ -435,13 +436,21 @@ private fun Field(label: String, value: String, keyboard: KeyboardType = Keyboar
                         val down = e.type == androidx.compose.ui.input.key.KeyEventType.KeyDown
                         if (down && (e.key == androidx.compose.ui.input.key.Key.DirectionDown || e.key == androidx.compose.ui.input.key.Key.DirectionUp)) {
                             editing = false; true
+                        } else if (e.key == androidx.compose.ui.input.key.Key.Back) {
+                            // Reaches the field only once no keyboard is up to take it (a floating keyboard that's
+                            // already hidden, or a hardware keyboard): Back then ends editing instead of doing nothing.
+                            if (!down) editing = false
+                            true
                         } else false
                     }
                     .background(Color.White.copy(alpha = 0.18f), RoundedCornerShape(10.dp)).padding(14.dp),
             )
             LaunchedEffect(Unit) { editor.requestFocus() }
             // Closing the keyboard (Back) ends editing, so the D-pad moves through the form again.
-            val imeVisible = androidx.compose.foundation.layout.WindowInsets.Companion.ime.getBottom(androidx.compose.ui.platform.LocalDensity.current) > 0
+            // Visibility, not height: Google TV's floating keyboard reports a zero-height inset, so testing the height
+            // never saw it close and the field stayed in edit mode.
+            @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+            val imeVisible = androidx.compose.foundation.layout.WindowInsets.isImeVisible
             var imeWasVisible by remember { mutableStateOf(false) }
             LaunchedEffect(imeVisible) {
                 if (imeVisible) {
