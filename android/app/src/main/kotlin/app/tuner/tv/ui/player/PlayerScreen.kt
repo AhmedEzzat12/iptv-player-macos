@@ -1,5 +1,6 @@
 package app.tuner.tv.ui.player
 
+import app.tuner.core.services.LiveWatchdog
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import app.tuner.core.audio.SleepTimer
@@ -114,6 +115,12 @@ fun PlayerScreen(initial: PlaybackItem, onClose: () -> Unit) {
     var skipRaw by remember { mutableStateOf<List<SkipSegment>?>(null) }
     var skipApplied by remember { mutableStateOf(false) }
     var skipPrompt by remember { mutableStateOf<SkipTracker.Prompt?>(null) }
+    // Live watchdog: a stalled stream fails over to the same channel in another playlist, else reconnects.
+    val watchdog = remember { LiveWatchdog() }
+    var originalChannel by remember { mutableStateOf<app.tuner.core.models.Channel?>(null) }
+    val failoverTried = remember { HashSet<String>() }
+    var recovering by remember { mutableStateOf(false) }
+    var status by remember { mutableStateOf<String?>(null) }
 
     /** Now/next for the live chrome; reloaded when the current programme ends while watching. */
     suspend fun loadLiveGuide(channel: app.tuner.core.models.Channel) {
@@ -181,7 +188,11 @@ fun PlayerScreen(initial: PlaybackItem, onClose: () -> Unit) {
         }
     }
 
-    suspend fun load(target: PlaybackItem, format: XtreamURLs.LiveFormat = XtreamURLs.LiveFormat.TS) {
+    suspend fun load(target: PlaybackItem, format: XtreamURLs.LiveFormat = XtreamURLs.LiveFormat.TS, automatic: Boolean = false) {
+        if (target is PlaybackItem.Live) {
+            if (!automatic) { originalChannel = target.channel; failoverTried.clear(); failoverTried += target.channel.id; status = null }
+            watchdog.started(System.currentTimeMillis() / 1000.0, isRetry = automatic)
+        } else status = null
         message = null
         buffering = true
         upNext = null
@@ -220,6 +231,45 @@ fun PlayerScreen(initial: PlaybackItem, onClose: () -> Unit) {
         }
     }
 
+    /** Live stream died: try the same channel in another playlist, else reconnect with backoff (PlayerSlot.streamDied). */
+    fun streamDied(reason: String) {
+        val live = item as? PlaybackItem.Live ?: return
+        if (recovering) return
+        recovering = true
+        player.stop()
+        scope.launch {
+            try {
+                val base = originalChannel ?: live.channel
+                val alternates = runCatching { app.library.alternateChannels(base) }.getOrDefault(emptyList())
+                val next = (listOf(base) + alternates).firstOrNull { it.id !in failoverTried }
+                if (next != null) {
+                    failoverTried += next.id
+                    status = "Switching to ${next.displayName}…"
+                    item = live.copy(channel = next)
+                    load(item, if (triedM3U8) XtreamURLs.LiveFormat.M3U8 else XtreamURLs.LiveFormat.TS, automatic = true)
+                    return@launch
+                }
+                val attempt = watchdog.nextRetry()
+                if (attempt > LiveWatchdog.MAX_RETRIES) {
+                    status = null
+                    message = "This channel isn't responding. ${reason.trimEnd('.')}."
+                    return@launch
+                }
+                status = "Reconnecting ($attempt/${LiveWatchdog.MAX_RETRIES})…"
+                buffering = true
+                delay(watchdog.backoffSeconds(attempt) * 1000L)
+                if (item !is PlaybackItem.Live) return@launch
+                // Copies in other playlists get another chance after the reconnect; the channel itself isn't a "switch".
+                failoverTried.clear()
+                failoverTried += base.id
+                item = live.copy(channel = base)
+                load(item, if (triedM3U8) XtreamURLs.LiveFormat.M3U8 else XtreamURLs.LiveFormat.TS, automatic = true)
+            } finally {
+                recovering = false
+            }
+        }
+    }
+
     fun switchTo(target: PlaybackItem, completedCurrent: Boolean = false) {
         scope.launch {
             saveProgress(completed = completedCurrent)
@@ -251,6 +301,8 @@ fun PlayerScreen(initial: PlaybackItem, onClose: () -> Unit) {
         val listener = object : Player.Listener {
             override fun onPlaybackStateChanged(state: Int) {
                 buffering = state == Player.STATE_BUFFERING
+                // A live stream never ends: the connection dropped, so recover instead of closing.
+                if (state == Player.STATE_ENDED && item is PlaybackItem.Live) { streamDied("The stream ended"); return }
                 if (state == Player.STATE_ENDED) scope.launch {
                     saveProgress(completed = true)
                     if (sleep?.isEndOfItem == true || !nextEpisode(1)) onClose()
@@ -267,13 +319,15 @@ fun PlayerScreen(initial: PlaybackItem, onClose: () -> Unit) {
                     scope.launch { load(live, XtreamURLs.LiveFormat.M3U8) }
                     return
                 }
-                val status = (error.cause as? androidx.media3.datasource.HttpDataSource.InvalidResponseCodeException)?.responseCode
-                message = when (status) {
-                    401, 403 -> "The provider refused this stream ($status). Check the account or its connection limit."
+                val code = (error.cause as? androidx.media3.datasource.HttpDataSource.InvalidResponseCodeException)?.responseCode
+                // A dropped connection on live TV is worth reconnecting; a refusal from the provider isn't.
+                if (live != null && code == null) { streamDied("Playback failed: ${error.errorCodeName}"); return }
+                message = when (code) {
+                    401, 403 -> "The provider refused this stream ($code). Check the account or its connection limit."
                     404 -> "The provider doesn't have this stream (404)."
                     503 -> "The provider has no playable copy of this title right now (503)."
                     null -> "Playback failed: ${error.errorCodeName}"
-                    else -> "The provider answered with an error ($status)."
+                    else -> "The provider answered with an error ($code)."
                 }
             }
         }
@@ -315,6 +369,15 @@ fun PlayerScreen(initial: PlaybackItem, onClose: () -> Unit) {
             skipRaw?.let { raw ->
                 if (!skipApplied && duration > 0) { skipTracker.setSegments(SkipSegments.merge(raw, duration)); skipApplied = true }
                 skipPrompt = if (skipApplied) skipTracker.update(position, duration, SkipMode.BUTTON, autoSkipCredits = false).first else null
+            }
+            if (ticks % 2 == 0 && item is PlaybackItem.Live && message == null && !recovering) {
+                val state = player.playbackState
+                when (watchdog.tick(System.currentTimeMillis() / 1000.0, player.currentPosition / 1000.0, player.bufferedPosition / 1000.0,
+                    ended = state == Player.STATE_ENDED, idle = state == Player.STATE_IDLE, paused = !player.playWhenReady)) {
+                    LiveWatchdog.Result.DIED -> streamDied("Stream stopped responding")
+                    LiveWatchdog.Result.RECOVERED -> status = null
+                    LiveWatchdog.Result.OK -> if (status != null && state == Player.STATE_READY && player.isPlaying) status = null
+                }
             }
             (item as? PlaybackItem.Live)?.let { live ->
                 val endsAt = liveNow?.end ?: liveNext?.start
@@ -424,6 +487,13 @@ fun PlayerScreen(initial: PlaybackItem, onClose: () -> Unit) {
             Box(Modifier.align(Alignment.BottomEnd).padding(end = 56.dp, bottom = if (chromeVisible) 136.dp else 48.dp)
                 .background(TunerColors.surface.copy(alpha = 0.95f), androidx.compose.foundation.shape.RoundedCornerShape(14.dp)).padding(20.dp)) {
                 Text("Up Next in $seconds s · press OK to play now", style = MaterialTheme.typography.titleSmall)
+            }
+        }
+
+        status?.let {
+            Box(Modifier.align(Alignment.TopCenter).padding(top = 40.dp)
+                .background(TunerColors.surface.copy(alpha = 0.92f), androidx.compose.foundation.shape.RoundedCornerShape(50)).padding(horizontal = 22.dp, vertical = 10.dp)) {
+                Text(it, style = MaterialTheme.typography.titleSmall)
             }
         }
 

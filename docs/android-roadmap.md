@@ -34,8 +34,10 @@ In order of how much a viewer would miss them:
    or the menu/info/captions key on live TV) with Audio, Subtitles, Picture (the Apple aspect choices) and Sleep
    Timer (`SleepTimer` ported with its tests, volume fade, "when this ends"). Skip Intro / Credits / Recap button from
    `SkipSegmentService` (button mode only; Settings → Playback's automatic mode comes with the settings work).
-5. **Live robustness**: stall watchdog, reconnect, failover to backup URLs, `EngineMemory` (remember which engine
-   worked for a channel).
+5. ~~**Live robustness**~~ done 2026-11-17: `LiveWatchdog` (the Apple watchdog's rules, tested) notices a stalled,
+   ended or dropped live stream; the player fails over to the same channel in another playlist
+   (`Library.alternateChannels`, as in Swift), else reconnects with 1–5 s backoff up to 10 times, with a notice.
+   Still to do: `EngineMemory` (with the mpv engine), stall timeout / attempts / auto-failover in Settings.
 6. **Settings**: preferences in DataStore (live format TS/HLS, quick reopen time, metadata on/off, parental),
    playlist edit/rename/delete/refresh now, user agent.
 7. **Organise**: hide and rename categories and channels, groups, context menu on long press (today long press only

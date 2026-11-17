@@ -191,6 +191,21 @@ public class Library(private val database: AppDatabase) : MetadataCache {
         return lib.channels(SimpleSQLiteQuery(sql, args.toTypedArray())).map(::channel)
     }
 
+    /**
+     * The same channel elsewhere (same normalised name, EPG key or tvg-id; visible, in an enabled playlist), for live
+     * failover. Port of AppDatabase.alternateChannels (AppDatabase+Queries.swift).
+     */
+    public suspend fun alternateChannels(channel: Channel): List<Channel> {
+        val conditions = mutableListOf("c.normalizedName = ?")
+        val args = mutableListOf<Any>(channel.id, ChannelNameNormalizer.normalize(channel.name))
+        channel.epgKey?.let { conditions += "c.epgKey = ?"; args += it }
+        channel.tvgId?.takeIf { it.isNotEmpty() }?.let { conditions += "c.tvgId = ?"; args += it }
+        val sql = "SELECT $channelColumns FROM channel c JOIN source s ON s.id = c.sourceId AND s.enabled = 1 " +
+            "LEFT JOIN channelPref p ON p.channelId = c.id WHERE c.id <> ? AND (${conditions.joinToString(" OR ")}) " +
+            "AND COALESCE(p.isHidden, 0) = 0 ORDER BY s.sortIndex, c.providerOrder LIMIT 20"
+        return lib.channels(SimpleSQLiteQuery(sql, args.toTypedArray())).map(::channel)
+    }
+
     public suspend fun channel(id: String): Channel? = lib.channels(SimpleSQLiteQuery(
         "SELECT $channelColumns FROM channel c LEFT JOIN channelPref p ON p.channelId = c.id WHERE c.id = ?", arrayOf(id))).firstOrNull()?.let(::channel)
 
