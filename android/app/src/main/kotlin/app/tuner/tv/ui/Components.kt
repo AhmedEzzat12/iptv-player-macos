@@ -84,8 +84,8 @@ fun <T> Shelf(title: String, items: List<T>, key: (T) -> String, focusFirst: Boo
     Column(Modifier.padding(bottom = 28.dp)) {
         Text(title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(bottom = 4.dp))
         // Vertical room so a focused (grown) card never reaches the row title above.
-        LazyRow(horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(20.dp),
-            contentPadding = PaddingValues(start = 6.dp, end = 48.dp, top = 12.dp, bottom = 6.dp)) {
+        LazyRow(Modifier.bleedStart(), horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(20.dp),
+            contentPadding = PaddingValues(start = FocusBleed, end = 48.dp, top = 12.dp, bottom = 6.dp)) {
             items(items.size, key = { key(items[it]) }) { i ->
                 Box(if (focusFirst && i == 0) Modifier.initialFocus(key(items[0])) else Modifier) { content(items[i]) }
             }

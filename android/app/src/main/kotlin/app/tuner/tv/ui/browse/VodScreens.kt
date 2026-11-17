@@ -1,5 +1,7 @@
 package app.tuner.tv.ui.browse
 
+import app.tuner.tv.ui.FocusBleed
+import app.tuner.tv.ui.bleedStart
 import app.tuner.tv.ui.PageTitle
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -85,7 +87,7 @@ fun VodGridScreen(kind: CategoryKind, onOpen: (String) -> Unit) {
     Column(Modifier.fillMaxSize()) {
         PageTitle(if (kind == CategoryKind.MOVIE) "Movies" else "TV Shows")
         Spacer(Modifier.height(12.dp))
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(vertical = 8.dp)) {
+        LazyRow(Modifier.bleedStart(), horizontalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(vertical = 8.dp, horizontal = FocusBleed)) {
             item { FilterChip(selected = selected == null, onClick = { selected = null }, modifier = Modifier.initialFocus()) { Text("All") } }
             items(categories, key = { it.id }) { c -> FilterChip(selected = selected == c.id, onClick = { selected = c.id }) { Text(c.displayName) } }
         }
@@ -94,8 +96,8 @@ fun VodGridScreen(kind: CategoryKind, onOpen: (String) -> Unit) {
             Placeholder(if (categories.isEmpty()) "Add a playlist with movies and shows in Settings." else "Nothing in this category.")
         } else {
             // Fixed cells: posters are the same 150 dp as on Home in every category (Adaptive stretched them).
-            LazyVerticalGrid(GridCells.FixedSize(150.dp), horizontalArrangement = Arrangement.spacedBy(18.dp),
-                verticalArrangement = Arrangement.spacedBy(24.dp), contentPadding = PaddingValues(top = 12.dp, start = 6.dp, bottom = 48.dp, end = 4.dp)) {
+            LazyVerticalGrid(GridCells.FixedSize(150.dp), Modifier.bleedStart(), horizontalArrangement = Arrangement.spacedBy(18.dp),
+                verticalArrangement = Arrangement.spacedBy(24.dp), contentPadding = PaddingValues(top = 12.dp, start = FocusBleed, bottom = 48.dp, end = 4.dp)) {
                 itemsIndexed(items, key = { _, it -> it.first }) { index, (id, name, image) ->
                     PosterCard(name, image, onClick = { onOpen(id) })
                     if (index == items.size - 1 && !exhausted) LaunchedEffect(items.size) {
@@ -216,14 +218,14 @@ fun SeriesDetailScreen(id: String, onPlay: (PlaybackItem) -> Unit) {
         if (seasons.size > 1) item {
             // Room around the chips (as on the Movies page): a focused chip grows and otherwise overlaps the buttons
             // above and the episodes below, and its edges are clipped.
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(vertical = 8.dp, horizontal = 4.dp)) {
+            LazyRow(Modifier.bleedStart(), horizontalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(vertical = 8.dp, horizontal = FocusBleed)) {
                 items(seasons) { n -> FilterChip(selected = n == shown, onClick = { season = n }) { Text(if (n == 0) "Specials" else "Season $n") } }
             }
         }
         item {
             val list = episodes.filter { it.season == shown }
             if (list.isEmpty()) Text("Loading episodes…", Modifier.padding(top = 16.dp)) else
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(20.dp), contentPadding = PaddingValues(vertical = 16.dp, horizontal = 4.dp)) {
+            LazyRow(Modifier.bleedStart(), horizontalArrangement = Arrangement.spacedBy(20.dp), contentPadding = PaddingValues(vertical = 16.dp, horizontal = FocusBleed)) {
                 items(list, key = { it.id }) { e ->
                     val p = progress[e.id]
                     val still = e.imageURL ?: meta?.episode(e.season, e.number)?.stillURL

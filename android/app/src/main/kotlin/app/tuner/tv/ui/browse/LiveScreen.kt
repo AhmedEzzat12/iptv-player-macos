@@ -1,5 +1,7 @@
 package app.tuner.tv.ui.browse
 
+import app.tuner.tv.ui.FocusBleed
+import app.tuner.tv.ui.bleedStart
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
@@ -279,7 +281,7 @@ private fun GuideGridView(
             }
         }
         Spacer(Modifier.height(8.dp))
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(vertical = 4.dp)) {
+        LazyRow(Modifier.bleedStart(), horizontalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(vertical = 4.dp, horizontal = FocusBleed)) {
             items(groups, key = { it.first + it.second }) { (name, grpScope) ->
                 FilterChip(selected = grpScope == selected, onClick = { onSelectGroup(grpScope) }) { Text(name) }
             }
