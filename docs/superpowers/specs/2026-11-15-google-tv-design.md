@@ -387,6 +387,8 @@ Measured in release builds on the owner's TCL Google TV (the emulator only for q
    Acknowledgements/licences, screenshots from the test kit, docs (README → Google TV, `design.md`, `testing.md`,
    `CLAUDE.md`).
 
+Progress and deferred items: `docs/android-roadmap.md`.
+
 ## Left to the builder
 
 - How libmpv is produced (build from mpv-android scripts vs an existing LGPL AAR), as long as it's LGPL and

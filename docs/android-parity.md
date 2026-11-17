@@ -2,6 +2,7 @@
 
 How the Google TV app (`android/`) follows the Apple apps. Base: the commit in `android/PARITY_BASE`. Outstanding
 work: `scripts/android-backlog.sh`. Mechanism: `docs/superpowers/specs/google-tv/E-parity-tooling.md`.
+What's usable and what was deferred: `docs/android-roadmap.md`.
 
 ## Ported areas
 
@@ -19,10 +20,10 @@ work: `scripts/android-backlog.sh`. Mechanism: `docs/superpowers/specs/google-tv
 | Models | `Models/Source, Channel, Program, VOD` | `models/*.kt` | 666f598 | |
 | Category grouping | `Models/CategoryGrouping.swift` | `models/CategoryGrouping.kt` | 666f598 | vectors |
 | Episode navigation | `Models/EpisodeNavigation.swift` | `models/EpisodeNavigation.kt` | 666f598 | 13 tests |
-| Continue Watching | `Models/SmartContinueWatching.swift` | `models/SmartContinueWatching.kt` | 666f598 | 21 tests; DB suite in phase 3 |
+| Continue Watching | `Models/SmartContinueWatching.swift` | `models/SmartContinueWatching.kt` | 666f598 | 21 tests; DB suite owed (roadmap) |
 | Skip segments | `Skip/SkipSegments.swift` | `skip/SkipSegments.kt` | 666f598 | vectors; SkipLearner not in v1 |
 | Fingerprint | `CloudSync/SourceFingerprint.swift` | `sync/SourceFingerprint.kt` | 666f598 | vectors |
-| Metadata | `Metadata/MediaMetadata, MetadataHTTP, TitleMatcher, CinemetaClient, TMDBClient, TVmazeClient, MetadataService` | `metadata/*.kt` | 666f598 | 37 tests + vectors; cache behind `MetadataCache` (Room in phase 3) |
+| Metadata | `Metadata/MediaMetadata, MetadataHTTP, TitleMatcher, CinemetaClient, TMDBClient, TVmazeClient, MetadataService` | `metadata/*.kt` | 666f598 | 37 tests + vectors; cache behind `MetadataCache` (Room `Library`) |
 | Skip lookups | `Skip/SkipSegmentService.swift` | `skip/SkipSegmentService.kt` | 666f598 | 7 tests; cache behind `SkipSegmentCache`; no learned intros (v1) |
 
 ## Deliberate differences
