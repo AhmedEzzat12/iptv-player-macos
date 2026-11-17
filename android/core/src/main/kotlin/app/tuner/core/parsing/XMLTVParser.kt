@@ -39,8 +39,11 @@ public object XMLTVParser {
     /** True if the file starts like an XMLTV document (a `<tv` root within the first 256 KB); `<tv></tv>` is valid. */
     public fun looksLikeXMLTV(file: File): Boolean = runCatching {
         file.inputStream().use { input ->
-            val head = input.readNBytes(256 * 1024)
-            val text = String(head, Charsets.UTF_8)
+            // Not InputStream.readNBytes: it needs Android 13 and the app supports Android 9.
+            val head = ByteArray(256 * 1024)
+            var n = 0
+            while (n < head.size) { val r = input.read(head, n, head.size - n); if (r < 0) break; n += r }
+            val text = String(head, 0, n, Charsets.UTF_8)
             tvRoot.containsMatchIn(text) || text.contains("<tv/>")
         }
     }.getOrDefault(false)
@@ -62,6 +65,7 @@ public object XMLTVParser {
     internal class Tag(val name: String, val attributes: Map<String, String>, val isClosing: Boolean, val isSelfClosing: Boolean)
 
     internal class Scanner(private val p: ByteBuffer) {
+        private companion object { const val WINDOW = 1 shl 20 }
         private val end = p.limit()
         private var i = 0
 
@@ -77,7 +81,26 @@ public object XMLTVParser {
             }
         }
 
-        private fun at(k: Int): Int = p.get(k).toInt() and 0xFF
+        // Bytes are read from a 1 MB window copied out of the buffer in bulk. Per-byte ByteBuffer.get on a mapped file
+        // is slow on Android (7.7 s for a 176 KB guide on a TV, against ~0.1 s on the desktop JVM); a plain array is not.
+        private val window = ByteArray(minOf(WINDOW, maxOf(end, 1)))
+        private var winStart = 0
+        private var winEnd = 0
+
+        private fun at(k: Int): Int {
+            if (k < winStart || k >= winEnd) fill(k)
+            return window[k - winStart].toInt() and 0xFF
+        }
+
+        private fun fill(k: Int) {
+            // Start a little before k: the scanner sometimes looks back within a tag.
+            winStart = maxOf(0, minOf(k - 4096, end - window.size))
+            val n = minOf(window.size, end - winStart)
+            val src = p.duplicate()
+            (src as java.nio.Buffer).position(winStart) // Buffer's position(): ByteBuffer's override needs a newer Android
+            src.get(window, 0, n)
+            winEnd = winStart + n
+        }
 
         /** Advances to the next element tag, skipping text, comments, PIs, DOCTYPE. */
         fun nextTag(): Tag? {
@@ -255,9 +278,9 @@ public object XMLTVParser {
 
         private fun isSpace(b: Int) = b == 0x20 || b == 0x0A || b == 0x0D || b == 0x09
 
-        private fun find(byte: Int, from: Int): Int? {
+        private fun find(byte: Int, from: Int, limit: Int = end): Int? {
             var k = from
-            while (k < end) {
+            while (k < limit) {
                 if (at(k) == byte) return k
                 k++
             }
@@ -282,18 +305,22 @@ public object XMLTVParser {
         private fun string(from: Int, to: Int): String {
             if (to <= from) return ""
             val bytes = ByteArray(to - from)
-            p.get(from, bytes)
+            // Not ByteBuffer.get(index, dst): that's Java 13 / Android 15, and crashed the app on older TVs.
+            for (i in bytes.indices) bytes[i] = at(from + i).toByte()
             return String(bytes, Charsets.UTF_8)
         }
 
         private fun decodeEntities(from: Int, to: Int): String {
             if (to <= from) return ""
-            if (find('&'.code, from).let { it == null || it >= to }) return string(from, to)
+            // Look for '&' only inside the value: searching on to the end of the file made every value rescan the rest of
+            // it (quadratic; 5 s for a 176 KB guide on a TV, hopeless for a real 100 MB one).
+            if (find('&'.code, from, to) == null) return string(from, to)
             val out = java.io.ByteArrayOutputStream(to - from)
             var k = from
             while (k < to) {
                 val b = at(k)
-                val semi = if (b == '&'.code) find(';'.code, k) else null
+                // Entities are short: never search far for the ';' (a stray '&' used to scan to the end of the file).
+                val semi = if (b == '&'.code) find(';'.code, k, minOf(to, k + 12)) else null
                 if (semi == null || semi >= to || semi - k > 10) {
                     out.write(b)
                     k++

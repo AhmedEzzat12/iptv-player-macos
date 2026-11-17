@@ -325,8 +325,11 @@ public class SyncService(private val library: Library, private val cacheDir: Fil
         for (old in library.epgFeeds()) {
             if (old.sourceId == source.id && old.id !in attempted) library.deleteFeed(old.id)
         }
+        var t1 = System.currentTimeMillis()
         library.resolveEPGKeys()
+        android.util.Log.d("Guide", "resolved EPG keys in ${System.currentTimeMillis() - t1} ms"); t1 = System.currentTimeMillis()
         library.pruneProgrammes(Instant.now().minusSeconds(GuideParse.PAST_RETENTION_SECONDS))
+        android.util.Log.d("Guide", "pruned in ${System.currentTimeMillis() - t1} ms")
         errors.joinToString("\n").ifEmpty { null }
     }
 
@@ -375,7 +378,9 @@ public class SyncService(private val library: Library, private val cacheDir: Fil
             downloaded = File(if (u.startsWith("file://")) java.net.URI(u).path else u)
             deleteDownloaded = false
         } else {
+            var t = System.currentTimeMillis()
             downloaded = HttpClient(userAgent, timeoutSeconds = 120).download(u, directory = cacheDir)
+            android.util.Log.d("Guide", "feed ${feed.id}: downloaded ${downloaded.length()} bytes in ${System.currentTimeMillis() - t} ms")
             deleteDownloaded = true
         }
         var decompressed: File? = null
@@ -387,7 +392,9 @@ public class SyncService(private val library: Library, private val cacheDir: Fil
                 }
             } else downloaded
             val now = Instant.now()
+            var t0 = System.currentTimeMillis()
             val wanted = library.wantedGuideSet()
+            android.util.Log.d("Guide", "feed ${feed.id}: wanted set in ${System.currentTimeMillis() - t0} ms"); t0 = System.currentTimeMillis()
             val result = GuideParse.parse(
                 file = xmlFile, feedId = feed.id, wanted = wanted, shiftSeconds = shiftSeconds,
                 windowStart = now.minusSeconds(GuideParse.PAST_RETENTION_SECONDS),
@@ -396,7 +403,9 @@ public class SyncService(private val library: Library, private val cacheDir: Fil
             if (!result.sawGuide && !XMLTVParser.looksLikeXMLTV(xmlFile)) {
                 throw HttpException.AuthFailed("Not an XMLTV guide")
             }
+            android.util.Log.d("Guide", "feed ${feed.id}: parsed ${result.channels.size} channels, ${result.programmes.size} programmes in ${System.currentTimeMillis() - t0} ms"); t0 = System.currentTimeMillis()
             library.replaceGuide(feed.id, result.channels, result.programmes, result.counts)
+            android.util.Log.d("Guide", "feed ${feed.id}: saved in ${System.currentTimeMillis() - t0} ms")
         } finally {
             if (deleteDownloaded) downloaded.delete()
             decompressed?.delete()
