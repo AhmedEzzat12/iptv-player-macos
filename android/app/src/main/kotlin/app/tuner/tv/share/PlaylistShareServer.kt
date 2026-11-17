@@ -46,7 +46,8 @@ class PlaylistShareServer(private val scope: CoroutineScope, private val onRecei
     private var socket: ServerSocket? = null
     private var job: Job? = null
     private var expiresAt = 0L
-    private var failures = 0
+    // Bad requests per client address: a client that keeps guessing is ignored, the others can still submit.
+    private val failures = java.util.concurrent.ConcurrentHashMap<String, Int>()
     val token: String = randomToken()
     var url: String? = null
         private set
@@ -86,9 +87,13 @@ class PlaylistShareServer(private val scope: CoroutineScope, private val onRecei
         }
         val (method, path) = requestLine.split(' ').let { (it.getOrNull(0) ?: "") to (it.getOrNull(1) ?: "") }
         val out = client.getOutputStream()
-        val valid = path.trimEnd('/').removePrefix("/").substringBefore('?') == token && System.currentTimeMillis() < expiresAt
+        val peer = client.inetAddress?.hostAddress ?: "?"
+        val requested = path.trimEnd('/').removePrefix("/").substringBefore('?')
+        val blocked = (failures[peer] ?: 0) >= 5
+        val valid = !blocked && requested == token && System.currentTimeMillis() < expiresAt
         if (!valid) {
-            if (++failures >= 5) stop()
+            // Browsers ask for these on their own; they aren't guesses.
+            if (requested != "favicon.ico" && requested != "robots.txt") failures.merge(peer, 1, Int::plus)
             respond(out, 404, "text/plain", "Not found")
             return
         }
