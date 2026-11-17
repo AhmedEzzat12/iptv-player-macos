@@ -3,6 +3,7 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 /** Build number = commit count, like CFBundleVersion on the Apple apps; 1 outside a git checkout. */
@@ -49,6 +50,12 @@ android {
     buildFeatures { compose = true }
 }
 
+kotlin {
+    compilerOptions {
+        optIn.add("androidx.tv.material3.ExperimentalTvMaterial3Api")
+    }
+}
+
 dependencies {
     implementation(project(":data"))
     implementation(project(":player"))
@@ -60,4 +67,11 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
+    implementation(libs.media3.exoplayer)
+    implementation(libs.media3.hls)
+    implementation(libs.media3.okhttp)
+    implementation(libs.media3.ui)
+    implementation(libs.coil.compose)
+    implementation(libs.coil.okhttp)
+    implementation(libs.zxing.core)
 }
