@@ -177,7 +177,8 @@ public class Library(private val database: AppDatabase) : MetadataCache {
     public suspend fun channels(scope: ChannelScope, search: String? = null, limit: Int? = null): List<Channel> {
         var sql = "SELECT $channelColumns FROM channel c JOIN source s ON s.id = c.sourceId LEFT JOIN channelPref p ON p.channelId = c.id"
         val args = mutableListOf<Any>()
-        val where = mutableListOf("COALESCE(p.isHidden, 0) = 0")
+        val where = mutableListOf("COALESCE(p.isHidden, 0) = 0",
+            "(c.categoryId IS NULL OR c.categoryId NOT IN (SELECT categoryId FROM categoryPref WHERE isHidden = 1))")
         var order = "s.sortIndex, c.sourceId, c.providerOrder"
         when (scope) {
             ChannelScope.All -> Unit
@@ -226,7 +227,8 @@ public class Library(private val database: AppDatabase) : MetadataCache {
     }
 
     private fun vodQuery(table: String, categoryId: String?, search: String?, sort: VODSort, limit: Int, offset: Int): SimpleSQLiteQuery {
-        val where = mutableListOf<String>()
+        // Titles in a hidden category are hidden everywhere, as in Swift's movies()/series().
+        val where = mutableListOf("(categoryId IS NULL OR categoryId NOT IN (SELECT categoryId FROM categoryPref WHERE isHidden = 1))")
         val args = mutableListOf<Any>()
         if (categoryId != null) { where.add("categoryId = ?"); args.add(categoryId) }
         for (word in words(search)) { where.add("name LIKE ?"); args.add("%$word%") }
@@ -267,6 +269,29 @@ public class Library(private val database: AppDatabase) : MetadataCache {
     // User state
 
     public suspend fun setFavorite(channelId: String, favorite: Boolean): Unit = write(Change.USER) { user.setFavorite(channelId, favorite) }
+
+    // Organising (Apple: hide / rename channels and categories; empty names restore the provider's)
+
+    public suspend fun setChannelHidden(channelId: String, hidden: Boolean): Unit = write(Change.USER) { user.setChannelHidden(channelId, hidden) }
+    public suspend fun renameChannel(channelId: String, alias: String?): Unit =
+        write(Change.USER) { user.setChannelAlias(channelId, alias?.trim()?.takeIf { it.isNotEmpty() }) }
+    public suspend fun setCategoryHidden(categoryId: String, hidden: Boolean): Unit = write(Change.LIBRARY) { user.setCategoryHidden(categoryId, hidden) }
+    public suspend fun renameCategory(categoryId: String, alias: String?): Unit =
+        write(Change.LIBRARY) { user.setCategoryAlias(categoryId, alias?.trim()?.takeIf { it.isNotEmpty() }) }
+
+    /** Hidden channels, for Settings → Hidden. */
+    public suspend fun hiddenChannels(): List<Channel> = lib.channels(SimpleSQLiteQuery(
+        "SELECT $channelColumns FROM channel c JOIN channelPref p ON p.channelId = c.id WHERE p.isHidden = 1 ORDER BY c.name COLLATE NOCASE"))
+        .map(::channel)
+
+    /** Hidden categories of every kind, for Settings → Hidden: (id, name, kind). */
+    public suspend fun hiddenCategories(): List<Triple<String, String, CategoryKind>> {
+        val out = mutableListOf<Triple<String, String, CategoryKind>>()
+        database.openHelper.readableDatabase.query(
+            "SELECT c.id, COALESCE(p.alias, c.name), c.kind FROM category c JOIN categoryPref p ON p.categoryId = c.id WHERE p.isHidden = 1 ORDER BY c.kind, c.name COLLATE NOCASE",
+        ).use { cur -> while (cur.moveToNext()) CategoryKind.of(cur.getString(2))?.let { out += Triple(cur.getString(0), cur.getString(1), it) } }
+        return out
+    }
 
     public suspend fun recordWatched(channelId: String): Unit = write(Change.USER) { user.recordWatched(HistoryEntity(channelId, System.currentTimeMillis())) }
 

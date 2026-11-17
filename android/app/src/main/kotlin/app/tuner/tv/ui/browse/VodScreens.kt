@@ -1,5 +1,9 @@
 package app.tuner.tv.ui.browse
 
+import androidx.activity.compose.BackHandler
+import app.tuner.tv.ui.RenameDialog
+import app.tuner.tv.ui.MenuAction
+import app.tuner.tv.ui.ItemMenu
 import app.tuner.tv.ui.FocusBleed
 import app.tuner.tv.ui.bleedStart
 import app.tuner.tv.ui.PageTitle
@@ -69,6 +73,9 @@ fun VodGridScreen(kind: CategoryKind, onOpen: (String) -> Unit) {
     var items by remember { mutableStateOf<List<Triple<String, String, String?>>>(emptyList()) }
     var revision by remember { mutableStateOf(0) }
     var exhausted by remember { mutableStateOf(false) }
+    var menuCategory by remember { mutableStateOf<app.tuner.core.models.Category?>(null) }
+    var renamingCategory by remember { mutableStateOf<app.tuner.core.models.Category?>(null) }
+    BackHandler(enabled = menuCategory != null || renamingCategory != null) { menuCategory = null; renamingCategory = null }
     LaunchedEffect(Unit) { app.database.changes.collect { if (it == Change.LIBRARY) revision++ } }
     LaunchedEffect(revision) { categories = app.library.categories(kind) }
 
@@ -84,29 +91,43 @@ fun VodGridScreen(kind: CategoryKind, onOpen: (String) -> Unit) {
         if (items.isEmpty() && cat != null) scope.launch { runCatching { app.sync.loadStalkerCategory(cat.sourceId, kind, cat.id) } }
     }
 
-    Column(Modifier.fillMaxSize()) {
-        PageTitle(if (kind == CategoryKind.MOVIE) "Movies" else "TV Shows")
-        Spacer(Modifier.height(12.dp))
-        LazyRow(Modifier.bleedStart(), horizontalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(vertical = 8.dp, horizontal = FocusBleed)) {
-            item { FilterChip(selected = selected == null, onClick = { selected = null }, modifier = Modifier.initialFocus()) { Text("All") } }
-            items(categories, key = { it.id }) { c -> FilterChip(selected = selected == c.id, onClick = { selected = c.id }) { Text(c.displayName) } }
-        }
-        Spacer(Modifier.height(12.dp))
-        if (items.isEmpty()) {
-            Placeholder(if (categories.isEmpty()) "Add a playlist with movies and shows in Settings." else "Nothing in this category.")
-        } else {
-            // Fixed cells: posters are the same 150 dp as on Home in every category (Adaptive stretched them).
-            LazyVerticalGrid(GridCells.FixedSize(150.dp), Modifier.bleedStart(), horizontalArrangement = Arrangement.spacedBy(18.dp),
-                verticalArrangement = Arrangement.spacedBy(24.dp), contentPadding = PaddingValues(top = 12.dp, start = FocusBleed, bottom = 48.dp, end = 4.dp)) {
-                itemsIndexed(items, key = { _, it -> it.first }) { index, (id, name, image) ->
-                    PosterCard(name, image, onClick = { onOpen(id) })
-                    if (index == items.size - 1 && !exhausted) LaunchedEffect(items.size) {
-                        val more = page(items.size)
-                        exhausted = more.size < 120
-                        items = items + more
+    Box(Modifier.fillMaxSize()) {
+        Column(Modifier.fillMaxSize()) {
+            PageTitle(if (kind == CategoryKind.MOVIE) "Movies" else "TV Shows")
+            Spacer(Modifier.height(12.dp))
+            LazyRow(Modifier.bleedStart(), horizontalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(vertical = 8.dp, horizontal = FocusBleed)) {
+                item { FilterChip(selected = selected == null, onClick = { selected = null }, modifier = Modifier.initialFocus()) { Text("All") } }
+                items(categories, key = { it.id }) { c ->
+                    FilterChip(selected = selected == c.id, onClick = { selected = c.id }, onLongClick = { menuCategory = c }) { Text(c.displayName) }
+                }
+            }
+            Spacer(Modifier.height(12.dp))
+            if (items.isEmpty()) {
+                Placeholder(if (categories.isEmpty()) "Add a playlist with movies and shows in Settings." else "Nothing in this category.")
+            } else {
+                // Fixed cells: posters are the same 150 dp as on Home in every category (Adaptive stretched them).
+                LazyVerticalGrid(GridCells.FixedSize(150.dp), Modifier.bleedStart(), horizontalArrangement = Arrangement.spacedBy(18.dp),
+                    verticalArrangement = Arrangement.spacedBy(24.dp), contentPadding = PaddingValues(top = 12.dp, start = FocusBleed, bottom = 48.dp, end = 4.dp)) {
+                    itemsIndexed(items, key = { _, it -> it.first }) { index, (id, name, image) ->
+                        PosterCard(name, image, onClick = { onOpen(id) })
+                        if (index == items.size - 1 && !exhausted) LaunchedEffect(items.size) {
+                            val more = page(items.size)
+                            exhausted = more.size < 120
+                            items = items + more
+                        }
                     }
                 }
             }
+        }
+
+        menuCategory?.let { cat ->
+            ItemMenu(cat.displayName, listOf(
+                MenuAction("Rename…") { renamingCategory = cat },
+                MenuAction("Hide Category") { scope.launch { app.library.setCategoryHidden(cat.id, true); if (selected == cat.id) selected = null } },
+            )) { menuCategory = null }
+        }
+        renamingCategory?.let { cat ->
+            RenameDialog("Rename Category", cat.alias ?: "", cat.name, onSave = { scope.launch { app.library.renameCategory(cat.id, it) } }) { renamingCategory = null }
         }
     }
 }

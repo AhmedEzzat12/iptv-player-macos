@@ -1,5 +1,8 @@
 package app.tuner.tv.ui.browse
 
+import app.tuner.tv.ui.RenameDialog
+import app.tuner.tv.ui.MenuAction
+import app.tuner.tv.ui.ItemMenu
 import app.tuner.tv.ui.FocusBleed
 import app.tuner.tv.ui.bleedStart
 import androidx.activity.compose.BackHandler
@@ -88,6 +91,12 @@ fun LiveScreen(onPlay: (PlaybackItem) -> Unit, initial: Library.ChannelScope = L
     var guideRevision by remember { mutableStateOf(0) }
     var showGrid by remember { mutableStateOf(false) }
     var inspected by remember { mutableStateOf<Pair<Channel, Program>?>(null) }
+    // Long-press menus (favourite, hide, rename) and the rename dialog.
+    var menuChannel by remember { mutableStateOf<Channel?>(null) }
+    var menuCategory by remember { mutableStateOf<app.tuner.core.models.Category?>(null) }
+    var renamingChannel by remember { mutableStateOf<Channel?>(null) }
+    var renamingCategory by remember { mutableStateOf<app.tuner.core.models.Category?>(null) }
+    var liveCategories by remember { mutableStateOf<Map<String, app.tuner.core.models.Category>>(emptyMap()) }
     var nowEpoch by remember { mutableLongStateOf(System.currentTimeMillis() / 1000) }
     // Grid 2-hour window start, rounded down to 30 minutes.
     var windowStartEpoch by remember { mutableLongStateOf((System.currentTimeMillis() / 1000 / 1800) * 1800) }
@@ -106,7 +115,8 @@ fun LiveScreen(onPlay: (PlaybackItem) -> Unit, initial: Library.ChannelScope = L
     LaunchedEffect(revision) {
         groups = listOf("All Channels" to Library.ChannelScope.All, "Favorites" to Library.ChannelScope.Favorites,
             "Recently Watched" to Library.ChannelScope.Recent) +
-            app.library.categories(CategoryKind.LIVE).map { it.displayName to Library.ChannelScope.InCategory(it.id) }
+            app.library.categories(CategoryKind.LIVE).also { cats -> liveCategories = cats.associateBy { it.id } }
+                .map { it.displayName to Library.ChannelScope.InCategory(it.id) }
     }
     LaunchedEffect(selected, revision, guideRevision) {
         channels = app.library.channels(selected)
@@ -122,6 +132,9 @@ fun LiveScreen(onPlay: (PlaybackItem) -> Unit, initial: Library.ChannelScope = L
         }
     }
 
+    BackHandler(enabled = menuChannel != null || menuCategory != null || renamingChannel != null || renamingCategory != null) {
+        menuChannel = null; menuCategory = null; renamingChannel = null; renamingCategory = null
+    }
     BackHandler(enabled = inspected != null || showGrid) {
         if (inspected != null) inspected = null else showGrid = false
     }
@@ -161,6 +174,7 @@ fun LiveScreen(onPlay: (PlaybackItem) -> Unit, initial: Library.ChannelScope = L
                         ListItem(
                             selected = grpScope == selected,
                             onClick = { selected = grpScope },
+                            onLongClick = { (grpScope as? Library.ChannelScope.InCategory)?.let { menuCategory = liveCategories[it.id] } },
                             headlineContent = { Text(name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                             modifier = Modifier.initialFocus(enabled = grpScope == initial).onFocusChanged { if (it.isFocused) selected = grpScope },
                         )
@@ -179,7 +193,7 @@ fun LiveScreen(onPlay: (PlaybackItem) -> Unit, initial: Library.ChannelScope = L
                             ListItem(
                                 selected = false,
                                 onClick = { onPlay(PlaybackItem.Live(ch, channels)) },
-                                onLongClick = { scope.launch { app.library.setFavorite(ch.id, !ch.isFavorite) } },
+                                onLongClick = { menuChannel = ch },
                                 leadingContent = {
                                     Box(Modifier.size(64.dp, 40.dp).background(TunerColors.surface, RoundedCornerShape(6.dp)), contentAlignment = Alignment.Center) {
                                         if (ch.logoURL != null) AsyncImage(ch.logoURL, null, Modifier.fillMaxSize().padding(4.dp), contentScale = ContentScale.Fit)
@@ -221,6 +235,26 @@ fun LiveScreen(onPlay: (PlaybackItem) -> Unit, initial: Library.ChannelScope = L
                     }
                 }
             }
+        }
+
+        menuChannel?.let { ch ->
+            ItemMenu(ch.displayName, listOf(
+                MenuAction(if (ch.isFavorite) "Remove from Favorites" else "Add to Favorites") { scope.launch { app.library.setFavorite(ch.id, !ch.isFavorite) } },
+                MenuAction("Rename…") { renamingChannel = ch },
+                MenuAction("Hide Channel") { scope.launch { app.library.setChannelHidden(ch.id, true) } },
+            )) { menuChannel = null }
+        }
+        menuCategory?.let { cat ->
+            ItemMenu(cat.displayName, listOf(
+                MenuAction("Rename…") { renamingCategory = cat },
+                MenuAction("Hide Category") { scope.launch { app.library.setCategoryHidden(cat.id, true); selected = Library.ChannelScope.All } },
+            )) { menuCategory = null }
+        }
+        renamingChannel?.let { ch ->
+            RenameDialog("Rename Channel", ch.alias ?: "", ch.name, onSave = { scope.launch { app.library.renameChannel(ch.id, it) } }) { renamingChannel = null }
+        }
+        renamingCategory?.let { cat ->
+            RenameDialog("Rename Category", cat.alias ?: "", cat.name, onSave = { scope.launch { app.library.renameCategory(cat.id, it) } }) { renamingCategory = null }
         }
 
         inspected?.let { (ch, prog) ->

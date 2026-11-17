@@ -46,8 +46,17 @@ data class CategoryRow(val id: String, val sourceId: String, val kind: String, v
 
 @Dao
 interface UserDao {
-    @Query("INSERT INTO channelPref (channelId, isFavorite) VALUES (:channelId, :favorite) ON CONFLICT(channelId) DO UPDATE SET isFavorite = excluded.isFavorite")
+    // New pref rows name every NOT NULL column: Room's Kotlin defaults aren't SQL defaults.
+    @Query("INSERT INTO channelPref (channelId, isFavorite, isHidden) VALUES (:channelId, :favorite, 0) ON CONFLICT(channelId) DO UPDATE SET isFavorite = excluded.isFavorite")
     suspend fun setFavorite(channelId: String, favorite: Boolean)
+    @Query("INSERT INTO channelPref (channelId, isFavorite, isHidden) VALUES (:channelId, 0, :hidden) ON CONFLICT(channelId) DO UPDATE SET isHidden = excluded.isHidden")
+    suspend fun setChannelHidden(channelId: String, hidden: Boolean)
+    @Query("INSERT INTO channelPref (channelId, isFavorite, isHidden, alias) VALUES (:channelId, 0, 0, :alias) ON CONFLICT(channelId) DO UPDATE SET alias = excluded.alias")
+    suspend fun setChannelAlias(channelId: String, alias: String?)
+    @Query("INSERT INTO categoryPref (categoryId, isHidden) VALUES (:categoryId, :hidden) ON CONFLICT(categoryId) DO UPDATE SET isHidden = excluded.isHidden")
+    suspend fun setCategoryHidden(categoryId: String, hidden: Boolean)
+    @Query("INSERT INTO categoryPref (categoryId, isHidden, alias) VALUES (:categoryId, 0, :alias) ON CONFLICT(categoryId) DO UPDATE SET alias = excluded.alias")
+    suspend fun setCategoryAlias(categoryId: String, alias: String?)
     @Upsert suspend fun recordWatched(entry: HistoryEntity)
     @Query("SELECT * FROM watchProgress WHERE mediaId = :mediaId") suspend fun progress(mediaId: String): WatchProgressEntity?
     @Query("SELECT * FROM watchProgress WHERE seriesId = :seriesId") suspend fun seriesProgress(seriesId: String): List<WatchProgressEntity>

@@ -1,5 +1,7 @@
 package app.tuner.tv.ui.settings
 
+import app.tuner.core.models.Channel
+import app.tuner.core.models.CategoryKind
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.tv.material3.ListItem
 import app.tuner.core.skip.SkipMode
@@ -71,7 +73,14 @@ fun PlaylistsScreen(onAdd: () -> Unit) {
     val progress by app.sync.progress.collectAsState()
     var revision by remember { mutableStateOf(0) }
     var pendingRemove by remember { mutableStateOf<Source?>(null) }
+    var hiddenChannels by remember { mutableStateOf<List<Channel>>(emptyList()) }
+    var hiddenCategories by remember { mutableStateOf<List<Triple<String, String, CategoryKind>>>(emptyList()) }
     LaunchedEffect(revision, progress?.done) { sources = app.library.sources() }
+    LaunchedEffect(Unit) { app.database.changes.collect { revision++ } }
+    LaunchedEffect(revision) {
+        hiddenChannels = app.library.hiddenChannels()
+        hiddenCategories = app.library.hiddenCategories()
+    }
 
     Box(Modifier.fillMaxSize()) {
         LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp), contentPadding = PaddingValues(bottom = 48.dp)) {
@@ -121,6 +130,17 @@ fun PlaylistsScreen(onAdd: () -> Unit) {
                     SkipMode.BUTTON -> "Show a button"; SkipMode.AUTOMATIC -> "Skip automatically"; SkipMode.OFF -> "Off"
                 }, "Timings come from public intro databases, when they know the title.") {
                     prefs.skipSegmentsRaw = cycle(SkipMode.entries.map { it.raw }, prefs.skipSegmentsRaw)
+                }
+            }
+
+            if (hiddenChannels.isNotEmpty() || hiddenCategories.isNotEmpty()) {
+                item { SectionTitle("Hidden") }
+                items(hiddenCategories, key = { "cat" + it.first }) { (id, name, kind) ->
+                    val where = when (kind) { CategoryKind.LIVE -> "Live TV category"; CategoryKind.MOVIE -> "Movies category"; else -> "TV Shows category" }
+                    OptionRow(name, "Show", where) { scope.launch { app.library.setCategoryHidden(id, false) } }
+                }
+                items(hiddenChannels, key = { "ch" + it.id }) { ch ->
+                    OptionRow(ch.displayName, "Show", "Channel") { scope.launch { app.library.setChannelHidden(ch.id, false) } }
                 }
             }
 

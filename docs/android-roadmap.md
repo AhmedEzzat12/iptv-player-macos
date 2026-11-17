@@ -43,8 +43,9 @@ In order of how much a viewer would miss them:
    button / automatic / off) and Guide & Library (refresh intervals), stored in SharedPreferences with the Apple
    names and defaults (`Prefs.kt`; DataStore wasn't needed). Still to do: edit/rename a playlist, quick reopen time,
    metadata on/off, parental controls, user agent, stall timeout and attempts.
-7. **Organise**: hide and rename categories and channels, groups, context menu on long press (today long press only
-   toggles a favourite).
+7. ~~**Organise**~~ mostly done 2026-11-17: long press on a channel (favourite, rename, hide) or a category in Live
+   TV, Movies or TV Shows (rename, hide); Settings → Hidden shows them again. A hidden category hides its titles
+   everywhere, as in Swift. Still to do: custom groups (tables exist since v2) and reordering categories.
 
 ## Phase 4 leftovers: player
 
