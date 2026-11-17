@@ -1,5 +1,6 @@
 package app.tuner.tv.ui.browse
 
+import app.tuner.tv.ui.PageTitle
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -66,7 +67,7 @@ fun LiveScreen(onPlay: (PlaybackItem) -> Unit, initial: Library.ChannelScope = L
 
     Row(Modifier.fillMaxSize()) {
         LazyColumn(Modifier.width(320.dp).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            item { Text("Live TV", style = MaterialTheme.typography.displaySmall, modifier = Modifier.padding(bottom = 16.dp)) }
+            item { PageTitle("Live TV", Modifier.padding(bottom = 8.dp)) }
             items(groups, key = { it.first + it.second }) { (name, scope) ->
                 ListItem(selected = scope == selected, onClick = { selected = scope }, headlineContent = {
                     Text(name, maxLines = 1, overflow = TextOverflow.Ellipsis)

@@ -1,5 +1,6 @@
 package app.tuner.tv.ui.browse
 
+import app.tuner.tv.ui.PageTitle
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -82,7 +83,7 @@ fun VodGridScreen(kind: CategoryKind, onOpen: (String) -> Unit) {
     }
 
     Column(Modifier.fillMaxSize()) {
-        Text(if (kind == CategoryKind.MOVIE) "Movies" else "TV Shows", style = MaterialTheme.typography.displaySmall)
+        PageTitle(if (kind == CategoryKind.MOVIE) "Movies" else "TV Shows")
         Spacer(Modifier.height(12.dp))
         LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(vertical = 8.dp)) {
             item { FilterChip(selected = selected == null, onClick = { selected = null }, modifier = Modifier.initialFocus()) { Text("All") } }
@@ -93,7 +94,7 @@ fun VodGridScreen(kind: CategoryKind, onOpen: (String) -> Unit) {
             Placeholder(if (categories.isEmpty()) "Add a playlist with movies and shows in Settings." else "Nothing in this category.")
         } else {
             LazyVerticalGrid(GridCells.Adaptive(160.dp), horizontalArrangement = Arrangement.spacedBy(20.dp),
-                verticalArrangement = Arrangement.spacedBy(24.dp), contentPadding = PaddingValues(bottom = 48.dp, end = 24.dp)) {
+                verticalArrangement = Arrangement.spacedBy(24.dp), contentPadding = PaddingValues(top = 12.dp, start = 6.dp, bottom = 48.dp, end = 24.dp)) {
                 itemsIndexed(items, key = { _, it -> it.first }) { index, (id, name, image) ->
                     PosterCard(name, image, onClick = { onOpen(id) })
                     if (index == items.size - 1 && !exhausted) LaunchedEffect(items.size) {

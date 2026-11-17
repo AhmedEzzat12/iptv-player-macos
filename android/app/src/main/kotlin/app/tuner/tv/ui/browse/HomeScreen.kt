@@ -1,5 +1,6 @@
 package app.tuner.tv.ui.browse
 
+import app.tuner.tv.ui.PageTitle
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.runtime.Composable
@@ -65,7 +66,7 @@ fun HomeScreen(onPlay: (PlaybackItem) -> Unit, onOpenMovie: (String) -> Unit, on
         return Placeholder("Add a playlist to get started.")
     }
     LazyColumn(Modifier.fillMaxSize()) {
-        item { Text("Home", style = MaterialTheme.typography.displaySmall, modifier = androidx.compose.ui.Modifier) }
+        item { PageTitle("Home") }
         item {
             Shelf("Continue Watching", cw, { it.id }, focusFirst = true) { item ->
                 WideCard(item.progress.title, item.progress.subtitle, item.progress.posterURL,

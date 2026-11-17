@@ -31,13 +31,13 @@ import coil3.compose.AsyncImage
 fun PosterCard(title: String, imageURL: String?, subtitle: String? = null, width: Int = 150, onClick: () -> Unit) {
     Column(Modifier.width(width.dp)) {
         Card(onClick = onClick, modifier = Modifier.fillMaxWidth().aspectRatio(2f / 3f),
-            scale = CardDefaults.scale(focusedScale = 1.08f), shape = CardDefaults.shape(RoundedCornerShape(10.dp))) {
+            scale = CardDefaults.scale(focusedScale = 1.05f), shape = CardDefaults.shape(RoundedCornerShape(10.dp))) {
             Box(Modifier.fillMaxSize().background(TunerColors.surface), contentAlignment = Alignment.Center) {
                 Text(title, Modifier.padding(10.dp), maxLines = 4, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium)
                 if (imageURL != null) AsyncImage(imageURL, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
             }
         }
-        Spacer(Modifier.height(6.dp))
+        Spacer(Modifier.height(12.dp))
         Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium)
         if (subtitle != null) Text(subtitle, maxLines = 1, color = Color.White.copy(alpha = 0.6f), style = MaterialTheme.typography.bodySmall)
     }
@@ -48,7 +48,7 @@ fun PosterCard(title: String, imageURL: String?, subtitle: String? = null, width
 fun WideCard(title: String, subtitle: String?, imageURL: String?, progress: Double? = null, width: Int = 260, onClick: () -> Unit) {
     Column(Modifier.width(width.dp)) {
         Card(onClick = onClick, modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f),
-            scale = CardDefaults.scale(focusedScale = 1.06f), shape = CardDefaults.shape(RoundedCornerShape(10.dp))) {
+            scale = CardDefaults.scale(focusedScale = 1.05f), shape = CardDefaults.shape(RoundedCornerShape(10.dp))) {
             Box(Modifier.fillMaxSize().background(TunerColors.surface), contentAlignment = Alignment.Center) {
                 Text(title, Modifier.padding(10.dp), maxLines = 3, overflow = TextOverflow.Ellipsis)
                 if (imageURL != null) AsyncImage(imageURL, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
@@ -58,7 +58,7 @@ fun WideCard(title: String, subtitle: String?, imageURL: String?, progress: Doub
                 }
             }
         }
-        Spacer(Modifier.height(6.dp))
+        Spacer(Modifier.height(12.dp))
         Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium)
         if (subtitle != null) Text(subtitle, maxLines = 1, color = Color.White.copy(alpha = 0.6f), style = MaterialTheme.typography.bodySmall)
     }
@@ -69,13 +69,21 @@ fun WideCard(title: String, subtitle: String?, imageURL: String?, progress: Doub
 fun <T> Shelf(title: String, items: List<T>, key: (T) -> String, focusFirst: Boolean = false, content: @Composable (T) -> Unit) {
     if (items.isEmpty()) return
     Column(Modifier.padding(bottom = 28.dp)) {
-        Text(title, style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(bottom = 12.dp))
-        LazyRow(horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(20.dp), contentPadding = PaddingValues(end = 48.dp)) {
+        Text(title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(bottom = 4.dp))
+        // Vertical room so a focused (grown) card never reaches the row title above.
+        LazyRow(horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(20.dp),
+            contentPadding = PaddingValues(start = 6.dp, end = 48.dp, top = 12.dp, bottom = 6.dp)) {
             items(items.size, key = { key(items[it]) }) { i ->
                 Box(if (focusFirst && i == 0) Modifier.initialFocus(key(items[0])) else Modifier) { content(items[i]) }
             }
         }
     }
+}
+
+/** A page's title: small, like the Apple TV app's, so the content gets the screen. */
+@Composable
+fun PageTitle(text: String, modifier: Modifier = Modifier) {
+    Text(text, style = MaterialTheme.typography.headlineSmall, modifier = modifier.padding(bottom = 8.dp))
 }
 
 @Composable

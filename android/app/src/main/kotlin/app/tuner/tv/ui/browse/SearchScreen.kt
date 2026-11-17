@@ -1,5 +1,6 @@
 package app.tuner.tv.ui.browse
 
+import app.tuner.tv.ui.PageTitle
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -56,7 +57,7 @@ fun SearchScreen(onPlay: (PlaybackItem) -> Unit, onOpenMovie: (String) -> Unit, 
     LazyColumn(Modifier.fillMaxSize()) {
         item {
             Column(Modifier.padding(bottom = 24.dp)) {
-                Text("Search", style = MaterialTheme.typography.displaySmall)
+                PageTitle("Search")
                 Spacer(Modifier.height(12.dp))
                 BasicTextField(query, { query = it }, singleLine = true, textStyle = TextStyle(color = Color.White, fontSize = 24.sp),
                     cursorBrush = SolidColor(TunerColors.accent),

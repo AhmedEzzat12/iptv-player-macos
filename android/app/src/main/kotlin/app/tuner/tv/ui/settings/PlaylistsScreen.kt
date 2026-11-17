@@ -1,5 +1,6 @@
 package app.tuner.tv.ui.settings
 
+import app.tuner.tv.ui.PageTitle
 import android.graphics.Bitmap
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -68,7 +69,7 @@ fun PlaylistsScreen(onAdd: () -> Unit) {
     LaunchedEffect(revision, progress?.done) { sources = app.library.sources() }
 
     Column(Modifier.fillMaxSize()) {
-        Text("Playlists", style = MaterialTheme.typography.displaySmall)
+        PageTitle("Playlists")
         Spacer(Modifier.height(20.dp))
         Button(onClick = onAdd, modifier = Modifier.initialFocus()) { Text("Add a Playlist") }
         Spacer(Modifier.height(24.dp))
@@ -133,7 +134,7 @@ fun AddPlaylistScreen(onDone: () -> Unit) {
     val pending = received
     when {
         pending != null -> Column {
-            Text("Add this playlist?", style = MaterialTheme.typography.displaySmall)
+            PageTitle("Add this playlist?")
             Spacer(Modifier.height(16.dp))
             Text(pending.name, style = MaterialTheme.typography.headlineSmall)
             Text("${pending.kind.displayName} · ${host(pending.url)}", color = Color.White.copy(alpha = 0.7f))
@@ -147,7 +148,7 @@ fun AddPlaylistScreen(onDone: () -> Unit) {
         typing -> TypeItIn(status) { add(it) }
         else -> Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(48.dp)) {
             Column(Modifier.weight(1f)) {
-                Text("Add a Playlist", style = MaterialTheme.typography.displaySmall)
+                PageTitle("Add a Playlist")
                 Spacer(Modifier.height(20.dp))
                 if (url != null) {
                     Text("Scan with your phone's camera, or use Send to TV in Antenna on your iPhone or iPad.", style = MaterialTheme.typography.titleMedium)
@@ -190,7 +191,7 @@ private fun TypeItIn(status: String?, onAdd: (Source) -> Unit) {
     var password by remember { mutableStateOf("") }
     var mac by remember { mutableStateOf("") }
     LazyColumn(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        item { Text("Add a Playlist", style = MaterialTheme.typography.displaySmall) }
+        item { PageTitle("Add a Playlist") }
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Source.Kind.entries.forEach { k ->
