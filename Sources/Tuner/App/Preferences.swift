@@ -218,7 +218,7 @@ final class Preferences {
         pullHoldAction = PullAction(rawValue: v("pullHoldAction", "")) ?? .refreshPlaylists
         pullHoldSeconds = v("pullHoldSeconds", 2.0)
         upNextCountdown = v("upNextCountdown", 10)
-        keepWarmMinutes = v("keepWarmMinutes", 10)
+        keepWarmMinutes = v("keepWarmMinutes", 2)
         volume = v("volume", 100.0)
         catchupPaddingMinutes = v("catchupPaddingMinutes", 0)
         skipSegments = SkipMode(rawValue: v("skipSegments", "")) ?? .button

@@ -43,7 +43,9 @@ Apple frameworks plus SQLite and libmpv.
   (crash or force-quit), because macOS has no parent-death signal and an orphan would hold the provider connection.
 
 - **Quick reopen** (`PlayerSlot.park`): closing a movie or episode keeps its engine open, paused, for
-  `Preferences.keepWarmMinutes` (default 10; off, 2–60 in Settings → Playback, read when the title closes).
+  `Preferences.keepWarmMinutes` (default 2; off, 2–60 in Settings → Playback, read when the title closes). Short by default: on a
+  single-connection account the kept stream holds the only connection, also while the iPhone app is in the background,
+  so another device (the TV) would be refused meanwhile.
   Opening the same title again (back to the show, Play/Resume) continues from the buffered data at once, with no new
   resolve, connection or buffering; a different `startAt` (Play from Beginning) seeks inside it. Anything else that
   plays, a failure or end while closed, or the timeout closes it. Not for live TV, local files, AirPlay, the bridge

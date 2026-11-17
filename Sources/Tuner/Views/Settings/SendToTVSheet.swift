@@ -11,6 +11,8 @@ struct SendToTVSheet: View {
     @ViewState private var sending = false
     @ViewState private var sent = false
     @ViewState private var error: String?
+    /// iPhone/iPad: whether the camera scanner can show (asked for on first open).
+    @ViewState private var canScan = false
 
     var body: some View {
         NavigationStack {
@@ -20,7 +22,7 @@ struct SendToTVSheet: View {
                         .font(.callout)
                         .foregroundStyle(.secondary)
                     #if os(iOS)
-                    if QRScannerView.isAvailable && !sent {
+                    if canScan && !sent {
                         QRScannerView { code in
                             // Only fills in the address: the user checks it and taps Send.
                             guard !sending, !sent, PlaylistShare.receiverURL(code) != nil else { return }
@@ -40,7 +42,7 @@ struct SendToTVSheet: View {
                         #endif
                         .onSubmit(send)
                 } footer: {
-                    SettingsFooter("The playlist's \(source.password == nil ? "link goes" : "link and password go") only to the TV, over your home network.")
+                    SettingsFooter("The playlist's \(source.password?.isEmpty == false ? "link and password go" : "link goes") only to the TV, over your home network.")
                 }
                 if sent {
                     Label("Sent. Confirm on the TV to add “\(source.name)”.", systemImage: "checkmark.circle.fill")
@@ -68,7 +70,18 @@ struct SendToTVSheet: View {
             }
         }
         #if os(macOS)
-        .frame(width: 480, height: 240)
+        // Room for the status row (sent, or an error) under the field.
+        .frame(width: 480, height: sent || error != nil ? 300 : 250)
+        #else
+        .task { canScan = await QRScannerView.requestAccess() }
+        #endif
+    }
+
+    private static var localNetworkSetting: String {
+        #if os(macOS)
+        "System Settings → Privacy & Security → Local Network"
+        #else
+        "Settings → Privacy & Security → Local Network"
         #endif
     }
 
@@ -82,13 +95,21 @@ struct SendToTVSheet: View {
         error = nil
         Task { @MainActor in
             defer { sending = false }
-            do {
-                try await PlaylistShare.send(source, to: url)
-                sent = true
-            } catch let shareError as PlaylistShare.ShareError {
-                error = shareError.errorDescription
-            } catch {
-                self.error = "Couldn't reach the TV. Check that this device and the TV are on the same network."
+            // The first message to the TV can make the system ask for local network access, and that request fails
+            // while the question is up: try once more after a moment.
+            for attempt in 1...2 {
+                do {
+                    try await PlaylistShare.send(source, to: url)
+                    sent = true
+                    return
+                } catch let shareError as PlaylistShare.ShareError {
+                    error = shareError.errorDescription
+                    return
+                } catch where attempt == 1 {
+                    try? await Task.sleep(for: .seconds(2))
+                } catch {
+                    self.error = "Couldn't reach the TV. Check that this device and the TV are on the same network, and that \(Distribution.appName) is allowed to use the local network (\(Self.localNetworkSetting))."
+                }
             }
         }
     }

@@ -348,7 +348,7 @@ or `xcrun simctl spawn booted log show … --info` for the simulator. Play an mp
 ## Quick reopen (kept-warm stream)
 
 Start the test kit with `TESTKIT_VOD_RATE=400000`, play a movie, close it and open it again within the time set in
-Settings → Playback → Keep closed titles ready (10 minutes by default; pick 2 to test the timeout quickly). The
+Settings → Playback → Keep closed titles ready (2 minutes by default). The
 server log shows no new request for the file on the reopen, playback continues where it was without a spinner, and
 the `PlayerSlot` log (`… --info --predicate 'category == "PlayerSlot"'`) says `Kept mv:… warm`, then
 `Continued mv:… from the kept-warm stream`. Play something else instead, or wait out that time, and it logs

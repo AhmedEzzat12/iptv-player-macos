@@ -1,3 +1,4 @@
+import AVFoundation
 import SwiftUI
 import VisionKit
 
@@ -7,6 +8,16 @@ struct QRScannerView: UIViewControllerRepresentable {
 
     /// False on devices without a supported camera and when camera access was denied.
     @MainActor static var isAvailable: Bool { DataScannerViewController.isSupported && DataScannerViewController.isAvailable }
+
+    /// Asks for the camera the first time (`isAvailable` stays false until access is granted, and nothing else would
+    /// ask), then reports whether the scanner can run.
+    @MainActor static func requestAccess() async -> Bool {
+        guard DataScannerViewController.isSupported else { return false }
+        if AVCaptureDevice.authorizationStatus(for: .video) == .notDetermined {
+            _ = await AVCaptureDevice.requestAccess(for: .video)
+        }
+        return isAvailable
+    }
 
     func makeUIViewController(context: Context) -> DataScannerViewController {
         let scanner = DataScannerViewController(

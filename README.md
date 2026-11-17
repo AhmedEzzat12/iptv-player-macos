@@ -81,7 +81,7 @@ Blender Foundation open movies (CC BY). No provider content is shown.</sub>
 - **Player:** AVFoundation first (HLS, MP4; PiP, AirPlay), automatic libmpv fallback for raw MPEG-TS/MKV and
   other formats; stall watchdog with failover to duplicate channels and reconnect; audio/subtitle tracks; stats;
   the stream's current download speed at the top of the player, always, with the buttons, or off (Settings →
-  Playback → Stream speed). Closing a movie or episode keeps its stream ready for 10 minutes (Settings → Playback →
+  Playback → Stream speed). Closing a movie or episode keeps its stream ready for 2 minutes (Settings → Playback →
   Keep closed titles ready: off to an hour), so reopening it continues instantly from what's already buffered.
   Settings → Playback → Swipe with the mouse (off by default) brings the iPhone/iPad swipes to the Mac: drag the
   full-screen player down to close it, and drag Home's featured title sideways for the next one.
