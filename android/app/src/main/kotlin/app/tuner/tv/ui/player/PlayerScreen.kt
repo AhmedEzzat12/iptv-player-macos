@@ -1,5 +1,6 @@
 package app.tuner.tv.ui.player
 
+import app.tuner.tv.integration.WatchNext
 import app.tuner.core.services.LiveWatchdog
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -144,10 +145,30 @@ fun PlayerScreen(initial: PlaybackItem, onClose: () -> Unit) {
             .build().apply { playWhenReady = true }
     }
 
+    // Assistant ("pause", "resume"), remote media keys and the system's now-playing controls act on this player.
+    val session = remember {
+        androidx.media3.session.MediaSession.Builder(context, player).setId("antenna-player").apply {
+            (context as? android.app.Activity)?.let { activity ->
+                setSessionActivity(android.app.PendingIntent.getActivity(activity, 0,
+                    android.content.Intent(activity, activity.javaClass).addFlags(android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP),
+                    android.app.PendingIntent.FLAG_IMMUTABLE))
+            }
+        }.build()
+    }
+
     fun mediaSource(stream: PlayableStream): MediaSource {
         val factory = OkHttpDataSource.Factory(HttpClient.shared).setUserAgent(stream.userAgent)
             .setDefaultRequestProperties(stream.referrer?.let { mapOf("Referer" to it) } ?: emptyMap())
-        val mediaItem = MediaItem.fromUri(stream.url)
+        // Title and artwork for the system's now-playing UI (never the URL, which can hold the account).
+        val meta = androidx.media3.common.MediaMetadata.Builder().setTitle(item.title).setArtist(item.subtitle).apply {
+            when (val i = item) {
+                is PlaybackItem.MovieItem -> i.movie.posterURL
+                is PlaybackItem.EpisodeItem -> i.series.coverURL
+                is PlaybackItem.Live -> i.channel.logoURL
+                is PlaybackItem.Catchup -> i.channel.logoURL
+            }?.let { setArtworkUri(android.net.Uri.parse(it)) }
+        }.build()
+        val mediaItem = MediaItem.Builder().setUri(stream.url).setMediaMetadata(meta).build()
         val path = stream.url.substringBefore('?').lowercase()
         return if (path.endsWith(".m3u8") || path.contains("/hls/")) {
             HlsMediaSource.Factory(factory).setAllowChunklessPreparation(true).createMediaSource(mediaItem)
@@ -344,7 +365,10 @@ fun PlayerScreen(initial: PlaybackItem, onClose: () -> Unit) {
         onDispose {
             player.removeListener(listener)
             window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            session.release()
             player.release()
+            // Google TV's Continue watching row follows what was just watched (after the last progress save).
+            app.scope.launch { delay(1500); WatchNext.sync(app) }
         }
     }
 

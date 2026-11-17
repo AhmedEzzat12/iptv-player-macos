@@ -71,6 +71,8 @@ dependencies {
     implementation(libs.media3.hls)
     implementation(libs.media3.okhttp)
     implementation(libs.media3.ui)
+    implementation(libs.media3.session)
+    implementation(libs.tvprovider)
     implementation(libs.coil.compose)
     implementation(libs.coil.okhttp)
     implementation(libs.zxing.core)

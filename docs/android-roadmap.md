@@ -57,8 +57,12 @@ In order of how much a viewer would miss them:
 
 ## Phase 6: Google TV integration and polish
 
-- Watch Next row (Continue Watching on the home screen), MediaSession (Assistant "pause", the system's now-playing
-  UI), deep links from Watch Next into the player.
+- ~~Watch Next, MediaSession, deep links~~ done 2026-11-17 (`integration/WatchNext.kt`): Continue Watching is published
+  to the Watch Next provider after every playback and at launch, each entry opening the player at its resume point;
+  a Media3 MediaSession gives Assistant/system play-pause (checked: system pause/play on the TCL). **Finding:** the
+  TCL's Google TV launcher stores the entries but doesn't show a sideloaded app's in its Continue watching row;
+  Google's current route there is the Engage SDK (continuation cluster), which needs Play distribution and Google's
+  approval: part of the store work.
 - Voice search through the system search intent.
 - Focus audit on every page, banner and launcher icon review, low-RAM tuning (Coil memory cache, list prefetch),
   metadata (posters, ratings) shown wherever the Apple apps show them.

@@ -25,6 +25,8 @@ class TunerApplication : Application(), SingletonImageLoader.Factory {
     val resolver by lazy { StreamResolver(library, sync) }
     val metadata by lazy { MetadataService(library) }
     val prefs by lazy { Prefs(this) }
+    /** A title to play, from Google TV's Continue watching row (see WatchNext). */
+    val playRequests = kotlinx.coroutines.flow.MutableStateFlow<android.net.Uri?>(null)
     val skips by lazy { SkipSegmentService(library.skipCache) }
 
     /** Posters and logos dominate memory on TV boxes: a bounded memory cache. */

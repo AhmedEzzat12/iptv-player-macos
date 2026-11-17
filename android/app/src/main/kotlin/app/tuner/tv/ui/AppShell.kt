@@ -1,5 +1,8 @@
 package app.tuner.tv.ui
 
+import app.tuner.tv.integration.WatchNext
+import app.tuner.tv.app
+import androidx.compose.ui.platform.LocalContext
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusGroup
@@ -78,6 +81,15 @@ fun AppShell() {
 
     fun open(page: Page) { stack.add(page) }
     val play: (PlaybackItem) -> Unit = { playing = it }
+    val app = LocalContext.current.app
+    LaunchedEffect(Unit) {
+        app.playRequests.collect { uri ->
+            if (uri != null) {
+                app.playRequests.value = null
+                WatchNext.resolve(app, uri)?.let { playing = it }
+            }
+        }
+    }
 
     BackHandler(enabled = playing == null && (stack.isNotEmpty() || contentHasFocus)) {
         if (stack.isNotEmpty()) stack.removeAt(stack.lastIndex) else itemFocus.getValue(selected).requestFocus()
