@@ -1,6 +1,7 @@
 // Port of Sources/TunerCore/Metadata/TitleMatcher.swift @ 666f598
 package app.tuner.core.metadata
 
+import app.tuner.core.parsing.UnicodeRegex
 import app.tuner.core.models.toIntStrict
 import app.tuner.core.parsing.ChannelNameNormalizer
 import app.tuner.core.parsing.TitleParser
@@ -32,8 +33,6 @@ public object TitleMatcher {
     /** Minimum score for a match. Exact title = 1.0; year agreement adds up to 0.15, a clear disagreement −0.35. */
     internal const val ACCEPT_SCORE: Double = 0.85
 
-    private const val U = Pattern.UNICODE_CHARACTER_CLASS
-    private const val CI = Pattern.CASE_INSENSITIVE or Pattern.UNICODE_CASE or U
 
     /** Cleans an IPTV name (and optional provider year field) into a search query; null when nothing meaningful remains. */
     public fun query(name: String, year: String? = null, kind: MediaMetadata.Kind): Query? {
@@ -102,11 +101,11 @@ public object TitleMatcher {
     }
 
     /** "EN - ", "AR:", "NF: ", "4K-", "AR| " at the start (the tag itself is checked separately). */
-    private val prefixTag = Pattern.compile("""^\s*([A-Za-z0-9][A-Za-z0-9+]{1,8})\s*[:|\-–—]+\s*(?=\S)""", U)
+    private val prefixTag = UnicodeRegex.compile("""^\s*([A-Za-z0-9][A-Za-z0-9+]{1,8})\s*[:|\-–—]+\s*(?=\S)""")
     /** "|AR|", "[US]", "(EN)", "[MULTI-SUB]" at the start. */
-    private val prefixBracket = Pattern.compile("""^\s*[\[(|]\s*([^\])|]{1,24}?)\s*[\])|]\s*[:|\-–—]*\s*""", U)
+    private val prefixBracket = UnicodeRegex.compile("""^\s*[\[(|]\s*([^\])|]{1,24}?)\s*[\])|]\s*[:|\-–—]*\s*""")
     /** " - EN", " | AR" at the end. */
-    private val suffixTag = Pattern.compile("""\s*[:|\-–—]+\s*([A-Za-z0-9][A-Za-z0-9+]{1,8})\s*$""", U)
+    private val suffixTag = UnicodeRegex.compile("""\s*[:|\-–—]+\s*([A-Za-z0-9][A-Za-z0-9+]{1,8})\s*$""")
 
     internal fun stripPrefixTags(input: String): String {
         var s = input
@@ -174,7 +173,7 @@ public object TitleMatcher {
     private const val BOUNDARY_END = """(?![\p{L}\p{N}])"""
 
     /** Quality, packaging, language-track and edition tokens (case-insensitive: distinctive enough). */
-    private val junkInsensitive = Pattern.compile(BOUNDARY_START + "(?:" +
+    private val junkInsensitive = UnicodeRegex.compile(BOUNDARY_START + "(?:" +
         """4k\s*uhd|4k|8k|uhd|fhd|qhd|hdr10\+?|hdr|dolby[ .\-]?vision|hdtc|hdcam|hdts|hd[ .\-]?rip|hdtv|""" +
         """web[ .\-]?dl|web[ .\-]?rip|blu[ .\-]?ray|brrip|bdrip|dvdrip|dvdscr|x26[45]|h\.?26[45]|hevc|10bit|""" +
         """aac|ac3|ddp?5[ .]1|atmos|2160p|1080p|1080i|720p|576p|480p|""" +
@@ -182,21 +181,21 @@ public object TitleMatcher {
         """(?:arabic|english|eng|ar|en|fr|french|turkish|tr|hindi|spanish|persian|farsi|kurdish|urdu)[ .\-]?(?:subs?|subbed|subtitled|subtitles|dub|dubbed)|""" +
         """remastered|unrated|extended(?:[ .](?:cut|edition))?|directors?['’]?s?[ .]cut|theatrical[ .]cut|imax(?:[ .]edition)?|""" +
         """فيلم|مسلسل|مترجمة?|مدبلجة?|كاملة?|حصريا|اون لاين|بجودة عالية""" +
-        ")" + BOUNDARY_END, CI)
+        ")" + BOUNDARY_END, caseInsensitive = true)
 
     /** Short tokens that are only junk in upper case ("CAM" yes, the film "Cam" no). */
-    private val junkUppercase = Pattern.compile(BOUNDARY_START + """(?:HD|SD|TS|TC|CAM|WEB|DUB|SUB|SUBS|MULTI|DV|HC|VIP)""" + BOUNDARY_END, U)
+    private val junkUppercase = UnicodeRegex.compile(BOUNDARY_START + """(?:HD|SD|TS|TC|CAM|WEB|DUB|SUB|SUBS|MULTI|DV|HC|VIP)""" + BOUNDARY_END)
 
     internal fun isJunkPhrase(s: String): Boolean = collapse(junkInsensitive.matcher(s).replaceAll(" ")).isEmpty()
 
     /** Removes junk tokens. A name that is nothing but junk ends up empty → no query. */
     internal fun removeJunk(input: String): String = junkUppercase.matcher(junkInsensitive.matcher(input).replaceAll(" ")).replaceAll(" ")
 
-    private val seasonMarker = Pattern.compile(BOUNDARY_START + "(?:" +
+    private val seasonMarker = UnicodeRegex.compile(BOUNDARY_START + "(?:" +
         """S\d{1,2}(?:[\s._\-]*E\d{1,3})?|""" +
         """(?:season|saison|temporada|staffel|sezon|stagione|seizoen)[\s._\-]*(?:\d{1,2}|one|two|three|four|five|six|seven|eight|nine|ten)|""" +
         """complete[\s._\-]+series|الموسم|الحلقة""" +
-        ")" + BOUNDARY_END + ".*$", CI)
+        ")" + BOUNDARY_END + ".*$", caseInsensitive = true)
 
     /** "Wednesday S01", "Breaking Bad - Season 1", "Game of Thrones S08E06 The Iron Throne" → the show name. */
     internal fun removeSeasonMarker(input: String): String {
@@ -204,9 +203,9 @@ public object TitleMatcher {
         return if (collapse(s).isEmpty()) input else s
     }
 
-    private val trailingNumber = Pattern.compile("""^(.*\S)\s+((?:19|20)\d{2})$""", U)
-    private val articleSuffix = Pattern.compile("""^(.+),\s*(The|A|An)$""", CI)
-    private val yearPattern = Pattern.compile("""(?<!\d)((?:19|20)\d{2})(?!\d)""", U)
+    private val trailingNumber = UnicodeRegex.compile("""^(.*\S)\s+((?:19|20)\d{2})$""")
+    private val articleSuffix = UnicodeRegex.compile("""^(.+),\s*(The|A|An)$""", caseInsensitive = true)
+    private val yearPattern = UnicodeRegex.compile("""(?<!\d)((?:19|20)\d{2})(?!\d)""")
 
     /** "Matrix, The" → "The Matrix". */
     internal fun reorderArticle(s: String): String {

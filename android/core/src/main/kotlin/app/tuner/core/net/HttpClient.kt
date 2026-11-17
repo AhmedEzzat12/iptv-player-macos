@@ -48,7 +48,11 @@ public class HttpClient(userAgent: String? = null, public val timeoutSeconds: Lo
         .build()
 
     /** GET with retries (backoff 0.5 s, 1 s, …); client errors (4xx) aren't retried. */
-    public suspend fun data(url: String, headers: Map<String, String> = emptyMap(), retries: Int = 2): ByteArray {
+    public suspend fun data(url: String, headers: Map<String, String> = emptyMap(), retries: Int = 2): ByteArray =
+        // Reading the body is blocking I/O: never on the caller's (possibly main) thread.
+        withContext(Dispatchers.IO) { dataWithRetries(url, headers, retries) }
+
+    private suspend fun dataWithRetries(url: String, headers: Map<String, String>, retries: Int): ByteArray {
         var attempt = 0
         while (true) {
             try {
@@ -73,6 +77,10 @@ public class HttpClient(userAgent: String? = null, public val timeoutSeconds: Lo
     /** Downloads to a temporary file (for multi-hundred-MB guides and playlists). `file://` URLs are returned as is. */
     public suspend fun download(url: String, headers: Map<String, String> = emptyMap(), directory: File? = null): File {
         if (url.startsWith("file://")) return File(java.net.URI(url))
+        return withContext(Dispatchers.IO) { downloadFile(url, headers, directory) }
+    }
+
+    private suspend fun downloadFile(url: String, headers: Map<String, String>, directory: File?): File {
         val slow = client.newBuilder().readTimeout(maxOf(timeoutSeconds, 120), TimeUnit.SECONDS).build()
         val dest = File.createTempFile("tuner-", ".download", directory)
         try {

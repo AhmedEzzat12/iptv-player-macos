@@ -8,15 +8,13 @@ import java.util.regex.Pattern
 /** Heuristics for VOD titles. Patterns use Unicode classes, as ICU does in Swift. */
 public object TitleParser {
     /** A year in brackets anywhere: "Title (2024)", "Title ( 2026 ) Pure", "Title [2019]". */
-    private val bracketYear = Pattern.compile("""[(\[]\s*((?:19|20)\d{2})\s*[)\]]""", Pattern.UNICODE_CHARACTER_CLASS)
+    private val bracketYear = UnicodeRegex.compile("""[(\[]\s*((?:19|20)\d{2})\s*[)\]]""")
 
     /** A trailing year after an explicit separator: "Title - 2024", "Title.2024". "Blade Runner 2049" is not a year. */
-    private val separatedYear = Pattern.compile("""^(.*?)(?:\s+-\s+|\.)((?:19|20)\d{2})\s*$""", Pattern.UNICODE_CHARACTER_CLASS)
+    private val separatedYear = UnicodeRegex.compile("""^(.*?)(?:\s+-\s+|\.)((?:19|20)\d{2})\s*$""")
 
-    private val episodePattern = Pattern.compile(
-        """^(.*?)[\s._\-]*S(\d{1,2})[\s._\-]*E(\d{1,3})(?:[\s._\-]+(.*))?$""",
-        Pattern.CASE_INSENSITIVE or Pattern.UNICODE_CASE or Pattern.UNICODE_CHARACTER_CLASS,
-    )
+    private val episodePattern = UnicodeRegex.compile(
+        """^(.*?)[\s._\-]*S(\d{1,2})[\s._\-]*E(\d{1,3})(?:[\s._\-]+(.*))?$""", caseInsensitive = true)
 
     public data class Episode(val show: String, val season: Int, val episode: Int, val title: String?)
 

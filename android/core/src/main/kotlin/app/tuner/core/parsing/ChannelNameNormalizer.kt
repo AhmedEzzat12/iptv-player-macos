@@ -20,7 +20,7 @@ public object ChannelNameNormalizer {
     )
 
     /** Common country prefixes like `US:`, `UK |`, `[CA]`, `|DE|`. */
-    private val prefixPattern = Pattern.compile("""^\s*[\[(|]?\s*[A-Za-z]{2,3}\s*[\])|:\-]+\s*""", Pattern.UNICODE_CHARACTER_CLASS)
+    private val prefixPattern = UnicodeRegex.compile("""^\s*[\[(|]?\s*[A-Za-z]{2,3}\s*[\])|:\-]+\s*""")
     private val bracketPattern = Pattern.compile("""[\[({][^\])}]*[\])}]""")
 
     public fun normalize(name: String): String {
