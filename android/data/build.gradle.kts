@@ -1,6 +1,7 @@
 // Room database, sync and guide services, secrets (phase 3).
 plugins {
     alias(libs.plugins.android.library)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
@@ -15,4 +16,5 @@ android {
 
 dependencies {
     api(project(":core"))
+    implementation(libs.kotlinx.coroutines.core)
 }
