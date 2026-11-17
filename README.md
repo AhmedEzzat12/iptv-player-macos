@@ -289,6 +289,9 @@ and the build number of both is the commit count on `main`. A release is a tag `
    without Xcode), builds the Mac app, signs the update with your Sparkle key, writes `appcast.xml` and creates
    GitHub release `v<version>` with `Tuner.zip` and the appcast. Installed Macs check
    `releases/latest/download/appcast.xml` daily and offer the update.
+   The notes (shown in the update window) are the subjects of the commits since the last release that change the
+   Apple apps (`Sources`, `iOS`, `AppStore`, `Resources`, the package files), so Google TV work isn't listed;
+   `RELEASE_NOTES=notes.txt` uses your own text instead.
 3. Upload the iPhone/iPad and Mac App Store builds from the same commit: `UPLOAD=1 iOS/scripts/archive-appstore.sh`
    and `PLATFORM=mac UPLOAD=1 iOS/scripts/archive-appstore.sh` (see [docs/app-store](docs/app-store/README.md));
    they reach TestFlight after processing.

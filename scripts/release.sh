@@ -87,7 +87,9 @@ if [[ -n "${RELEASE_NOTES:-}" ]]; then
   cp "$RELEASE_NOTES" "$NOTES"
 else
   if [[ -n "$PREVIOUS_TAG" ]]; then RANGE=("$PREVIOUS_TAG..HEAD"); else RANGE=(-n 12); fi # first release: latest changes
-  git log "${RANGE[@]}" --no-merges --format=%s \
+  # Only commits that change the Apple apps: the Google TV app (android/), shared test vectors, docs, scripts and the
+  # VERSION bump share the repo but mean nothing to someone updating the Mac or iPhone app.
+  git log "${RANGE[@]}" --no-merges --format=%s -- Sources iOS AppStore Resources Package.swift Package.resolved \
     | awk '{ print "• " toupper(substr($0, 1, 1)) substr($0, 2) }' > "$NOTES"
   [[ -s "$NOTES" ]] || echo "• Small improvements and fixes." > "$NOTES"
 fi
