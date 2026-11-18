@@ -84,6 +84,10 @@ fun SearchScreen(onPlay: (PlaybackItem) -> Unit, onOpenMovie: (String) -> Unit, 
     var onTv by remember { mutableStateOf<List<Pair<Channel, Program>>>(emptyList()) }
     var movies by remember { mutableStateOf<List<Movie>>(emptyList()) }
     var shows by remember { mutableStateOf<List<Series>>(emptyList()) }
+    // With nothing typed, something to browse instead of an empty page (the Apple TV app's search does the same).
+    var browseMovies by remember { mutableStateOf<List<Movie>>(emptyList()) }
+    var browseShows by remember { mutableStateOf<List<Series>>(emptyList()) }
+    LaunchedEffect(Unit) { browseMovies = app.library.movies(limit = 24); browseShows = app.library.series(limit = 24) }
     LaunchedEffect(query) {
         delay(300)
         if (query.isBlank()) { channels = emptyList(); onTv = emptyList(); movies = emptyList(); shows = emptyList(); return@LaunchedEffect }
@@ -139,6 +143,10 @@ fun SearchScreen(onPlay: (PlaybackItem) -> Unit, onOpenMovie: (String) -> Unit, 
                     }
                 }
             }
+        }
+        if (query.isBlank()) {
+            item { Shelf("Recently Added Movies", browseMovies, { "b" + it.id }) { m -> PosterCard(m.name, m.posterURL, m.year) { onOpenMovie(m.id) } } }
+            item { Shelf("Recently Added Shows", browseShows, { "b" + it.id }) { s -> PosterCard(s.name, s.coverURL, s.year) { onOpenSeries(s.id) } } }
         }
         item { Shelf("Channels", channels, { it.id }) { ch -> WideCard(ch.displayName, null, ch.logoURL, width = 220, fitImage = true) { play(PlaybackItem.Live(ch, channels)) } } }
         item {
