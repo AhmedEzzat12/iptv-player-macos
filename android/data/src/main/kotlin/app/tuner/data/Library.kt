@@ -1,6 +1,8 @@
 // Android counterpart of AppDatabase+Library / +Queries / +User / +Metadata / +SkipSegments (Swift @ 666f598).
 package app.tuner.data
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import android.content.ContentValues
 import android.database.sqlite.SQLiteDatabase
 import androidx.room.withTransaction
@@ -44,12 +46,19 @@ public class Library(private val database: AppDatabase) : MetadataCache {
     private val guideDao get() = database.guide()
 
     /** Runs `block` in one transaction, then tells screens what changed. */
+    /**
+     * Runs a read off the main thread. Room runs the query itself on its own executor, but turning thousands of rows
+     * into models (a playlist's channels, a guide window, Continue Watching's ranking) ran on the caller's thread,
+     * which from the TV screens is the main thread: it stalled frames while moving through categories and pages.
+     */
+    private suspend fun <T> read(block: suspend () -> T): T = withContext(Dispatchers.Default) { block() }
+
     private suspend fun <T> write(change: Change?, block: suspend () -> T): T =
         database.withTransaction { block() }.also { if (change != null) database.changed(change) }
 
     // Sources (passwords encrypted at rest)
 
-    public suspend fun sources(): List<Source> = sourcesDao.all().map { source(it) }
+    public suspend fun sources(): List<Source> = read { sourcesDao.all().map { source(it) } }
 
     public suspend fun source(id: String): Source? = sourcesDao.get(id)?.let { source(it) }
 
@@ -150,7 +159,7 @@ public class Library(private val database: AppDatabase) : MetadataCache {
 
     // Reads
 
-    public suspend fun categories(kind: CategoryKind): List<Category> {
+    public suspend fun categories(kind: CategoryKind): List<Category> = read {
         val count = when (kind) {
             CategoryKind.LIVE -> "(SELECT COUNT(*) FROM channel x WHERE x.categoryId = c.id)"
             CategoryKind.MOVIE -> "(SELECT COUNT(*) FROM movie x WHERE x.categoryId = c.id)"
@@ -159,7 +168,7 @@ public class Library(private val database: AppDatabase) : MetadataCache {
         val rows = lib.categories(SimpleSQLiteQuery("""SELECT c.id, c.sourceId, c.kind, c.name, c.providerOrder, p.alias, p.sortIndex AS prefSort,
             $count AS n FROM category c JOIN source s ON s.id = c.sourceId LEFT JOIN categoryPref p ON p.categoryId = c.id
             WHERE c.kind = ? AND COALESCE(p.isHidden, 0) = 0 ORDER BY s.sortIndex, p.sortIndex IS NULL, p.sortIndex, c.providerOrder""", arrayOf(kind.raw)))
-        return rows.map { Category(it.id, it.sourceId, kind, it.name, it.providerOrder, alias = it.alias, sortIndex = it.prefSort, itemCount = it.n) }
+        return@read rows.map { Category(it.id, it.sourceId, kind, it.name, it.providerOrder, alias = it.alias, sortIndex = it.prefSort, itemCount = it.n) }
             .filter { it.itemCount > 0 || kind != CategoryKind.LIVE }
     }
 
@@ -174,7 +183,7 @@ public class Library(private val database: AppDatabase) : MetadataCache {
         c.catchupType, c.catchupSource, c.catchupDays, c.userAgent, c.referrer, c.isAdult, c.epgKey, p.isFavorite, p.favoriteOrder, p.isHidden,
         p.alias, p.epgIdOverride"""
 
-    public suspend fun channels(scope: ChannelScope, search: String? = null, limit: Int? = null): List<Channel> {
+    public suspend fun channels(scope: ChannelScope, search: String? = null, limit: Int? = null): List<Channel> = read {
         var sql = "SELECT $channelColumns FROM channel c JOIN source s ON s.id = c.sourceId LEFT JOIN channelPref p ON p.channelId = c.id"
         val args = mutableListOf<Any>()
         val where = mutableListOf("COALESCE(p.isHidden, 0) = 0",
@@ -189,14 +198,14 @@ public class Library(private val database: AppDatabase) : MetadataCache {
         for (word in words(search)) { where.add("(c.name LIKE ? ESCAPE '\\' OR p.alias LIKE ? ESCAPE '\\')"); args.add(contains(word)); args.add(contains(word)) }
         sql += " WHERE " + where.joinToString(" AND ") + " ORDER BY $order"
         (limit ?: if (scope == ChannelScope.Recent) 50 else null)?.let { sql += " LIMIT $it" }
-        return lib.channels(SimpleSQLiteQuery(sql, args.toTypedArray())).map(::channel)
+        return@read lib.channels(SimpleSQLiteQuery(sql, args.toTypedArray())).map(::channel)
     }
 
     /**
      * The same channel elsewhere (same normalised name, EPG key or tvg-id; visible, in an enabled playlist), for live
      * failover. Port of AppDatabase.alternateChannels (AppDatabase+Queries.swift).
      */
-    public suspend fun alternateChannels(channel: Channel): List<Channel> {
+    public suspend fun alternateChannels(channel: Channel): List<Channel> = read {
         val conditions = mutableListOf("c.normalizedName = ?")
         val args = mutableListOf<Any>(channel.id, ChannelNameNormalizer.normalize(channel.name))
         channel.epgKey?.let { conditions += "c.epgKey = ?"; args += it }
@@ -204,7 +213,7 @@ public class Library(private val database: AppDatabase) : MetadataCache {
         val sql = "SELECT $channelColumns FROM channel c JOIN source s ON s.id = c.sourceId AND s.enabled = 1 " +
             "LEFT JOIN channelPref p ON p.channelId = c.id WHERE c.id <> ? AND (${conditions.joinToString(" OR ")}) " +
             "AND COALESCE(p.isHidden, 0) = 0 ORDER BY s.sortIndex, c.providerOrder LIMIT 20"
-        return lib.channels(SimpleSQLiteQuery(sql, args.toTypedArray())).map(::channel)
+        return@read lib.channels(SimpleSQLiteQuery(sql, args.toTypedArray())).map(::channel)
     }
 
     public suspend fun channel(id: String): Channel? = lib.channels(SimpleSQLiteQuery(
@@ -241,20 +250,20 @@ public class Library(private val database: AppDatabase) : MetadataCache {
     }
 
     public suspend fun movies(categoryId: String? = null, search: String? = null, sort: VODSort = VODSort.ADDED, limit: Int = 200, offset: Int = 0): List<Movie> =
-        lib.movies(vodQuery("movie", categoryId, search, sort, limit, offset)).map(::movie)
+        read { lib.movies(vodQuery("movie", categoryId, search, sort, limit, offset)).map(::movie) }
 
     public suspend fun series(categoryId: String? = null, search: String? = null, sort: VODSort = VODSort.ADDED, limit: Int = 200, offset: Int = 0): List<Series> =
-        lib.series(vodQuery("series", categoryId, search, sort, limit, offset)).map(::series)
+        read { lib.series(vodQuery("series", categoryId, search, sort, limit, offset)).map(::series) }
 
     public suspend fun movie(id: String): Movie? = lib.movie(id)?.let(::movie)
 
     public suspend fun seriesItem(id: String): Series? = lib.seriesItem(id)?.let(::series)
 
-    public suspend fun episodes(seriesId: String): List<Episode> = lib.episodes(seriesId).map { e ->
+    public suspend fun episodes(seriesId: String): List<Episode> = read { lib.episodes(seriesId).map { e ->
         Episode(id = e.id, seriesId = e.seriesId, sourceId = e.sourceId, season = e.season, number = e.number, title = e.title,
             providerId = e.providerId, streamURL = e.streamURL, plot = e.plot, imageURL = e.imageURL, durationSeconds = e.durationSeconds,
             containerExtension = e.containerExtension, airDate = e.airDate)
-    }
+    } }
 
     private fun movie(m: MovieEntity) = Movie(
         id = m.id, sourceId = m.sourceId, categoryId = m.categoryId, name = m.name, providerId = m.providerId, streamURL = m.streamURL,
@@ -284,17 +293,17 @@ public class Library(private val database: AppDatabase) : MetadataCache {
         write(Change.LIBRARY) { user.setCategoryAlias(categoryId, alias?.trim()?.takeIf { it.isNotEmpty() }) }
 
     /** Hidden channels, for Settings → Hidden. */
-    public suspend fun hiddenChannels(): List<Channel> = lib.channels(SimpleSQLiteQuery(
+    public suspend fun hiddenChannels(): List<Channel> = read { lib.channels(SimpleSQLiteQuery(
         "SELECT $channelColumns FROM channel c JOIN channelPref p ON p.channelId = c.id WHERE p.isHidden = 1 ORDER BY c.name COLLATE NOCASE"))
-        .map(::channel)
+        .map(::channel) }
 
     /** Hidden categories of every kind, for Settings → Hidden: (id, name, kind). */
-    public suspend fun hiddenCategories(): List<Triple<String, String, CategoryKind>> {
+    public suspend fun hiddenCategories(): List<Triple<String, String, CategoryKind>> = read {
         val out = mutableListOf<Triple<String, String, CategoryKind>>()
         database.openHelper.readableDatabase.query(
             "SELECT c.id, COALESCE(p.alias, c.name), c.kind FROM category c JOIN categoryPref p ON p.categoryId = c.id WHERE p.isHidden = 1 ORDER BY c.kind, c.name COLLATE NOCASE",
         ).use { cur -> while (cur.moveToNext()) CategoryKind.of(cur.getString(2))?.let { out += Triple(cur.getString(0), cur.getString(1), it) } }
-        return out
+        return@read out
     }
 
     public suspend fun recordWatched(channelId: String): Unit = write(Change.USER) { user.recordWatched(HistoryEntity(channelId, System.currentTimeMillis())) }
@@ -302,7 +311,7 @@ public class Library(private val database: AppDatabase) : MetadataCache {
     public suspend fun progress(mediaId: String): WatchProgress? = user.progress(mediaId)?.let(::progress)
 
     public suspend fun progress(seriesId: String, forSeries: Boolean): Map<String, WatchProgress> =
-        user.seriesProgress(seriesId).map(::progress).associateBy { it.mediaId }
+        read { user.seriesProgress(seriesId).map(::progress).associateBy { it.mediaId } }
 
     /** Saves a resume point; ignores zero-length media so a failed load can't wipe progress. */
     public suspend fun saveProgress(p: WatchProgress) {
@@ -320,10 +329,10 @@ public class Library(private val database: AppDatabase) : MetadataCache {
     )
 
     /** Resume points plus the next cached episode of shows whose latest episode was finished (SmartContinueWatching). */
-    public suspend fun continueWatching(limit: Int = 20): List<ContinueWatchingItem> {
+    public suspend fun continueWatching(limit: Int = 20): List<ContinueWatchingItem> = read {
         val records = user.continueWatchingCandidates().map(::progress)
         val episodes = SmartContinueWatching.showsNeedingEpisodes(records).associateWith { episodes(it) }
-        return SmartContinueWatching.rank(records, episodes, Instant.now(), limit).map { entry ->
+        return@read SmartContinueWatching.rank(records, episodes, Instant.now(), limit).map { entry ->
             when (entry) {
                 is SmartContinueWatching.Entry.Resume -> ContinueWatchingItem.Resume(entry.progress)
                 is SmartContinueWatching.Entry.NextEpisode -> ContinueWatchingItem.NextEpisode(entry.episode,
@@ -334,10 +343,10 @@ public class Library(private val database: AppDatabase) : MetadataCache {
 
     // Metadata cache
 
-    override suspend fun entry(mediaId: String): MetadataCacheEntry? = caches.metadata(mediaId)?.let { e ->
+    override suspend fun entry(mediaId: String): MetadataCacheEntry? = read { caches.metadata(mediaId)?.let { e ->
         MetadataCacheEntry(mediaId, if (e.kind == "series") MediaMetadata.Kind.series else MediaMetadata.Kind.movie,
             e.json?.let { runCatching { json.decodeFromString(MediaMetadata.serializer(), it) }.getOrNull() }, e.notFound, e.fetchedAt)
-    }
+    } }
 
     override suspend fun cached(mediaIds: List<String>): Map<String, MediaMetadata> = mediaIds.mapNotNull { id -> entry(id)?.metadata?.let { id to it } }.toMap()
 
@@ -495,9 +504,9 @@ public class Library(private val database: AppDatabase) : MetadataCache {
     public suspend fun pruneProgrammes(endedBefore: Instant): Unit = guideDao.pruneProgrammes(endedBefore.epochSecond)
 
     /** Programmes overlapping `[from, to)` grouped by EPG key, sorted by start, overlaps trimmed. */
-    public suspend fun programs(epgKeys: List<String>, from: Instant, to: Instant): Map<String, List<Program>> {
+    public suspend fun programs(epgKeys: List<String>, from: Instant, to: Instant): Map<String, List<Program>> = read {
         val unique = epgKeys.distinct().filter { it.isNotEmpty() }
-        if (unique.isEmpty()) return emptyMap()
+        if (unique.isEmpty()) return@read emptyMap()
         val lo = from.epochSecond
         val hi = to.epochSecond
         val map = HashMap<String, MutableList<Program>>()
@@ -508,17 +517,17 @@ public class Library(private val database: AppDatabase) : MetadataCache {
                 "SELECT * FROM program WHERE epgKey IN ($marks) AND start < ? AND end > ? ORDER BY epgKey, start", args))
             for (r in rows) map.getOrPut(r.epgKey) { mutableListOf() }.add(program(r))
         }
-        return map.mapValues { (_, list) -> trimOverlaps(list) }
+        return@read map.mapValues { (_, list) -> trimOverlaps(list) }
     }
 
-    public suspend fun searchPrograms(query: String, from: Instant = Instant.now(), hours: Long = 72, limit: Int = 200): List<Program> {
+    public suspend fun searchPrograms(query: String, from: Instant = Instant.now(), hours: Long = 72, limit: Int = 200): List<Program> = read {
         val w = words(query)
-        if (w.isEmpty()) return emptyList()
+        if (w.isEmpty()) return@read emptyList()
         val args = mutableListOf<Any>(from.epochSecond, from.plusSeconds(hours * 3600).epochSecond)
         val conds = w.map { "(title LIKE ? ESCAPE '\\' OR subtitle LIKE ? ESCAPE '\\')" }
         for (word in w) { args.add(contains(word)); args.add(contains(word)) }
         val sql = "SELECT * FROM program WHERE end > ? AND start < ? AND ${conds.joinToString(" AND ")} AND epgKey IN (SELECT epgKey FROM channel WHERE epgKey IS NOT NULL) ORDER BY start LIMIT $limit"
-        return guideDao.programmes(SimpleSQLiteQuery(sql, args.toTypedArray())).map(::program)
+        return@read guideDao.programmes(SimpleSQLiteQuery(sql, args.toTypedArray())).map(::program)
     }
 
     public suspend fun epgChannels(matching: String, limit: Int = 100): List<EPGChannel> =
