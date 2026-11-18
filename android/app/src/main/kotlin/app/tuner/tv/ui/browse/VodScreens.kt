@@ -1,5 +1,9 @@
 package app.tuner.tv.ui.browse
 
+import app.tuner.tv.ui.PillButton
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Replay
 import app.tuner.tv.ui.rememberedFocus
 import app.tuner.core.metadata.VODRating
 import app.tuner.tv.ui.KeepInView
@@ -299,10 +303,9 @@ fun MovieDetailScreen(id: String, onPlay: (PlaybackItem) -> Unit) {
         HeroTitle(m.name, meta, details, meta?.overview ?: m.plot)
         Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             val resumable = progress?.let { !it.completed && it.position > 10 } == true
-            Button(onClick = { onPlay(PlaybackItem.MovieItem(m, if (resumable) progress!!.position else null)) }, modifier = Modifier.initialFocus(m.id)) {
-                Text(if (resumable) "Resume ${minutes(progress!!.position)}" else "Play")
-            }
-            if (resumable) OutlinedButton(onClick = { onPlay(PlaybackItem.MovieItem(m, null)) }) { Text("Play from Beginning") }
+            PillButton(if (resumable) "Resume ${minutes(progress!!.position)}" else "Play", icon = Icons.Filled.PlayArrow,
+                onClick = { onPlay(PlaybackItem.MovieItem(m, if (resumable) progress!!.position else null)) }, modifier = Modifier.initialFocus(m.id))
+            if (resumable) PillButton("Play from Beginning", icon = Icons.Filled.Replay, onClick = { onPlay(PlaybackItem.MovieItem(m, null)) })
         }
     }) {
         m.cast?.let { item { Text("Cast: $it", Modifier.padding(top = 8.dp).widthIn(max = 900.dp), color = Color.White.copy(alpha = 0.7f), maxLines = 2) } }
@@ -351,11 +354,10 @@ fun SeriesDetailScreen(id: String, onPlay: (PlaybackItem) -> Unit) {
                 else -> "Play"
             }
             Row(horizontalArrangement = Arrangement.spacedBy(14.dp), modifier = Modifier.focusGroup()) {
-                Button(onClick = { onPlay(PlaybackItem.EpisodeItem(primary.first, s, episodes, primary.second)) }, modifier = Modifier.initialFocus(s.id)) {
-                    Text(label)
-                }
+                PillButton(label, icon = Icons.Filled.PlayArrow, onClick = { onPlay(PlaybackItem.EpisodeItem(primary.first, s, episodes, primary.second)) },
+                    modifier = Modifier.initialFocus(s.id))
                 if (resume != null) {
-                    OutlinedButton(onClick = { onPlay(PlaybackItem.EpisodeItem(resume.first, s, episodes, null)) }) { Text("Play from Beginning") }
+                    PillButton("Play from Beginning", icon = Icons.Filled.Replay, onClick = { onPlay(PlaybackItem.EpisodeItem(resume.first, s, episodes, null)) })
                 }
             }
         } else {
@@ -365,7 +367,7 @@ fun SeriesDetailScreen(id: String, onPlay: (PlaybackItem) -> Unit) {
         if (seasons.size > 1) item {
             // Room around the chips: a focused chip grows, and would otherwise overlap what's above and below.
             LazyRow(Modifier.bleedStart(), horizontalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(vertical = 8.dp, horizontal = FocusBleed)) {
-                items(seasons) { n -> FilterChip(selected = n == shown, onClick = { season = n }) { Text(if (n == 0) "Specials" else "Season $n") } }
+                items(seasons) { n -> PillButton(if (n == 0) "Specials" else "Season $n", onClick = { season = n }, selected = n == shown) }
             }
         } else if (episodes.isNotEmpty()) item {
             Text("Episodes", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 8.dp))

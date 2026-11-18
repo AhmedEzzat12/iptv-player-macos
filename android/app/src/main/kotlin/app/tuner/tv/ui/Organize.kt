@@ -80,8 +80,8 @@ fun RenameDialog(title: String, current: String, original: String, onSave: (Stri
             )
             Spacer(Modifier.height(22.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                Button(onClick = { onSave(text); onDismiss() }) { Text("Save") }
-                OutlinedButton(onClick = onDismiss) { Text("Cancel") }
+                PillButton("Save", onClick = { onSave(text); onDismiss() })
+                PillButton("Cancel", onClick = onDismiss)
             }
         }
     }

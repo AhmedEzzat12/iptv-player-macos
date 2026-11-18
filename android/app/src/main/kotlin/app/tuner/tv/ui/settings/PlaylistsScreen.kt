@@ -1,5 +1,6 @@
 package app.tuner.tv.ui.settings
 
+import app.tuner.tv.ui.PillButton
 import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.foundation.relocation.bringIntoViewRequester
@@ -95,7 +96,7 @@ fun PlaylistsScreen(onAdd: () -> Unit, onEdit: (String) -> Unit) {
         LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp), contentPadding = PaddingValues(bottom = 48.dp)) {
             item { PageTitle("Settings") }
             item { SectionTitle("Playlists") }
-            item { Button(onClick = onAdd, modifier = Modifier.initialFocus()) { Text("Add a Playlist") } }
+            item { PillButton("Add a Playlist", onClick = onAdd, modifier = Modifier.initialFocus()) }
             items(sources, key = { it.id }) { s ->
                 Column(Modifier.fillMaxWidth().background(TunerColors.surface, RoundedCornerShape(14.dp)).padding(20.dp)) {
                     Text(s.name, style = MaterialTheme.typography.titleLarge)
@@ -109,9 +110,9 @@ fun PlaylistsScreen(onAdd: () -> Unit, onEdit: (String) -> Unit) {
                     s.lastError?.let { Text(it, color = Color(0xFFFF6E6E), maxLines = 3) }
                     Spacer(Modifier.height(12.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        OutlinedButton(onClick = { scope.launch { app.sync.sync(s.id); revision++ } }) { Text("Refresh") } // sync runs off the main thread
-                        OutlinedButton(onClick = { onEdit(s.id) }) { Text("Edit") }
-                        OutlinedButton(onClick = { pendingRemove = s }) { Text("Remove") }
+                        PillButton("Refresh", onClick = { scope.launch { app.sync.sync(s.id); revision++ } }) // sync runs off the main thread
+                        PillButton("Edit", onClick = { onEdit(s.id) })
+                        PillButton("Remove", onClick = { pendingRemove = s })
                     }
                 }
             }
@@ -176,8 +177,8 @@ fun PlaylistsScreen(onAdd: () -> Unit, onEdit: (String) -> Unit) {
                         color = Color.White.copy(alpha = 0.78f))
                     Spacer(Modifier.height(22.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                        Button(onClick = { pendingRemove = null; scope.launch { app.library.deleteSource(s.id); revision++ } }) { Text("Remove Playlist") }
-                        OutlinedButton(onClick = { pendingRemove = null }, modifier = Modifier.initialFocus(s.id)) { Text("Cancel") }
+                        PillButton("Remove Playlist", onClick = { pendingRemove = null; scope.launch { app.library.deleteSource(s.id); revision++ } })
+                        PillButton("Cancel", onClick = { pendingRemove = null }, modifier = Modifier.initialFocus(s.id))
                     }
                 }
             }
@@ -256,8 +257,8 @@ fun AddPlaylistScreen(onDone: () -> Unit) {
             Text("${pending.kind.displayName} · ${host(pending.url)}", color = Color.White.copy(alpha = 0.7f))
             Spacer(Modifier.height(24.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                Button(onClick = { add(pending) }, modifier = Modifier.initialFocus(pending)) { Text("Add Playlist") }
-                OutlinedButton(onClick = { received = null; onDone() }) { Text("Discard") }
+                PillButton("Add Playlist", onClick = { add(pending) }, modifier = Modifier.initialFocus(pending))
+                PillButton("Discard", onClick = { received = null; onDone() })
             }
             status?.let { Spacer(Modifier.height(16.dp)); Text(it, color = TunerColors.accent) }
         }
@@ -277,8 +278,8 @@ fun AddPlaylistScreen(onDone: () -> Unit) {
                 }
                 Spacer(Modifier.height(28.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    OutlinedButton(onClick = { typing = true }, modifier = Modifier.initialFocus()) { Text("Type It In Instead") }
-                    OutlinedButton(onClick = onDone) { Text("Cancel") }
+                    PillButton("Type It In Instead", onClick = { typing = true }, modifier = Modifier.initialFocus())
+                    PillButton("Cancel", onClick = onDone)
                 }
             }
             url?.let { link ->
@@ -332,14 +333,14 @@ fun EditPlaylistScreen(id: String, onDone: () -> Unit) {
         item { Field("Guide (XMLTV) URL, optional", epg, KeyboardType.Uri) { epg = it } }
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedButton(onClick = { includeLive = !includeLive }) { Text("Live TV: " + if (includeLive) "On" else "Off") }
-                if (s.kind != Source.Kind.M3U) OutlinedButton(onClick = { includeVOD = !includeVOD }) { Text("Movies & Shows: " + if (includeVOD) "On" else "Off") }
+                PillButton("Live TV: " + if (includeLive) "On" else "Off", onClick = { includeLive = !includeLive })
+                if (s.kind != Source.Kind.M3U) PillButton("Movies & Shows: " + if (includeVOD) "On" else "Off", onClick = { includeVOD = !includeVOD })
             }
         }
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Button(onClick = {
-                    if (url.isBlank()) { error = "Enter the playlist's address."; return@Button }
+                PillButton("Save", onClick = {
+                    if (url.isBlank()) { error = "Enter the playlist's address."; return@PillButton }
                     scope.launch {
                         // Apply the edits to the playlist as it is now: a refresh may have updated its counts and sync
                         // times since this page opened, and those mustn't be rolled back.
@@ -354,8 +355,8 @@ fun EditPlaylistScreen(id: String, onDone: () -> Unit) {
                         app.scope.launch { runCatching { app.sync.sync(updated.id) } }
                         onDone()
                     }
-                }) { Text("Save") }
-                OutlinedButton(onClick = onDone) { Text("Cancel") }
+                })
+                PillButton("Cancel", onClick = onDone)
             }
         }
         error?.let { item { Text(it, color = Color(0xFFFF6E6E)) } }
@@ -377,7 +378,7 @@ private fun TypeItIn(status: String?, onAdd: (Source) -> Unit) {
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Source.Kind.entries.forEach { k ->
-                    if (k == kind) Button(onClick = {}, modifier = Modifier.initialFocus()) { Text(k.displayName) } else OutlinedButton(onClick = { kind = k }) { Text(k.displayName) }
+                    PillButton(k.displayName, onClick = { kind = k }, selected = k == kind, modifier = Modifier.initialFocus(enabled = k == Source.Kind.XTREAM))
                 }
             }
         }
@@ -396,10 +397,10 @@ private fun TypeItIn(status: String?, onAdd: (Source) -> Unit) {
         }
         if (kind == Source.Kind.STALKER) item { Field("MAC address", mac) { mac = it.uppercase() } }
         item {
-            Button(onClick = {
+            PillButton("Add Playlist", onClick = {
                 if (url.isNotBlank()) onAdd(Source(name = name.ifBlank { kind.displayName }, kind = kind, url = url.trim(),
                     username = username.trim().ifEmpty { null }, password = password.ifEmpty { null }, mac = mac.trim().ifEmpty { null }))
-            }) { Text("Add Playlist") }
+            })
         }
         status?.let { item { Text(it, color = TunerColors.accent) } }
     }

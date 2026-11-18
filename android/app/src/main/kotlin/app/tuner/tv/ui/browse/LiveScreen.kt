@@ -1,6 +1,11 @@
 package app.tuner.tv.ui.browse
 
 import app.tuner.tv.ui.rememberedFocus
+import app.tuner.tv.ui.PillButton
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CalendarViewWeek
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Replay
 import androidx.tv.material3.LocalContentColor
 import app.tuner.tv.ui.RenameDialog
 import app.tuner.tv.ui.MenuAction
@@ -166,10 +171,10 @@ fun LiveScreen(onPlay: (PlaybackItem) -> Unit, initial: Library.ChannelScope = L
                     item {
                         Row(Modifier.fillMaxWidth().padding(bottom = 8.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                             PageTitle(if (initial == Library.ChannelScope.Favorites) "Favorites" else "Live TV")
-                            OutlinedButton(onClick = {
+                            PillButton("TV Guide", icon = Icons.Filled.CalendarViewWeek, onClick = {
                                 windowStartEpoch = (System.currentTimeMillis() / 1000 / 1800) * 1800
                                 showGrid = true
-                            }) { Text("TV Guide") }
+                            })
                         }
                     }
                     items(groups, key = { it.first + it.second }) { (name, grpScope) ->
@@ -274,15 +279,12 @@ fun LiveScreen(onPlay: (PlaybackItem) -> Unit, initial: Library.ChannelScope = L
                     Spacer(Modifier.height(22.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                         if (canCatchup) {
-                            Button(onClick = { inspected = null; onPlay(PlaybackItem.Catchup(ch, prog)) }, modifier = Modifier.initialFocus(prog.stableKey)) {
-                                Text(if (prog.isLive(now)) "Start Over ⟲" else "Play Catchup ⟲")
-                            }
+                            PillButton(if (prog.isLive(now)) "Start Over" else "Play Catchup", icon = Icons.Filled.Replay,
+                                onClick = { inspected = null; onPlay(PlaybackItem.Catchup(ch, prog)) }, modifier = Modifier.initialFocus(prog.stableKey))
                         }
-                        Button(onClick = { inspected = null; onPlay(PlaybackItem.Live(ch, channels)) },
-                            modifier = if (!canCatchup) Modifier.initialFocus(prog.stableKey) else Modifier) {
-                            Text("Watch Live")
-                        }
-                        OutlinedButton(onClick = { inspected = null }) { Text("Close") }
+                        PillButton("Watch Live", icon = Icons.Filled.PlayArrow, onClick = { inspected = null; onPlay(PlaybackItem.Live(ch, channels)) },
+                            modifier = if (!canCatchup) Modifier.initialFocus(prog.stableKey) else Modifier)
+                        PillButton("Close", onClick = { inspected = null })
                     }
                 }
             }
@@ -310,18 +312,18 @@ private fun GuideGridView(
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                 PageTitle("TV Guide")
-                OutlinedButton(onClick = onCloseGrid, modifier = Modifier.initialFocus()) { Text("Channels List") }
+                PillButton("Channels List", onClick = onCloseGrid, modifier = Modifier.initialFocus())
             }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                OutlinedButton(onClick = { onShiftWindow(-7200) }) { Text("◀ -2h") }
-                OutlinedButton(onClick = { onShiftWindow(0) }) { Text("Now") }
-                OutlinedButton(onClick = { onShiftWindow(7200) }) { Text("+2h ▶") }
+                PillButton("◀ -2h", onClick = { onShiftWindow(-7200) })
+                PillButton("Now", onClick = { onShiftWindow(0) })
+                PillButton("+2h ▶", onClick = { onShiftWindow(7200) })
             }
         }
         Spacer(Modifier.height(8.dp))
         LazyRow(Modifier.bleedStart(), horizontalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(vertical = 4.dp, horizontal = FocusBleed)) {
             items(groups, key = { it.first + it.second }) { (name, grpScope) ->
-                FilterChip(selected = grpScope == selected, onClick = { onSelectGroup(grpScope) }) { Text(name) }
+                PillButton(name, onClick = { onSelectGroup(grpScope) }, selected = grpScope == selected)
             }
         }
         Spacer(Modifier.height(8.dp))

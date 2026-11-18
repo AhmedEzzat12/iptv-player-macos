@@ -1,5 +1,6 @@
 package app.tuner.tv.ui.browse
 
+import app.tuner.tv.ui.PillButton
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
@@ -116,8 +117,8 @@ fun SearchScreen(onPlay: (PlaybackItem) -> Unit, onOpenMovie: (String) -> Unit, 
                     Text("Recent Searches", style = MaterialTheme.typography.titleMedium)
                     Spacer(Modifier.height(10.dp))
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        items(recent, key = { it }) { r -> OutlinedButton(onClick = { field = TextFieldValue(r, TextRange(r.length)) }) { Text(r) } }
-                        item(key = "clear") { OutlinedButton(onClick = { app.prefs.recentSearches = emptyList() }) { Text("Clear") } }
+                        items(recent, key = { it }) { r -> PillButton(r, onClick = { field = TextFieldValue(r, TextRange(r.length)) }) }
+                        item(key = "clear") { PillButton("Clear", onClick = { app.prefs.recentSearches = emptyList() }) }
                     }
                 }
             }
