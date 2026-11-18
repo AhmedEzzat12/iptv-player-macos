@@ -382,6 +382,18 @@ Needs the Google TV emulator (`android/scripts/emulator.sh`, debug app installed
    the JSON to `http://127.0.0.1:8790/<token>` with curl (`PlaylistShareTests` checks the JSON the app sends).
    `favicon.ico` requests are ignored; 5 other wrong requests from one address make the TV ignore that address.
 
+## TV long-press (holding OK)
+
+`adb shell input keyevent --longpress` sends a press with a single repeat, but a held remote button keeps repeating
+until it's released, and long-press menus open mid-hold. Debug builds of the TV app have a hook that replays a real
+hold into whichever app window has focus (the page, or the dialog once it opens):
+
+    adb shell settings put global hidden_api_policy 1   # emulator only: the hook finds windows through a hidden API
+    adb shell am broadcast -a app.tuner.tv.debug.HOLD -p app.antenna.player.debug --ei ms 2000
+
+With a channel focused on Live TV, its menu should open and stay open after the release (before the fix, the
+release chose the first row). The hook is in `android/app/src/debug`, so release and scratch builds don't have it.
+
 ## Testing iCloud sync
 
 Sync only needs a folder both copies can read and write, so tests use a plain scratch folder instead of iCloud Drive

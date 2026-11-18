@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Debug builds only: test hooks for driving the app from adb. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <provider
+            android:name="app.tuner.tv.debug.KeyHoldHook"
+            android:authorities="${applicationId}.keyhold"
+            android:exported="false" />
+    </application>
+</manifest>

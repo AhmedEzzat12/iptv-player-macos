@@ -32,6 +32,10 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import android.view.KeyEvent
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.window.DialogProperties
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.MaterialTheme
@@ -46,7 +50,19 @@ import androidx.tv.material3.Text
 @Composable
 fun TvDialog(onDismiss: () -> Unit, width: Dp = 560.dp, content: @Composable ColumnScope.() -> Unit) {
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Column(Modifier.width(width).background(TunerColors.raised, RoundedCornerShape(26.dp)).padding(28.dp), content = content)
+        // OK only counts once it's pressed afresh inside the dialog. A long-press menu opens while OK is still held: the
+        // remote keeps repeating the press and then releases it, and that tail of the same press reached the first row
+        // (Resume, Play) and chose it, so letting go of OK closed the menu before anything could be picked.
+        var armed by remember { mutableStateOf(false) }
+        Column(Modifier.width(width).background(TunerColors.raised, RoundedCornerShape(26.dp)).padding(28.dp)
+            .onPreviewKeyEvent { e ->
+                val ok = e.nativeKeyEvent.keyCode.let { it == KeyEvent.KEYCODE_DPAD_CENTER || it == KeyEvent.KEYCODE_ENTER || it == KeyEvent.KEYCODE_NUMPAD_ENTER }
+                when {
+                    !ok || armed -> false
+                    e.type == KeyEventType.KeyDown && e.nativeKeyEvent.repeatCount == 0 -> { armed = true; false }
+                    else -> true // a repeat or the release of the press that opened the dialog
+                }
+            }, content = content)
     }
 }
 
