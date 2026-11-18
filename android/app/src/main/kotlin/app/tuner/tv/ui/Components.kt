@@ -206,7 +206,13 @@ fun SectionHeader(title: String, modifier: Modifier = Modifier, note: String? = 
 
 /** A titled horizontal row (Home shelves, search results). */
 @Composable
-fun <T> Shelf(title: String, items: List<T>, key: (T) -> String, focusFirst: Boolean = false, note: String? = null, content: @Composable (T) -> Unit) {
+fun <T> Shelf(
+    title: String, items: List<T>, key: (T) -> String, focusFirst: Boolean = false, note: String? = null,
+    /** Where the title and first card start. Home passes the page margin and lets its rows run to the screen's edge, so
+     * cards scrolled past the first slide out under the rail (as on the Apple TV) instead of being cut off at the margin. */
+    startInset: androidx.compose.ui.unit.Dp = 0.dp,
+    content: @Composable (T) -> Unit,
+) {
     if (items.isEmpty()) return
     // The first card takes focus once, when the page first shows it. Keyed on the first item, it took focus again
     // whenever the row changed (Continue Watching reorders after anything is watched, and Home reloads on every
@@ -214,10 +220,10 @@ fun <T> Shelf(title: String, items: List<T>, key: (T) -> String, focusFirst: Boo
     // the first Continue Watching card.
     var tookFocus by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
     Column(Modifier.padding(bottom = 22.dp)) {
-        SectionHeader(title, note = note)
+        SectionHeader(title, Modifier.padding(start = startInset), note = note)
         // Vertical room so a focused (grown) card and its glow never reach the row title above.
-        LazyRow(Modifier.bleedStart(), horizontalArrangement = Arrangement.spacedBy(22.dp),
-            contentPadding = PaddingValues(start = FocusBleed, end = 48.dp, top = 14.dp, bottom = 6.dp)) {
+        LazyRow(if (startInset == 0.dp) Modifier.bleedStart() else Modifier, horizontalArrangement = Arrangement.spacedBy(22.dp),
+            contentPadding = PaddingValues(start = if (startInset == 0.dp) FocusBleed else startInset, end = 48.dp, top = 14.dp, bottom = 6.dp)) {
             items(items.size, key = { key(items[it]) }) { i ->
                 Box(Modifier.rememberedFocus(key(items[i])).then(if (focusFirst && i == 0 && !tookFocus) Modifier.initialFocus().onFocusChanged { if (it.hasFocus) tookFocus = true } else Modifier)) { content(items[i]) }
             }

@@ -181,7 +181,7 @@ fun HomeScreen(onPlay: (PlaybackItem) -> Unit, onOpenMovie: (String) -> Unit, on
         val homeScrolling = remember(pivot) { object : androidx.compose.foundation.gestures.BringIntoViewSpec {
             override fun calculateScrollDistance(offset: Float, size: Float, containerSize: Float): Float = offset - pivot
         } }
-        val rows = Modifier.padding(start = PageStart)
+        val rows = Modifier
         androidx.compose.runtime.CompositionLocalProvider(androidx.compose.foundation.gestures.LocalBringIntoViewSpec provides homeScrolling) {
             // Room under the last row so it can come up to the top like the others.
             LazyColumn(Modifier.fillMaxSize(), state = list, contentPadding = PaddingValues(bottom = 260.dp)) {
@@ -205,7 +205,7 @@ fun HomeScreen(onPlay: (PlaybackItem) -> Unit, onOpenMovie: (String) -> Unit, on
                 }
                 item(key = "cw") {
                     RowScrolling(rowScrolling, rows) {
-                        Shelf("Continue Watching", cw, { it.id }, focusFirst = current == null) { item ->
+                        Shelf("Continue Watching", cw, { it.id }, startInset = PageStart, focusFirst = current == null) { item ->
                             WideCard(item.progress.title, item.progress.subtitle, item.progress.posterURL,
                                 progress = if (item is ContinueWatchingItem.Resume) item.progress.fraction else null,
                                 badge = if (item is ContinueWatchingItem.NextEpisode) "UP NEXT" else null) { scope.launch { playContinue(app, item, onPlay) } }
@@ -214,7 +214,7 @@ fun HomeScreen(onPlay: (PlaybackItem) -> Unit, onOpenMovie: (String) -> Unit, on
                 }
                 item(key = "onNow") {
                     RowScrolling(rowScrolling, rows) {
-                        Shelf("On Now", onNow, { it.channel.id }, note = if (onNowFavorites) "Favorites" else "Recently Watched",
+                        Shelf("On Now", onNow, { it.channel.id }, startInset = PageStart, note = if (onNowFavorites) "Favorites" else "Recently Watched",
                             focusFirst = current == null && cw.isEmpty()) { (ch, program) ->
                             WideCard(program?.title ?: ch.displayName,
                                 if (program != null) "${ch.displayName} · ${fmtClock(program.start)}–${fmtClock(program.end)}" else ch.number?.let { "Channel $it" },
@@ -227,17 +227,17 @@ fun HomeScreen(onPlay: (PlaybackItem) -> Unit, onOpenMovie: (String) -> Unit, on
                 }
                 item(key = "movies") {
                     RowScrolling(rowScrolling, rows) {
-                        Shelf("Recently Added Movies", movies, { it.id }, focusFirst = current == null && cw.isEmpty() && onNow.isEmpty()) { m ->
+                        Shelf("Recently Added Movies", movies, { it.id }, startInset = PageStart, focusFirst = current == null && cw.isEmpty() && onNow.isEmpty()) { m ->
                             PosterCard(m.name, m.posterURL, m.year) { onOpenMovie(m.id) }
                         }
                     }
                 }
                 item(key = "shows") {
-                    RowScrolling(rowScrolling, rows) { Shelf("Recently Added Shows", shows, { it.id }) { s -> PosterCard(s.name, s.coverURL, s.year) { onOpenSeries(s.id) } } }
+                    RowScrolling(rowScrolling, rows) { Shelf("Recently Added Shows", shows, { it.id }, startInset = PageStart) { s -> PosterCard(s.name, s.coverURL, s.year) { onOpenSeries(s.id) } } }
                 }
                 item(key = "top") {
                     RowScrolling(rowScrolling, rows) {
-                        Shelf("Top Rated", topRated, { it.id }) { t ->
+                        Shelf("Top Rated", topRated, { it.id }, startInset = PageStart) { t ->
                             PosterCard(t.title, t.posterURL, t.rating?.let { "★ ${VODFormat.rating(it)}" }) {
                                 if (t.isMovie) onOpenMovie(t.mediaId) else onOpenSeries(t.mediaId)
                             }
@@ -246,6 +246,8 @@ fun HomeScreen(onPlay: (PlaybackItem) -> Unit, onOpenMovie: (String) -> Unit, on
                 }
             }
         }
+        // Cards scrolled past the first fade out under the rail rather than crowding its icons.
+        Box(Modifier.width(PageStart - 4.dp).fillMaxHeight().background(Brush.horizontalGradient(0f to TunerColors.background, 0.6f to TunerColors.background.copy(alpha = 0.88f), 1f to TunerColors.background.copy(alpha = 0f))))
     }
 }
 
