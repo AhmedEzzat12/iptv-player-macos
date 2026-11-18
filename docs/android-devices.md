@@ -83,3 +83,8 @@ details for 6 hours and episode lists for 30 minutes (`TimedCache`), and each se
 its first frame (`ScreenMemory`). Going back to Home showed a black page until its queries finished; now it's drawn
 at once. Opening a show no longer rewrites an unchanged episode list (which made every screen reload). Same run
 afterwards: **6.2% janky, p99 73 ms, 39 slow UI-thread frames**, and more frames drawn because content arrives sooner.
+
+Live TV afterwards: moving through categories switches only once focus settles (250 ms) and guide data loads for the
+channels around the ones on screen. At a normal pace through 15 categories: median frame 18 → 10 ms, p90 48 → 19 ms;
+scrolling 40 channels stays under 1.5% janky. The TV Guide now fits 90 minutes to the screen on one shared timeline
+(rows used to scroll sideways on their own); Right/Left at its edge pages by 30 minutes.

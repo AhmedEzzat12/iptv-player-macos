@@ -21,6 +21,17 @@ import app.tuner.tv.ui.FocusBleed
 import app.tuner.tv.ui.bleedStart
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.Key
+import androidx.compose.runtime.withFrameNanos
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -114,8 +125,20 @@ fun LiveScreen(onPlay: (PlaybackItem) -> Unit, initial: Library.ChannelScope = L
     var renamingCategory by remember { mutableStateOf<app.tuner.core.models.Category?>(null) }
     var liveCategories by rememberScreenState("live.categories") { emptyMap<String, app.tuner.core.models.Category>() }
     var nowEpoch by remember { mutableLongStateOf(System.currentTimeMillis() / 1000) }
-    // Grid 2-hour window start, rounded down to 30 minutes.
+    // The guide's window start, rounded down to 30 minutes (it shows GUIDE_SPAN seconds from there).
     var windowStartEpoch by remember { mutableLongStateOf((System.currentTimeMillis() / 1000 / 1800) * 1800) }
+    // The category focus rests on. Moving through the list switches category only once focus settles: every category
+    // passed over used to load (and lay out) its channels, so going down the list stuttered at each step.
+    var focusedScope by remember { mutableStateOf(initial) }
+    LaunchedEffect(focusedScope) { if (focusedScope != selected) { delay(250); selected = focusedScope } }
+    val channelList = rememberLazyListState()
+    val guideList = rememberLazyListState()
+    LaunchedEffect(selected) { channelList.scrollToItem(0); guideList.scrollToItem(0) }
+    // Guide data is loaded for the channels around the ones on screen (in steps of 20 rows), not for the whole
+    // category: "All Channels" asked for every channel's programmes at each change and every five minutes.
+    val firstVisible by remember { derivedStateOf { (if (showGrid) guideList else channelList).firstVisibleItemIndex } }
+    val programmeStep = firstVisible / 20
+    var programmesFor by remember { mutableStateOf<Any?>(null) }
 
     LaunchedEffect(Unit) {
         app.database.changes.collect {
@@ -137,15 +160,21 @@ fun LiveScreen(onPlay: (PlaybackItem) -> Unit, initial: Library.ChannelScope = L
     LaunchedEffect(selected, revision, guideRevision) {
         channels = app.library.channels(selected).also { memory["live.channels.$selected"] = it }
     }
-    LaunchedEffect(channels, guideRevision, windowStartEpoch, showGrid, nowEpoch / 300) {
-        val keys = channels.mapNotNull { it.epgKey }
-        if (keys.isEmpty()) {
-            programsByKey = emptyMap()
-        } else {
-            val from = if (showGrid) Instant.ofEpochSecond(windowStartEpoch) else Instant.ofEpochSecond(nowEpoch - 1800)
-            val to = if (showGrid) Instant.ofEpochSecond(windowStartEpoch + 7200) else Instant.ofEpochSecond(nowEpoch + 6 * 3600)
-            programsByKey = app.library.programs(keys, from, to).also { if (!showGrid) memory["live.programs.$selected"] = it }
-        }
+    LaunchedEffect(channels, guideRevision, windowStartEpoch, showGrid, nowEpoch / 300, programmeStep) {
+        val start = ((programmeStep - 1) * 20).coerceIn(0, channels.size)
+        val end = ((programmeStep + 3) * 20).coerceIn(start, channels.size)
+        val keys = channels.subList(start, end).mapNotNull { it.epgKey }.distinct()
+        val from = if (showGrid) Instant.ofEpochSecond(windowStartEpoch) else Instant.ofEpochSecond(nowEpoch - 1800)
+        val to = if (showGrid) Instant.ofEpochSecond(windowStartEpoch + GUIDE_SPAN) else Instant.ofEpochSecond(nowEpoch + 6 * 3600)
+        val loaded = if (keys.isEmpty()) emptyMap() else app.library.programs(keys, from, to)
+        // Rows loaded earlier for the same list, guide and window are kept as focus moves down the list.
+        val loadedFor = listOf(System.identityHashCode(channels), showGrid, windowStartEpoch, guideRevision)
+        val sameList = programmesFor == loadedFor
+        val updated = (if (sameList) programsByKey - keys.toSet() else emptyMap()) + loaded
+        // Unchanged (most steps down a list without guide data): don't redraw every row mid-scroll.
+        if (updated != programsByKey) programsByKey = updated
+        programmesFor = loadedFor
+        if (!showGrid) memory["live.programs.$selected"] = programsByKey
     }
 
     BackHandler(enabled = showGrid) { showGrid = false }
@@ -157,7 +186,8 @@ fun LiveScreen(onPlay: (PlaybackItem) -> Unit, initial: Library.ChannelScope = L
             GuideGridView(
                 groups = groups,
                 selected = selected,
-                onSelectGroup = { selected = it },
+                onSelectGroup = { selected = it; focusedScope = it },
+                listState = guideList,
                 channels = channels,
                 programsByKey = programsByKey,
                 now = now,
@@ -182,8 +212,8 @@ fun LiveScreen(onPlay: (PlaybackItem) -> Unit, initial: Library.ChannelScope = L
                         contentPadding = PaddingValues(start = FocusBleed, top = 4.dp, bottom = 48.dp)) {
                         items(groups, key = { it.first + it.second }) { (name, grpScope) ->
                             SideListRow(name, grpScope == selected,
-                                Modifier.initialFocus(enabled = grpScope == initial).onFocusChanged { if (it.isFocused) selected = grpScope },
-                                onLongClick = { (grpScope as? Library.ChannelScope.InCategory)?.let { menuCategory = liveCategories[it.id] } }) { selected = grpScope }
+                                Modifier.initialFocus(enabled = grpScope == initial).onFocusChanged { if (it.isFocused) focusedScope = grpScope },
+                                onLongClick = { (grpScope as? Library.ChannelScope.InCategory)?.let { menuCategory = liveCategories[it.id] } }) { selected = grpScope; focusedScope = grpScope }
                         }
                     }
                 }
@@ -193,7 +223,7 @@ fun LiveScreen(onPlay: (PlaybackItem) -> Unit, initial: Library.ChannelScope = L
                         if (groups.size <= 3) "Add a playlist in Settings to watch live TV." else null)
                 } else {
                     val firstChannel = remember { FocusRequester() }
-                    LazyColumn(Modifier.fillMaxSize().focusRestorer(firstChannel), verticalArrangement = Arrangement.spacedBy(6.dp),
+                    LazyColumn(Modifier.fillMaxSize().focusRestorer(firstChannel), state = channelList, verticalArrangement = Arrangement.spacedBy(6.dp),
                         contentPadding = PaddingValues(top = 4.dp, bottom = 48.dp, end = 4.dp)) {
                         items(channels, key = { it.id }) { ch ->
                             val progs = ch.epgKey?.let { programsByKey[it] }.orEmpty()
@@ -294,11 +324,28 @@ private fun ChannelRow(ch: Channel, current: Program?, next: Program?, now: Inst
     }
 }
 
+/** How much of the day the guide shows at once: 90 minutes fit the screen beside the channel column. */
+private const val GUIDE_SPAN = 5400L
+private const val GUIDE_STEP = 1800L
+private val GUIDE_ROW = 60.dp
+private val GUIDE_CHANNEL = 200.dp
+
+/** A programme to focus once the guide's window has moved: the one on `channelId` that covers `epoch`. */
+private data class GuideFocus(val channelId: String, val epoch: Long)
+
+/**
+ * The TV Guide: one timeline shared by every row, sized to fit the screen, so programmes line up with the time ruler
+ * and with each other, and Up/Down lands on what's on at the same time on the next channel. Right from a row's last
+ * programme (or Left from its first, when the window is ahead of now) moves the window by 30 minutes and focuses the
+ * next (or previous) programme. Each row used to scroll sideways on its own over a timeline twice the screen's width,
+ * so moving right on one channel slid it out of line with the ruler and the rows around it.
+ */
 @Composable
 private fun GuideGridView(
     groups: List<Pair<String, Library.ChannelScope>>,
     selected: Library.ChannelScope,
     onSelectGroup: (Library.ChannelScope) -> Unit,
+    listState: androidx.compose.foundation.lazy.LazyListState,
     channels: List<Channel>,
     programsByKey: Map<String, List<Program>>,
     now: Instant,
@@ -308,119 +355,125 @@ private fun GuideGridView(
     onPlay: (PlaybackItem) -> Unit,
     onInspect: (Channel, Program) -> Unit,
 ) {
-    val windowStart = Instant.ofEpochSecond(windowStartEpoch)
-    val windowEnd = Instant.ofEpochSecond(windowStartEpoch + 7200)
+    val windowEnd = windowStartEpoch + GUIDE_SPAN
+    var pendingFocus by remember { mutableStateOf<GuideFocus?>(null) }
+    val nowSlot = now.epochSecond / GUIDE_STEP * GUIDE_STEP
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                 PageTitle("TV Guide")
-                PillButton("Channels List", onClick = onCloseGrid, modifier = Modifier.initialFocus())
+                PillButton("Channels List", onClick = onCloseGrid)
             }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                PillButton("◀ -2h", onClick = { onShiftWindow(-7200) })
+                PillButton("Earlier", onClick = { onShiftWindow(-3600) })
                 PillButton("Now", onClick = { onShiftWindow(0) })
-                PillButton("+2h ▶", onClick = { onShiftWindow(7200) })
+                PillButton("Later", onClick = { onShiftWindow(3600) })
             }
         }
-        Spacer(Modifier.height(8.dp))
-        LazyRow(Modifier.bleedStart(), horizontalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(vertical = 4.dp, horizontal = FocusBleed)) {
+        Spacer(Modifier.height(6.dp))
+        LazyRow(Modifier.bleedStart(), horizontalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(vertical = 6.dp, horizontal = FocusBleed)) {
             items(groups, key = { it.first + it.second }) { (name, grpScope) ->
                 PillButton(name, onClick = { onSelectGroup(grpScope) }, selected = grpScope == selected)
             }
         }
-        Spacer(Modifier.height(8.dp))
-        // Time ruler header (4 x 30 min = 1120 dp)
-        Row(Modifier.fillMaxWidth().padding(bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.width(220.dp)) {
-                Text(fmtDayClock(windowStart), color = TunerColors.accent, style = MaterialTheme.typography.titleSmall)
-            }
-            Spacer(Modifier.width(12.dp))
-            for (slot in 0 until 4) {
-                val tick = Instant.ofEpochSecond(windowStartEpoch + slot * 1800L)
-                Box(Modifier.width(280.dp)) {
-                    Text(fmtClock(tick), color = Color.White.copy(alpha = 0.7f), style = MaterialTheme.typography.bodyMedium)
-                }
-            }
-        }
-        if (channels.isEmpty()) {
-            Placeholder("No channels in this category.")
-        } else {
-            LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(bottom = 36.dp)) {
-                items(channels, key = { it.id }) { ch ->
-                    val progs = ch.epgKey?.let { programsByKey[it] }.orEmpty()
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Surface(
-                            onClick = { onPlay(PlaybackItem.Live(ch, channels)) },
-                            shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(8.dp)),
-                            colors = ClickableSurfaceDefaults.colors(containerColor = TunerColors.surface, contentColor = Color.White,
-                                focusedContainerColor = Color.White, focusedContentColor = Color.Black),
-                            scale = ClickableSurfaceDefaults.scale(focusedScale = 1.02f),
-                            modifier = Modifier.width(220.dp).height(64.dp),
-                        ) {
-                            Row(Modifier.fillMaxSize().padding(horizontal = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                                if (ch.logoURL != null) {
-                                    AsyncImage(ch.logoURL, null, Modifier.size(40.dp, 28.dp), contentScale = ContentScale.Fit)
-                                    Spacer(Modifier.width(8.dp))
-                                }
-                                Text((ch.number?.let { "$it " } ?: "") + ch.displayName, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                                    style = MaterialTheme.typography.bodyMedium)
-                            }
+        BoxWithConstraints(Modifier.fillMaxSize()) {
+            val timeline = maxWidth - GUIDE_CHANNEL - 12.dp
+            val perSecond = timeline / GUIDE_SPAN.toFloat()
+            Column(Modifier.fillMaxSize()) {
+                // Time ruler: a tick every 30 minutes, and where "now" falls.
+                Row(Modifier.fillMaxWidth().height(30.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(fmtDayClock(Instant.ofEpochSecond(windowStartEpoch)), Modifier.width(GUIDE_CHANNEL + 12.dp), color = TunerColors.accent,
+                        style = MaterialTheme.typography.titleSmall)
+                    Box(Modifier.width(timeline).fillMaxHeight()) {
+                        var tick = windowStartEpoch
+                        while (tick < windowEnd) {
+                            Text(fmtClock(Instant.ofEpochSecond(tick)), Modifier.offset(x = perSecond * (tick - windowStartEpoch).toFloat()).align(Alignment.CenterStart),
+                                color = TunerColors.secondary, style = MaterialTheme.typography.bodyMedium)
+                            tick += GUIDE_STEP
                         }
-                        Spacer(Modifier.width(12.dp))
-                        if (progs.isEmpty()) {
-                            Surface(
-                                onClick = { onPlay(PlaybackItem.Live(ch, channels)) },
-                                shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(8.dp)),
-                                colors = ClickableSurfaceDefaults.colors(containerColor = TunerColors.surface.copy(alpha = 0.6f),
-                                    contentColor = Color.White.copy(alpha = 0.5f), focusedContainerColor = Color.White, focusedContentColor = Color.Black),
-                                scale = ClickableSurfaceDefaults.scale(focusedScale = 1.01f),
-                                modifier = Modifier.width(1120.dp).height(64.dp),
-                            ) {
-                                Box(Modifier.fillMaxSize().padding(horizontal = 14.dp), contentAlignment = Alignment.CenterStart) {
-                                    Text("No program information", style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+                if (channels.isEmpty()) {
+                    Placeholder("No channels in this category.")
+                } else {
+                    LazyColumn(Modifier.fillMaxSize(), state = listState, verticalArrangement = Arrangement.spacedBy(6.dp), contentPadding = PaddingValues(top = 6.dp, bottom = 36.dp)) {
+                        itemsIndexed(channels, key = { _, ch -> ch.id }) { index, ch ->
+                            val progs = ch.epgKey?.let { programsByKey[it] }.orEmpty().filter { it.end.epochSecond > windowStartEpoch && it.start.epochSecond < windowEnd }
+                            Row(Modifier.fillMaxWidth().height(GUIDE_ROW), verticalAlignment = Alignment.CenterVertically) {
+                                GuideCell(onClick = { onPlay(PlaybackItem.Live(ch, channels)) }, modifier = Modifier.width(GUIDE_CHANNEL).fillMaxHeight(),
+                                    focusedScale = 1.03f) {
+                                    Row(Modifier.fillMaxSize().padding(horizontal = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                                        if (ch.logoURL != null) {
+                                            AsyncImage(ch.logoURL, null, Modifier.size(40.dp, 28.dp), contentScale = ContentScale.Fit)
+                                            Spacer(Modifier.width(8.dp))
+                                        }
+                                        Text((ch.number?.let { "$it " } ?: "") + ch.displayName, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                                            style = MaterialTheme.typography.bodyMedium)
+                                    }
                                 }
-                            }
-                        } else {
-                            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                for (p in progs) {
-                                    val clampedStart = maxOf(p.start.epochSecond, windowStart.epochSecond)
-                                    val clampedEnd = minOf(p.end.epochSecond, windowEnd.epochSecond)
-                                    val secs = (clampedEnd - clampedStart).coerceAtLeast(600L)
-                                    val widthDp = ((secs / 7200f) * 1120f).coerceIn(160f, 1120f).dp
-                                    val live = p.isLive(now)
-                                    val pastCatchup = p.end.isBefore(now) && ch.catchupAvailable(p, now)
-                                    Surface(
-                                        onClick = {
-                                            when {
-                                                live -> onPlay(PlaybackItem.Live(ch, channels))
-                                                pastCatchup -> onPlay(PlaybackItem.Catchup(ch, p))
-                                                else -> onInspect(ch, p)
-                                            }
-                                        },
-                                        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(8.dp)),
-                                        colors = ClickableSurfaceDefaults.colors(
-                                            containerColor = if (live) TunerColors.surface else TunerColors.surface.copy(alpha = 0.72f),
-                                            contentColor = Color.White,
-                                            focusedContainerColor = Color.White, focusedContentColor = Color.Black,
-                                        ),
-                                        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.02f),
-                                        modifier = Modifier.width(widthDp).height(64.dp),
-                                    ) {
-                                        Box(Modifier.fillMaxSize()) {
-                                            Column(Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 8.dp), verticalArrangement = Arrangement.SpaceBetween) {
-                                                Text(p.title, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium)
-                                                val badge = when {
-                                                    live -> "  ·  LIVE"
-                                                    pastCatchup -> "  ·  ⟲ Catchup"
-                                                    else -> ""
-                                                }
-                                                Text("${fmtClock(p.start)}–${fmtClock(p.end)}$badge", maxLines = 1,
-                                                    style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-                                            }
-                                            if (live) {
-                                                Box(Modifier.align(Alignment.BottomStart).fillMaxWidth(p.progress(now).toFloat()).height(3.dp).background(TunerColors.accent))
+                                Spacer(Modifier.width(12.dp))
+                                Box(Modifier.width(timeline).fillMaxHeight()) {
+                                    if (progs.isEmpty()) {
+                                        GuideCell(onClick = { onPlay(PlaybackItem.Live(ch, channels)) }, modifier = Modifier.fillMaxSize()
+                                            .initialFocus(enabled = index == 0), quiet = true) {
+                                            Box(Modifier.fillMaxSize().padding(horizontal = 14.dp), contentAlignment = Alignment.CenterStart) {
+                                                Text("No programme information", style = MaterialTheme.typography.bodySmall)
                                             }
                                         }
+                                    }
+                                    progs.forEachIndexed { i, p ->
+                                        val from = maxOf(p.start.epochSecond, windowStartEpoch)
+                                        val to = minOf(p.end.epochSecond, windowEnd)
+                                        val live = p.isLive(now)
+                                        val pastCatchup = p.end.isBefore(now) && ch.catchupAvailable(p, now)
+                                        val requester = remember { FocusRequester() }
+                                        val target = pendingFocus
+                                        if (target != null && target.channelId == ch.id && target.epoch >= p.start.epochSecond && target.epoch < p.end.epochSecond) {
+                                            LaunchedEffect(target) { withFrameNanos { }; runCatching { requester.requestFocus() }; pendingFocus = null }
+                                        }
+                                        GuideCell(
+                                            onClick = {
+                                                when {
+                                                    live -> onPlay(PlaybackItem.Live(ch, channels))
+                                                    pastCatchup -> onPlay(PlaybackItem.Catchup(ch, p))
+                                                    else -> onInspect(ch, p)
+                                                }
+                                            },
+                                            onLongClick = { onInspect(ch, p) },
+                                            modifier = Modifier.offset(x = perSecond * (from - windowStartEpoch).toFloat())
+                                                .width((perSecond * (to - from).toFloat() - 4.dp).coerceAtLeast(6.dp)).fillMaxHeight()
+                                                .focusRequester(requester)
+                                                .initialFocus(enabled = index == 0 && live)
+                                                .onPreviewKeyEvent { e ->
+                                                    if (e.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                                                    when {
+                                                        // Right from the last programme in view: 30 minutes later, focus on what follows.
+                                                        e.key == Key.DirectionRight && i == progs.lastIndex && p.end.epochSecond >= windowEnd -> {
+                                                            pendingFocus = GuideFocus(ch.id, p.end.epochSecond); onShiftWindow(GUIDE_STEP); true
+                                                        }
+                                                        // Left from the first, when the window is ahead of now: 30 minutes earlier.
+                                                        e.key == Key.DirectionLeft && i == 0 && windowStartEpoch > nowSlot && p.start.epochSecond <= windowStartEpoch -> {
+                                                            pendingFocus = GuideFocus(ch.id, windowStartEpoch - 1); onShiftWindow(-GUIDE_STEP); true
+                                                        }
+                                                        else -> false
+                                                    }
+                                                },
+                                            quiet = !live,
+                                        ) {
+                                            Box(Modifier.fillMaxSize()) {
+                                                Column(Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 8.dp), verticalArrangement = Arrangement.SpaceBetween) {
+                                                    Text(p.title, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium)
+                                                    Text("${fmtClock(p.start)}–${fmtClock(p.end)}" + if (pastCatchup) "  ·  Catchup" else "", maxLines = 1,
+                                                        style = MaterialTheme.typography.bodySmall, color = LocalContentColor.current.copy(alpha = 0.6f))
+                                                }
+                                                if (live) Box(Modifier.align(Alignment.BottomStart).fillMaxWidth(p.progress(now).toFloat()).height(3.dp).background(TunerColors.accent))
+                                            }
+                                        }
+                                    }
+                                    // Now, as a line through the row.
+                                    if (now.epochSecond in windowStartEpoch until windowEnd) {
+                                        Box(Modifier.offset(x = perSecond * (now.epochSecond - windowStartEpoch).toFloat()).width(2.dp).fillMaxHeight()
+                                            .background(TunerColors.accent.copy(alpha = 0.8f)))
                                     }
                                 }
                             }
@@ -430,4 +483,17 @@ private fun GuideGridView(
             }
         }
     }
+}
+
+/** A guide cell: quiet until focused, then white with dark text. The programme on now sits a little brighter. */
+@Composable
+private fun GuideCell(onClick: () -> Unit, modifier: Modifier, onLongClick: (() -> Unit)? = null, quiet: Boolean = false, focusedScale: Float = 1f,
+                      content: @Composable androidx.compose.foundation.layout.BoxScope.() -> Unit) {
+    Surface(
+        onClick = onClick, onLongClick = onLongClick, modifier = modifier,
+        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(10.dp)),
+        colors = ClickableSurfaceDefaults.colors(containerColor = if (quiet) Color.White.copy(alpha = 0.05f) else Color.White.copy(alpha = 0.11f),
+            contentColor = Color.White, focusedContainerColor = Color.White, focusedContentColor = TunerColors.onFocus),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = focusedScale),
+    ) { Box(Modifier.fillMaxSize(), content = content) }
 }
