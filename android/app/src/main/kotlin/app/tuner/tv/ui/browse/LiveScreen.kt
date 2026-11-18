@@ -2,6 +2,10 @@ package app.tuner.tv.ui.browse
 
 import app.tuner.tv.ui.rememberedFocus
 import app.tuner.tv.ui.PillButton
+import app.tuner.tv.ui.SideListRow
+import app.tuner.tv.ui.ProgressLine
+import androidx.compose.material.icons.filled.History
+import androidx.tv.material3.Icon
 import app.tuner.tv.ui.TvDialog
 import app.tuner.tv.ui.Eyebrow
 import androidx.compose.material.icons.Icons
@@ -164,79 +168,36 @@ fun LiveScreen(onPlay: (PlaybackItem) -> Unit, initial: Library.ChannelScope = L
             )
         } else {
             Row(Modifier.fillMaxSize()) {
-                LazyColumn(Modifier.width(320.dp).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    item {
-                        Row(Modifier.fillMaxWidth().padding(bottom = 8.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                            PageTitle(if (initial == Library.ChannelScope.Favorites) "Favorites" else "Live TV")
-                            PillButton("TV Guide", icon = Icons.Filled.CalendarViewWeek, onClick = {
-                                windowStartEpoch = (System.currentTimeMillis() / 1000 / 1800) * 1800
-                                showGrid = true
-                            })
+                Column(Modifier.width(250.dp).fillMaxHeight()) {
+                    PageTitle(if (initial == Library.ChannelScope.Favorites) "Favorites" else "Live TV")
+                    PillButton("TV Guide", icon = Icons.Filled.CalendarViewWeek, onClick = {
+                        windowStartEpoch = (System.currentTimeMillis() / 1000 / 1800) * 1800
+                        showGrid = true
+                    })
+                    Spacer(Modifier.height(14.dp))
+                    LazyColumn(Modifier.fillMaxSize().bleedStart(), verticalArrangement = Arrangement.spacedBy(2.dp),
+                        contentPadding = PaddingValues(start = FocusBleed, top = 4.dp, bottom = 48.dp)) {
+                        items(groups, key = { it.first + it.second }) { (name, grpScope) ->
+                            SideListRow(name, grpScope == selected,
+                                Modifier.initialFocus(enabled = grpScope == initial).onFocusChanged { if (it.isFocused) selected = grpScope },
+                                onLongClick = { (grpScope as? Library.ChannelScope.InCategory)?.let { menuCategory = liveCategories[it.id] } }) { selected = grpScope }
                         }
                     }
-                    items(groups, key = { it.first + it.second }) { (name, grpScope) ->
-                        ListItem(
-                            selected = grpScope == selected,
-                            onClick = { selected = grpScope },
-                            onLongClick = { (grpScope as? Library.ChannelScope.InCategory)?.let { menuCategory = liveCategories[it.id] } },
-                            headlineContent = { Text(name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                            modifier = Modifier.initialFocus(enabled = grpScope == initial).onFocusChanged { if (it.isFocused) selected = grpScope },
-                        )
-                    }
                 }
-                Spacer(Modifier.width(32.dp))
+                Spacer(Modifier.width(24.dp))
                 if (channels.isEmpty()) {
-                    Placeholder(if (groups.size <= 3) "Add a playlist in Settings to watch live TV." else "No channels here.")
+                    Placeholder(if (groups.size <= 3) "No channels yet" else "No channels here",
+                        if (groups.size <= 3) "Add a playlist in Settings to watch live TV." else null)
                 } else {
                     val firstChannel = remember { FocusRequester() }
-                    LazyColumn(Modifier.fillMaxSize().focusRestorer(firstChannel), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    LazyColumn(Modifier.fillMaxSize().focusRestorer(firstChannel), verticalArrangement = Arrangement.spacedBy(6.dp),
+                        contentPadding = PaddingValues(top = 4.dp, bottom = 48.dp, end = 4.dp)) {
                         items(channels, key = { it.id }) { ch ->
                             val progs = ch.epgKey?.let { programsByKey[it] }.orEmpty()
                             val current = progs.firstOrNull { it.isLive(now) }
                             val next = progs.firstOrNull { !it.start.isBefore(current?.end ?: now) && it != current }
-                            ListItem(
-                                selected = false,
-                                onClick = { onPlay(PlaybackItem.Live(ch, channels)) },
-                                onLongClick = { menuChannel = ch },
-                                leadingContent = {
-                                    Box(Modifier.size(64.dp, 40.dp).background(TunerColors.surface, RoundedCornerShape(6.dp)), contentAlignment = Alignment.Center) {
-                                        if (ch.logoURL != null) AsyncImage(ch.logoURL, null, Modifier.fillMaxSize().padding(4.dp), contentScale = ContentScale.Fit)
-                                        else Text(ch.number?.toString() ?: "", color = Color.White.copy(alpha = 0.6f))
-                                    }
-                                },
-                                headlineContent = {
-                                    Text((ch.number?.let { "$it  " } ?: "") + ch.displayName, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                },
-                                // Secondary text follows the row's content colour (dark on the white focused row; it was
-                                // fixed white and vanished there).
-                                supportingContent = if (current != null || next != null) {
-                                    {
-                                        Column(Modifier.padding(top = 2.dp)) {
-                                            if (current != null) {
-                                                Text("${current.title}  ·  ${fmtClock(current.start)}–${fmtClock(current.end)}",
-                                                    maxLines = 1, overflow = TextOverflow.Ellipsis, color = LocalContentColor.current.copy(alpha = 0.78f),
-                                                    style = MaterialTheme.typography.bodySmall)
-                                                Spacer(Modifier.height(4.dp))
-                                                Box(Modifier.width(240.dp).height(3.dp).background(LocalContentColor.current.copy(alpha = 0.2f))) {
-                                                    Box(Modifier.fillMaxWidth(current.progress(now).toFloat()).height(3.dp).background(TunerColors.accent))
-                                                }
-                                            }
-                                            if (next != null) {
-                                                Spacer(Modifier.height(2.dp))
-                                                Text("Next · ${fmtClock(next.start)}  ${next.title}", maxLines = 1, overflow = TextOverflow.Ellipsis,
-                                                    color = LocalContentColor.current.copy(alpha = 0.6f), style = MaterialTheme.typography.bodySmall)
-                                            }
-                                        }
-                                    }
-                                } else null,
-                                trailingContent = {
-                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                                        if (ch.hasCatchup) Text("⟲", color = LocalContentColor.current.copy(alpha = 0.6f))
-                                        if (ch.isFavorite) Text("★", color = TunerColors.accent)
-                                    }
-                                },
-                                modifier = Modifier.fillMaxWidth().rememberedFocus(ch.id).then(if (ch.id == channels.first().id) Modifier.focusRequester(firstChannel) else Modifier),
-                            )
+                            ChannelRow(ch, current, next, now, onClick = { onPlay(PlaybackItem.Live(ch, channels)) }, onLongClick = { menuChannel = ch },
+                                modifier = Modifier.rememberedFocus(ch.id).then(if (ch.id == channels.first().id) Modifier.focusRequester(firstChannel) else Modifier))
                         }
                     }
                 }
@@ -282,6 +243,50 @@ fun LiveScreen(onPlay: (PlaybackItem) -> Unit, initial: Library.ChannelScope = L
                         modifier = if (!canCatchup) Modifier.initialFocus(prog.stableKey) else Modifier)
                 }
             }
+        }
+    }
+}
+
+/**
+ * One channel: its logo on a tile, number and name, the programme on now with its progress, and what's next. Quiet
+ * until focused, then white with dark text (secondary lines follow the row's content colour so they stay readable).
+ */
+@Composable
+private fun ChannelRow(ch: Channel, current: Program?, next: Program?, now: Instant, onClick: () -> Unit, onLongClick: () -> Unit, modifier: Modifier = Modifier) {
+    Surface(
+        onClick = onClick, onLongClick = onLongClick, modifier = modifier.fillMaxWidth().height(78.dp),
+        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(14.dp)),
+        colors = ClickableSurfaceDefaults.colors(containerColor = Color.White.copy(alpha = 0.05f), contentColor = Color.White,
+            focusedContainerColor = Color.White, focusedContentColor = TunerColors.onFocus),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.02f),
+    ) {
+        Row(Modifier.fillMaxSize().padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(96.dp, 54.dp).background(Color.Black.copy(alpha = 0.35f), RoundedCornerShape(10.dp)), contentAlignment = Alignment.Center) {
+                if (ch.logoURL != null) AsyncImage(ch.logoURL, null, Modifier.fillMaxSize().padding(6.dp), contentScale = ContentScale.Fit)
+                else Text(ch.number?.toString() ?: ch.displayName.take(2), style = MaterialTheme.typography.titleSmall, color = Color.White.copy(alpha = 0.6f))
+            }
+            Spacer(Modifier.width(16.dp))
+            Column(Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    ch.number?.let { Text("$it", style = MaterialTheme.typography.titleSmall, color = LocalContentColor.current.copy(alpha = 0.55f)); Spacer(Modifier.width(8.dp)) }
+                    Text(ch.displayName, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                    if (ch.isFavorite) { Spacer(Modifier.width(8.dp)); Text("★", color = TunerColors.accent, style = MaterialTheme.typography.titleSmall) }
+                }
+                if (current != null) {
+                    Spacer(Modifier.height(3.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(current.title, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                            color = LocalContentColor.current.copy(alpha = 0.8f), modifier = Modifier.weight(1f, fill = false))
+                        Spacer(Modifier.width(10.dp))
+                        Box(Modifier.width(64.dp)) { ProgressLine(current.progress(now), color = TunerColors.accent) }
+                    }
+                }
+                if (next != null) Text("Next  ${fmtClock(next.start)}  ${next.title}", style = MaterialTheme.typography.bodySmall, maxLines = 1,
+                    overflow = TextOverflow.Ellipsis, color = LocalContentColor.current.copy(alpha = 0.5f))
+                if (current == null && next == null) Text("No programme information", style = MaterialTheme.typography.bodySmall,
+                    color = LocalContentColor.current.copy(alpha = 0.45f))
+            }
+            if (ch.hasCatchup) Icon(Icons.Filled.History, "Catchup", Modifier.padding(start = 12.dp).size(20.dp), tint = LocalContentColor.current.copy(alpha = 0.5f))
         }
     }
 }

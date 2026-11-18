@@ -1,6 +1,11 @@
 package app.tuner.tv.ui.browse
 
 import app.tuner.tv.ui.PillButton
+import app.tuner.tv.ui.Eyebrow
+import app.tuner.tv.ui.ProgressLine
+import app.tuner.tv.ui.SectionHeader
+import app.tuner.tv.ui.TunerColors
+import app.tuner.tv.ui.SideListRow
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Replay
@@ -153,11 +158,11 @@ fun VodGridScreen(kind: CategoryKind, onOpen: (String) -> Unit) {
                     verticalArrangement = Arrangement.spacedBy(2.dp),
                     contentPadding = PaddingValues(start = FocusBleed, top = 4.dp, bottom = 48.dp)) {
                     item(key = "") {
-                        CategoryRow("All", selected == null, Modifier.focusRequester(requester("")).initialFocus()
+                        SideListRow("All", selected == null, Modifier.focusRequester(requester("")).initialFocus()
                             .onFocusChanged { if (it.isFocused) { focusedCategory = null; focusedAny = true } }) { selected = null; focusedAny = false }
                     }
                     items(categories, key = { it.id }) { c ->
-                        CategoryRow(c.displayName, selected == c.id, Modifier.focusRequester(requester(c.id))
+                        SideListRow(c.displayName, selected == c.id, Modifier.focusRequester(requester(c.id))
                             .onFocusChanged { if (it.isFocused) { focusedCategory = c.id; focusedAny = true } },
                             onLongClick = { menuCategory = c }) { selected = c.id; focusedAny = false }
                     }
@@ -193,25 +198,6 @@ fun VodGridScreen(kind: CategoryKind, onOpen: (String) -> Unit) {
         }
         renamingCategory?.let { cat ->
             RenameDialog("Rename Category", cat.alias ?: "", cat.name, onSave = { scope.launch { app.library.renameCategory(cat.id, it) } }) { renamingCategory = null }
-        }
-    }
-}
-
-/** One category in the Movies/TV Shows list: 36 dp rows (ListItem's 48 dp, even the dense one, fitted only nine on
- * screen), and the selected one stays marked while focus is on the posters. */
-@Composable
-private fun CategoryRow(name: String, selected: Boolean, modifier: Modifier, onLongClick: (() -> Unit)? = null, onClick: () -> Unit) {
-    Surface(
-        onClick = onClick, onLongClick = onLongClick, modifier = modifier.fillMaxWidth().height(36.dp),
-        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(8.dp)),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.03f),
-        colors = ClickableSurfaceDefaults.colors(
-            containerColor = if (selected) Color.White.copy(alpha = 0.14f) else Color.Transparent, contentColor = Color.White,
-            focusedContainerColor = Color.White, focusedContentColor = Color.Black,
-        ),
-    ) {
-        Box(Modifier.fillMaxSize().padding(horizontal = 14.dp), contentAlignment = Alignment.CenterStart) {
-            Text(name, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium)
         }
     }
 }
@@ -265,17 +251,40 @@ private fun DetailPage(backdrop: String?, poster: String?, list: LazyListState =
     }
 }
 
-/** The title block: the show's logo (online metadata) or its name, the details line and the plot. */
+/** The title block: the kind, the show's logo (online metadata) or its name, the details line and the plot. */
 @Composable
-private fun HeroTitle(title: String, meta: MediaMetadata?, details: String, plot: String?) {
+private fun HeroTitle(eyebrow: String, title: String, meta: MediaMetadata?, details: String, plot: String?) {
+    Text(eyebrow.uppercase(), style = Eyebrow, color = TunerColors.secondary)
+    Spacer(Modifier.height(10.dp))
     if (meta?.logoURL != null) AsyncImage(meta.logoURL, title, Modifier.height(110.dp).widthIn(max = 420.dp), contentScale = ContentScale.Fit, alignment = Alignment.BottomStart)
     else Text(title, Modifier.widthIn(max = 680.dp), style = MaterialTheme.typography.displaySmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
-    if (details.isNotEmpty()) { Spacer(Modifier.height(10.dp)); Text(details, color = Color.White.copy(alpha = 0.75f), style = MaterialTheme.typography.bodyLarge) }
+    if (details.isNotEmpty()) { Spacer(Modifier.height(10.dp)); Text(details, color = Color.White.copy(alpha = 0.85f), style = MaterialTheme.typography.bodyLarge) }
     plot?.takeIf { it.isNotBlank() }?.let {
         Spacer(Modifier.height(10.dp))
-        Text(it, Modifier.widthIn(max = 600.dp), maxLines = 3, overflow = TextOverflow.Ellipsis, color = Color.White.copy(alpha = 0.85f), style = MaterialTheme.typography.bodyMedium)
+        Text(it, Modifier.widthIn(max = 600.dp), maxLines = 3, overflow = TextOverflow.Ellipsis, color = Color.White.copy(alpha = 0.8f), style = MaterialTheme.typography.bodyMedium)
     }
-    Spacer(Modifier.height(20.dp))
+    Spacer(Modifier.height(22.dp))
+}
+
+/** Cast and director under the title, as the Apple TV app's "Cast & Crew" (names only: providers send no photos). */
+private fun LazyListScope.castAndCrew(cast: String?, director: String?) {
+    if (cast.isNullOrBlank() && director.isNullOrBlank()) return
+    item {
+        Column(Modifier.padding(top = 18.dp).widthIn(max = 820.dp)) {
+            SectionHeader("Cast & Crew")
+            Spacer(Modifier.height(10.dp))
+            if (!cast.isNullOrBlank()) Credit("Starring", cast)
+            if (!director.isNullOrBlank()) Credit("Director", director)
+        }
+    }
+}
+
+@Composable
+private fun Credit(role: String, names: String) {
+    Row(Modifier.padding(bottom = 6.dp)) {
+        Text(role, Modifier.width(96.dp), style = MaterialTheme.typography.bodyMedium, color = TunerColors.tertiary)
+        Text(names, style = MaterialTheme.typography.bodyMedium, color = TunerColors.secondary, maxLines = 2, overflow = TextOverflow.Ellipsis)
+    }
 }
 
 @Composable
@@ -290,7 +299,8 @@ fun MovieDetailScreen(id: String, onPlay: (PlaybackItem) -> Unit) {
     LaunchedEffect(id) {
         movie = app.library.movie(id)
         movie?.let { m ->
-            app.sync.movieDetails(m)?.let { d -> movie = m.copy(backdropURL = d.backdropURL?.ifEmpty { null } ?: m.backdropURL, plot = d.plot ?: m.plot, cast = d.cast ?: m.cast, genre = d.genre ?: m.genre,
+            app.sync.movieDetails(m)?.let { d -> movie = m.copy(backdropURL = d.backdropURL?.ifEmpty { null } ?: m.backdropURL, plot = d.plot ?: m.plot,
+                cast = d.cast ?: m.cast, director = d.director ?: m.director, genre = d.genre ?: m.genre,
                 containerExtension = d.containerExtension ?: m.containerExtension, durationSeconds = d.durationSeconds ?: m.durationSeconds) }
             meta = runCatching { app.metadata.metadata(m) }.getOrNull()
         }
@@ -299,15 +309,22 @@ fun MovieDetailScreen(id: String, onPlay: (PlaybackItem) -> Unit) {
     val details = listOfNotNull(m.year ?: meta?.year, m.durationSeconds?.takeIf { it > 0 }?.let { "${(it / 60).coerceAtLeast(1)} min" } ?: meta?.runtimeMinutes?.let { "$it min" },
         VODRating.of(m.rating, meta)?.text, m.genre ?: meta?.genres?.joinToString(", ")).joinToString("  ·  ")
     DetailPage(meta?.backdropURL ?: m.backdropURL, m.posterURL ?: meta?.posterURL, hero = {
-        HeroTitle(m.name, meta, details, meta?.overview ?: m.plot)
-        Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            val resumable = progress?.let { !it.completed && it.position > 10 } == true
-            PillButton(if (resumable) "Resume ${minutes(progress!!.position)}" else "Play", icon = Icons.Filled.PlayArrow,
-                onClick = { onPlay(PlaybackItem.MovieItem(m, if (resumable) progress!!.position else null)) }, modifier = Modifier.initialFocus(m.id))
+        HeroTitle("Movie", m.name, meta, details, meta?.overview ?: m.plot)
+        val p = progress
+        val resumable = p != null && !p.completed && p.position > 10
+        Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
+            PillButton(if (resumable) "Resume" else "Play", icon = Icons.Filled.PlayArrow,
+                onClick = { onPlay(PlaybackItem.MovieItem(m, if (resumable) p!!.position else null)) }, modifier = Modifier.initialFocus(m.id))
             if (resumable) PillButton("Play from Beginning", icon = Icons.Filled.Replay, onClick = { onPlay(PlaybackItem.MovieItem(m, null)) })
+            // How far in, as the Apple TV app shows it beside Resume.
+            if (resumable && p!!.duration > 0) Column(Modifier.width(120.dp).padding(start = 6.dp)) {
+                ProgressLine(p.fraction)
+                Spacer(Modifier.height(6.dp))
+                Text("${minutes(p.duration - p.position)} left", style = MaterialTheme.typography.bodySmall, color = TunerColors.secondary)
+            }
         }
     }) {
-        m.cast?.let { item { Text("Cast: $it", Modifier.padding(top = 8.dp).widthIn(max = 900.dp), color = Color.White.copy(alpha = 0.7f), maxLines = 2) } }
+        castAndCrew(m.cast, m.director)
     }
 }
 
@@ -339,18 +356,18 @@ fun SeriesDetailScreen(id: String, onPlay: (PlaybackItem) -> Unit) {
     val upNext = (next as? SmartContinueWatching.Entry.NextEpisode)?.episode?.let { e -> episodes.firstOrNull { it.id == e.id } }
     val shown = season ?: resume?.first?.season ?: upNext?.season ?: seasons.firstOrNull()
     val details = listOfNotNull(s.year ?: meta?.year, VODRating.of(s.rating, meta)?.text,
-        s.genre ?: meta?.genres?.joinToString(", "), if (seasons.isNotEmpty()) "${seasons.count { it > 0 }} seasons" else null).joinToString("  ·  ")
+        s.genre ?: meta?.genres?.joinToString(", "), if (seasons.isNotEmpty()) seasons.count { it > 0 }.let { n -> if (n == 1) "1 season" else "$n seasons" } else null).joinToString("  ·  ")
 
     val page = rememberLazyListState()
     val scope = rememberCoroutineScope()
     DetailPage(meta?.backdropURL ?: s.backdropURL, s.coverURL ?: meta?.posterURL, page, hero = {
-        HeroTitle(s.name, meta, details, meta?.overview ?: s.plot)
+        HeroTitle("TV Show", s.name, meta, details, meta?.overview ?: s.plot)
         if (episodes.isNotEmpty()) {
             val primary = resume ?: upNext?.let { it to null } ?: (episodes.first { it.season == seasons.first() } to null)
             val label = when {
                 resume != null -> "Resume S${resume.first.season}, E${resume.first.number}"
                 upNext != null -> "Play S${upNext.season}, E${upNext.number}"
-                else -> "Play"
+                else -> "Play S${primary.first.season}, E${primary.first.number}"
             }
             Row(horizontalArrangement = Arrangement.spacedBy(14.dp), modifier = Modifier.focusGroup()) {
                 PillButton(label, icon = Icons.Filled.PlayArrow, onClick = { onPlay(PlaybackItem.EpisodeItem(primary.first, s, episodes, primary.second)) },
@@ -360,34 +377,44 @@ fun SeriesDetailScreen(id: String, onPlay: (PlaybackItem) -> Unit) {
                 }
             }
         } else {
-            Text("Loading episodes…", color = Color.White.copy(alpha = 0.7f))
+            Text("Loading episodes…", color = TunerColors.secondary)
         }
     }) {
+        val list = episodes.filter { it.season == shown }
         if (seasons.size > 1) item {
-            // Room around the chips: a focused chip grows, and would otherwise overlap what's above and below.
-            LazyRow(Modifier.bleedStart(), horizontalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(vertical = 8.dp, horizontal = FocusBleed)) {
-                items(seasons) { n -> PillButton(if (n == 0) "Specials" else "Season $n", onClick = { season = n }, selected = n == shown) }
+            // Room around the pills: a focused pill grows, and would otherwise overlap what's above and below.
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                LazyRow(Modifier.weight(1f).bleedStart(), horizontalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(vertical = 8.dp, horizontal = FocusBleed)) {
+                    items(seasons) { n -> PillButton(if (n == 0) "Specials" else "Season $n", onClick = { season = n }, selected = n == shown) }
+                }
+                Text(if (list.size == 1) "1 episode" else "${list.size} episodes", style = MaterialTheme.typography.bodySmall, color = TunerColors.tertiary)
             }
         } else if (episodes.isNotEmpty()) item {
-            Text("Episodes", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 8.dp))
+            SectionHeader("Episodes", Modifier.padding(top = 8.dp), note = if (list.size == 1) "1 episode" else "${list.size} episodes")
         }
         item {
-            val list = episodes.filter { it.season == shown }
-            // The episodes are the page's last row: show all of it, titles under the cards included. After the focused
+            // The episodes row: show all of it, titles and descriptions under the cards included. After the focused
             // card's own bring-into-view scroll, which would otherwise cancel this one.
-            if (list.isNotEmpty()) LazyRow(Modifier.bleedStart().onFocusChanged { if (it.hasFocus) scope.launch { delay(250); page.animateScrollBy(100_000f) } },
-                horizontalArrangement = Arrangement.spacedBy(20.dp), contentPadding = PaddingValues(top = 12.dp, bottom = 16.dp, start = FocusBleed, end = 48.dp)) {
+            if (list.isNotEmpty()) LazyRow(Modifier.bleedStart().onFocusChanged { if (it.hasFocus) scope.launch { delay(250); page.animateScrollToItem(1) } },
+                horizontalArrangement = Arrangement.spacedBy(22.dp), contentPadding = PaddingValues(top = 14.dp, bottom = 16.dp, start = FocusBleed, end = 48.dp)) {
                 items(list, key = { it.id }) { e ->
                     val p = progress[e.id]
                     val still = e.imageURL ?: meta?.episode(e.season, e.number)?.stillURL
-                    WideCard("E${e.number} · ${e.title}", e.durationSeconds?.takeIf { it > 0 }?.let { "${(it / 60).coerceAtLeast(1)} min" }, still,
-                        width = 220, progress = p?.let { if (it.completed) 1.0 else it.fraction }) {
+                    val badge = when {
+                        e.id == upNext?.id -> "UP NEXT"
+                        p?.completed == true -> "WATCHED"
+                        else -> null
+                    }
+                    WideCard("${e.number}. ${e.title}", listOfNotNull(e.durationSeconds?.takeIf { it > 0 }?.let { "${(it / 60).coerceAtLeast(1)} min" }, e.airDate?.take(10)).joinToString("  ·  ").ifEmpty { null },
+                        still, width = 260, progress = p?.takeIf { !it.completed && it.position > 10 }?.fraction, badge = badge,
+                        detail = e.plot?.takeIf { it.isNotBlank() } ?: meta?.episode(e.season, e.number)?.overview) {
                         val start = p?.takeIf { !it.completed && it.position > 10 }?.position
                         onPlay(PlaybackItem.EpisodeItem(e, s, episodes, start))
                     }
                 }
             }
         }
+        castAndCrew(s.cast, s.director)
     }
 }
 

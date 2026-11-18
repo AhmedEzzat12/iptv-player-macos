@@ -89,12 +89,16 @@ fun Artwork(url: String?, title: String, modifier: Modifier = Modifier, fit: Boo
 
 /** The title and caption under a card; brighter while the card has focus, like the Apple TV app's. */
 @Composable
-private fun CardCaption(title: String, subtitle: String?, focused: Boolean) {
+private fun CardCaption(title: String, subtitle: String?, focused: Boolean, detail: String? = null) {
     Spacer(Modifier.height(10.dp))
     Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.titleSmall,
         color = if (focused) Color.White else Color.White.copy(alpha = 0.86f))
     if (subtitle != null) Text(subtitle, maxLines = 1, overflow = TextOverflow.Ellipsis,
         color = if (focused) TunerColors.secondary else TunerColors.tertiary, style = MaterialTheme.typography.bodySmall)
+    if (detail != null) {
+        Spacer(Modifier.height(4.dp))
+        Text(detail, maxLines = 2, overflow = TextOverflow.Ellipsis, color = TunerColors.tertiary, style = MaterialTheme.typography.bodySmall)
+    }
 }
 
 /** A 2:3 poster card with the title under it. */
@@ -118,7 +122,7 @@ fun PosterCard(title: String, imageURL: String?, subtitle: String? = null, width
 @Composable
 fun WideCard(
     title: String, subtitle: String?, imageURL: String?, progress: Double? = null, width: Int = CardSize.WIDE,
-    fitImage: Boolean = false, badge: String? = null, onLongClick: (() -> Unit)? = null, onClick: () -> Unit,
+    fitImage: Boolean = false, badge: String? = null, detail: String? = null, onLongClick: (() -> Unit)? = null, onClick: () -> Unit,
 ) {
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
@@ -137,7 +141,7 @@ fun WideCard(
                 if (progress != null) ProgressLine(progress, Modifier.align(Alignment.BottomStart).padding(10.dp))
             }
         }
-        CardCaption(title, subtitle, focused)
+        CardCaption(title, subtitle, focused, detail)
     }
 }
 
@@ -217,6 +221,29 @@ fun <T> Shelf(title: String, items: List<T>, key: (T) -> String, focusFirst: Boo
             items(items.size, key = { key(items[it]) }) { i ->
                 Box(Modifier.rememberedFocus(key(items[i])).then(if (focusFirst && i == 0 && !tookFocus) Modifier.initialFocus().onFocusChanged { if (it.hasFocus) tookFocus = true } else Modifier)) { content(items[i]) }
             }
+        }
+    }
+}
+
+/**
+ * One row in a side list (categories on Live TV, Movies and TV Shows): 38 dp, so a dozen fit on screen (ListItem's
+ * 48 dp fitted nine), and the selected one stays marked while focus is elsewhere on the page.
+ */
+@Composable
+fun SideListRow(name: String, selected: Boolean, modifier: Modifier = Modifier, onLongClick: (() -> Unit)? = null, onClick: () -> Unit) {
+    androidx.tv.material3.Surface(
+        onClick = onClick, onLongClick = onLongClick, modifier = modifier.fillMaxWidth().height(38.dp),
+        shape = androidx.tv.material3.ClickableSurfaceDefaults.shape(RoundedCornerShape(10.dp)),
+        scale = androidx.tv.material3.ClickableSurfaceDefaults.scale(focusedScale = 1.03f),
+        colors = androidx.tv.material3.ClickableSurfaceDefaults.colors(
+            containerColor = if (selected) Color.White.copy(alpha = 0.16f) else Color.Transparent,
+            contentColor = if (selected) Color.White else Color.White.copy(alpha = 0.8f),
+            focusedContainerColor = Color.White, focusedContentColor = TunerColors.onFocus,
+        ),
+    ) {
+        Box(Modifier.fillMaxSize().padding(horizontal = 14.dp), contentAlignment = Alignment.CenterStart) {
+            Text(name, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium,
+                fontWeight = if (selected) androidx.compose.ui.text.font.FontWeight.SemiBold else null)
         }
     }
 }

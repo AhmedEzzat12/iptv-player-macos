@@ -10,6 +10,12 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Search
+import app.tuner.tv.ui.SectionHeader
+import app.tuner.tv.ui.FocusBleed
+import app.tuner.tv.ui.bleedStart
 import androidx.compose.ui.platform.LocalFocusManager
 import app.tuner.core.models.RecentSearches
 import androidx.tv.material3.OutlinedButton
@@ -95,9 +101,20 @@ fun SearchScreen(onPlay: (PlaybackItem) -> Unit, onOpenMovie: (String) -> Unit, 
             Column(Modifier.padding(bottom = 24.dp)) {
                 PageTitle("Search")
                 Spacer(Modifier.height(12.dp))
-                BasicTextField(field, { field = it }, singleLine = true, textStyle = TextStyle(color = Color.White, fontSize = 24.sp),
+                var fieldFocused by remember { mutableStateOf(false) }
+                BasicTextField(field, { field = it }, singleLine = true, textStyle = TextStyle(color = Color.White, fontSize = 22.sp),
                     cursorBrush = SolidColor(TunerColors.accent),
-                    modifier = Modifier.width(720.dp).initialFocus()
+                    decorationBox = { inner ->
+                        androidx.compose.foundation.layout.Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                            androidx.tv.material3.Icon(Icons.Filled.Search, null, Modifier.padding(end = 14.dp),
+                                tint = if (fieldFocused) Color.White else TunerColors.secondary)
+                            androidx.compose.foundation.layout.Box {
+                                if (field.text.isEmpty()) Text("Channels, programmes, movies and shows", color = TunerColors.tertiary, fontSize = 22.sp)
+                                inner()
+                            }
+                        }
+                    },
+                    modifier = Modifier.width(720.dp).initialFocus().onFocusChanged { fieldFocused = it.isFocused }
                         // A text field keeps Down for itself (it never moved on to the results): send it to the results.
                         .onPreviewKeyEvent { e ->
                             // and Left at the start of the text to the sidebar (the field kept Left for its cursor, so the only
@@ -107,16 +124,16 @@ fun SearchScreen(onPlay: (PlaybackItem) -> Unit, onOpenMovie: (String) -> Unit, 
                             else if (e.key == Key.DirectionLeft && field.selection.collapsed && field.selection.start == 0) { focusSidebar(); true }
                             else false
                         }
-                        .background(TunerColors.surface, RoundedCornerShape(12.dp)).padding(16.dp))
+                        .background(if (fieldFocused) Color.White.copy(alpha = 0.2f) else TunerColors.glass, RoundedCornerShape(50)).padding(horizontal = 22.dp, vertical = 14.dp))
             }
         }
         val recent = app.prefs.recentSearches
         if (query.isBlank() && recent.isNotEmpty()) {
             item {
                 Column(Modifier.padding(bottom = 24.dp)) {
-                    Text("Recent Searches", style = MaterialTheme.typography.titleMedium)
+                    SectionHeader("Recent Searches")
                     Spacer(Modifier.height(10.dp))
-                    LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    LazyRow(Modifier.bleedStart(), horizontalArrangement = Arrangement.spacedBy(12.dp), contentPadding = androidx.compose.foundation.layout.PaddingValues(start = FocusBleed, top = 6.dp, bottom = 6.dp)) {
                         items(recent, key = { it }) { r -> PillButton(r, onClick = { field = TextFieldValue(r, TextRange(r.length)) }) }
                         item(key = "clear") { PillButton("Clear", onClick = { app.prefs.recentSearches = emptyList() }) }
                     }
