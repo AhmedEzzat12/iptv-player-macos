@@ -1,5 +1,6 @@
 package app.tuner.tv.ui.settings
 
+import app.tuner.tv.ui.ConfirmDialog
 import app.tuner.tv.ui.PillButton
 import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.ui.layout.onSizeChanged
@@ -169,19 +170,8 @@ fun PlaylistsScreen(onAdd: () -> Unit, onEdit: (String) -> Unit) {
         }
 
         pendingRemove?.let { s ->
-            Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.78f)), contentAlignment = Alignment.Center) {
-                Column(Modifier.width(620.dp).background(TunerColors.surface, RoundedCornerShape(18.dp)).padding(28.dp)) {
-                    Text("Remove “${s.name}”?", style = MaterialTheme.typography.headlineSmall)
-                    Spacer(Modifier.height(10.dp))
-                    Text("Its channels, movies, shows and guide are removed from Antenna. You can add it again at any time.",
-                        color = Color.White.copy(alpha = 0.78f))
-                    Spacer(Modifier.height(22.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                        PillButton("Remove Playlist", onClick = { pendingRemove = null; scope.launch { app.library.deleteSource(s.id); revision++ } })
-                        PillButton("Cancel", onClick = { pendingRemove = null }, modifier = Modifier.initialFocus(s.id))
-                    }
-                }
-            }
+            ConfirmDialog("Remove “${s.name}”?", "Its channels, movies, shows and guide are removed from Antenna. You can add it again at any time.",
+                "Remove Playlist", onConfirm = { scope.launch { app.library.deleteSource(s.id); revision++ } }) { pendingRemove = null }
         }
     }
 }

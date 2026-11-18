@@ -2,6 +2,8 @@ package app.tuner.tv.ui.browse
 
 import app.tuner.tv.ui.rememberedFocus
 import app.tuner.tv.ui.PillButton
+import app.tuner.tv.ui.TvDialog
+import app.tuner.tv.ui.Eyebrow
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarViewWeek
 import androidx.compose.material.icons.filled.PlayArrow
@@ -139,12 +141,7 @@ fun LiveScreen(onPlay: (PlaybackItem) -> Unit, initial: Library.ChannelScope = L
         }
     }
 
-    BackHandler(enabled = menuChannel != null || menuCategory != null || renamingChannel != null || renamingCategory != null) {
-        menuChannel = null; menuCategory = null; renamingChannel = null; renamingCategory = null
-    }
-    BackHandler(enabled = inspected != null || showGrid) {
-        if (inspected != null) inspected = null else showGrid = false
-    }
+    BackHandler(enabled = showGrid) { showGrid = false }
 
     val now = Instant.ofEpochSecond(nowEpoch)
 
@@ -269,23 +266,20 @@ fun LiveScreen(onPlay: (PlaybackItem) -> Unit, initial: Library.ChannelScope = L
         inspected?.let { (ch, prog) ->
             // Same rule as the Apple guide: started, and still inside the channel's archive (so a live programme can start over).
             val canCatchup = ch.catchupAvailable(prog, now)
-            Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.78f)), contentAlignment = Alignment.Center) {
-                Column(Modifier.width(640.dp).background(TunerColors.surface, RoundedCornerShape(18.dp)).padding(28.dp)) {
-                    Text(prog.title, style = MaterialTheme.typography.headlineSmall)
-                    prog.subtitle?.let { Spacer(Modifier.height(4.dp)); Text(it, color = Color.White.copy(alpha = 0.8f)) }
-                    Spacer(Modifier.height(6.dp))
-                    Text("${ch.displayName}  ·  ${fmtDayClock(prog.start)}–${fmtClock(prog.end)}", color = TunerColors.accent)
-                    prog.summary?.let { Spacer(Modifier.height(12.dp)); Text(it, color = Color.White.copy(alpha = 0.78f), maxLines = 5, overflow = TextOverflow.Ellipsis) }
-                    Spacer(Modifier.height(22.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                        if (canCatchup) {
-                            PillButton(if (prog.isLive(now)) "Start Over" else "Play Catchup", icon = Icons.Filled.Replay,
-                                onClick = { inspected = null; onPlay(PlaybackItem.Catchup(ch, prog)) }, modifier = Modifier.initialFocus(prog.stableKey))
-                        }
-                        PillButton("Watch Live", icon = Icons.Filled.PlayArrow, onClick = { inspected = null; onPlay(PlaybackItem.Live(ch, channels)) },
-                            modifier = if (!canCatchup) Modifier.initialFocus(prog.stableKey) else Modifier)
-                        PillButton("Close", onClick = { inspected = null })
+            TvDialog(onDismiss = { inspected = null }, width = 640.dp) {
+                Text("${ch.displayName}  ·  ${fmtDayClock(prog.start)}–${fmtClock(prog.end)}".uppercase(), style = Eyebrow, color = TunerColors.secondary)
+                Spacer(Modifier.height(8.dp))
+                Text(prog.title, style = MaterialTheme.typography.headlineSmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                prog.subtitle?.let { Spacer(Modifier.height(4.dp)); Text(it, color = TunerColors.secondary) }
+                prog.summary?.let { Spacer(Modifier.height(12.dp)); Text(it, color = Color.White.copy(alpha = 0.8f), maxLines = 5, overflow = TextOverflow.Ellipsis) }
+                Spacer(Modifier.height(24.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                    if (canCatchup) {
+                        PillButton(if (prog.isLive(now)) "Start Over" else "Play Catchup", icon = Icons.Filled.Replay,
+                            onClick = { inspected = null; onPlay(PlaybackItem.Catchup(ch, prog)) }, modifier = Modifier.initialFocus(prog.stableKey))
                     }
+                    PillButton("Watch Live", icon = Icons.Filled.PlayArrow, onClick = { inspected = null; onPlay(PlaybackItem.Live(ch, channels)) },
+                        modifier = if (!canCatchup) Modifier.initialFocus(prog.stableKey) else Modifier)
                 }
             }
         }

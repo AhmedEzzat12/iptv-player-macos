@@ -107,7 +107,6 @@ fun VodGridScreen(kind: CategoryKind, onOpen: (String) -> Unit) {
     var exhausted by remember { mutableStateOf(false) }
     var menuCategory by remember { mutableStateOf<app.tuner.core.models.Category?>(null) }
     var renamingCategory by remember { mutableStateOf<app.tuner.core.models.Category?>(null) }
-    BackHandler(enabled = menuCategory != null || renamingCategory != null) { menuCategory = null; renamingCategory = null }
     LaunchedEffect(Unit) { app.database.changes.collect { if (it == Change.LIBRARY) revision++ } }
     LaunchedEffect(revision) { categories = app.library.categories(kind) }
 
@@ -137,7 +136,7 @@ fun VodGridScreen(kind: CategoryKind, onOpen: (String) -> Unit) {
         delay(350)
         selected = focusedCategory
     }
-    BackHandler(enabled = postersHaveFocus && menuCategory == null && renamingCategory == null) {
+    BackHandler(enabled = postersHaveFocus) {
         runCatching { requester(selected ?: "").requestFocus() }
     }
     val grid = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
