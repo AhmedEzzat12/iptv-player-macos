@@ -77,6 +77,10 @@ In order of how much a viewer would miss them:
   TCL's Google TV launcher stores the entries but doesn't show a sideloaded app's in its Continue watching row;
   Google's current route there is the Engage SDK (continuation cluster), which needs Play distribution and Google's
   approval: part of the store work.
+- Regression pass (2026-11-18): Home brings the focused row to the top with its title (no half-cut row above), has
+  room under the last row and scrolls fully back up on the first; Home ignores guide changes. Network errors read as
+  plain sentences (`HttpClient.describe`, tested) instead of OkHttp's, which named the server's address, and the
+  same failure is said once. In the player, Up from the options panel's first row or Left closes it.
 - Movies / TV Shows categories in a side list (2026-11-18), as on Live TV: moving through it switches category after
   350 ms, Left from the posters' first column returns to the selected category, Back from the posters too. Replaces
   the chip row (one press per chip, Left raced along it, and reaching it meant climbing the grid). Posters 132 dp,

@@ -68,7 +68,7 @@ public class SyncService(private val library: Library, private val cacheDir: Fil
     } catch (e: CancellationException) {
         throw e
     } catch (e: Exception) {
-        e.message ?: "Couldn't reach the playlist (${e::class.java.simpleName})"
+        HttpClient.describe(e, "Couldn't reach the playlist")
     }
 
     public suspend fun sync(sourceId: String): Unit = withContext(Dispatchers.Default) { syncNow(sourceId) }
@@ -87,7 +87,7 @@ public class SyncService(private val library: Library, private val cacheDir: Fil
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                errors += e.message ?: "Channels failed (${e::class.java.simpleName})"
+                errors += HttpClient.describe(e, "Channels failed")
             }
             // VOD is attempted even if channels failed: a bad live response must not hide movies.
             if (source.includeVOD && source.kind != Source.Kind.M3U) {
@@ -97,7 +97,9 @@ public class SyncService(private val library: Library, private val cacheDir: Fil
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {
-                    errors += "Movies & series: ${e.message}"
+                    // The same failure as the channels' (the server is down) is said once.
+                    val text = HttpClient.describe(e, "Movies and shows failed")
+                    if (text !in errors) errors += "Movies and shows: $text"
                 }
             }
             if (source.includeLive) {
@@ -212,14 +214,15 @@ public class SyncService(private val library: Library, private val cacheDir: Fil
                         .let { it.first.await() to it.second.await() }
                     library.replaceMovies(source.id, c, m)
                     library.updateStatus(source.id, ContentValues().apply { put("movieCount", m.size) })
-                } catch (e: CancellationException) { throw e } catch (e: Exception) { failures += "movies — ${e.message}" }
+                } catch (e: CancellationException) { throw e } catch (e: Exception) { failures += HttpClient.describe(e) }
                 try {
                     val (c, s) = coroutineScope { async { client.seriesCategories(source.id) }.let { c -> c to async { client.series(source.id) } } }
                         .let { it.first.await() to it.second.await() }
                     library.replaceSeries(source.id, c, s)
                     library.updateStatus(source.id, ContentValues().apply { put("seriesCount", s.size) })
-                } catch (e: CancellationException) { throw e } catch (e: Exception) { failures += "series — ${e.message}" }
-                if (failures.isNotEmpty()) throw HttpException.AuthFailed(failures.joinToString("; "))
+                } catch (e: CancellationException) { throw e } catch (e: Exception) { failures += HttpClient.describe(e) }
+                // Usually one cause for both: said once.
+                if (failures.isNotEmpty()) throw HttpException.AuthFailed(failures.distinct().joinToString("; "))
             }
             Source.Kind.STALKER -> {
                 // Portals page items 14 at a time: categories only; items load when a category opens.
@@ -308,7 +311,7 @@ public class SyncService(private val library: Library, private val cacheDir: Fil
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                val msg = e.message ?: "Portal guide failed"
+                val msg = HttpClient.describe(e, "Portal guide failed")
                 errors += msg
                 runCatching { library.recordFeedError(feed.id, msg) }
             }
@@ -343,7 +346,7 @@ public class SyncService(private val library: Library, private val cacheDir: Fil
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                val msg = e.message ?: "Guide failed"
+                val msg = HttpClient.describe(e, "Guide failed")
                 errors += msg
                 runCatching { library.recordFeedError(feed.id, msg) }
             }
@@ -374,7 +377,7 @@ public class SyncService(private val library: Library, private val cacheDir: Fil
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            val msg = e.message ?: "Couldn't load guide"
+            val msg = HttpClient.describe(e, "Couldn't load guide")
             runCatching { library.recordFeedError(feed.id, msg) }
             msg
         }
@@ -388,7 +391,7 @@ public class SyncService(private val library: Library, private val cacheDir: Fil
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                val msg = e.message ?: "Couldn't load guide"
+                val msg = HttpClient.describe(e, "Couldn't load guide")
                 errors += msg
                 runCatching { library.recordFeedError(feed.id, msg) }
             }

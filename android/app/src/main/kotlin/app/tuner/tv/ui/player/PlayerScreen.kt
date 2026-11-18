@@ -1,5 +1,6 @@
 package app.tuner.tv.ui.player
 
+import androidx.compose.ui.focus.FocusDirection
 import app.tuner.tv.integration.WatchNext
 import app.tuner.core.services.LiveWatchdog
 import androidx.compose.foundation.layout.aspectRatio
@@ -107,6 +108,7 @@ fun PlayerScreen(initial: PlaybackItem, onClose: () -> Unit) {
     var liveNext by remember { mutableStateOf<Program?>(null) }
     // Options panel (audio, subtitles, picture, sleep timer) and Skip Intro/Credits.
     var optionsOpen by remember { mutableStateOf(false) }
+    val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
     var backClosedPanel by remember { mutableStateOf(false) }
     /** The live channel's favourite state, changed from the options panel (the item itself isn't replaced). */
     var favorite by remember((item as? PlaybackItem.Live)?.channel?.id) { mutableStateOf((item as? PlaybackItem.Live)?.channel?.isFavorite == true) }
@@ -260,7 +262,7 @@ fun PlayerScreen(initial: PlaybackItem, onClose: () -> Unit) {
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            message = e.message ?: "This stream couldn't be opened"
+            message = HttpClient.describe(e, "This stream couldn't be opened")
             buffering = false
         }
     }
@@ -538,8 +540,17 @@ fun PlayerScreen(initial: PlaybackItem, onClose: () -> Unit) {
                 }
                 if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
                 lastInput++
-                // The panel's rows take the D-pad while it's open (Back is handled above).
-                if (optionsOpen) return@onPreviewKeyEvent false
+                // The panel's rows take the D-pad while it's open (Back is handled above). Up from its first row (the way
+                // back from the ▼ that opened it) and Left (nothing is left of it) close it and bring the controls back;
+                // both did nothing.
+                if (optionsOpen) {
+                    val code = event.nativeKeyEvent.keyCode
+                    val closes = code == KeyEvent.KEYCODE_DPAD_LEFT ||
+                        (code == KeyEvent.KEYCODE_DPAD_UP && !focusManager.moveFocus(FocusDirection.Up))
+                    if (!closes) return@onPreviewKeyEvent code == KeyEvent.KEYCODE_DPAD_UP
+                    optionsOpen = false; chromeVisible = true; focus.requestFocus()
+                    return@onPreviewKeyEvent true
+                }
                 val live = item is PlaybackItem.Live
                 val code = event.nativeKeyEvent.keyCode
                 val openOptions = code == KeyEvent.KEYCODE_MENU || code == KeyEvent.KEYCODE_INFO || code == KeyEvent.KEYCODE_CAPTIONS ||

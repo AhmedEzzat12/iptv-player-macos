@@ -136,6 +136,22 @@ public class HttpClient(userAgent: String? = null, public val timeoutSeconds: Lo
     public companion object {
         public const val DEFAULT_USER_AGENT: String = "VLC/3.0.20 LibVLC/3.0.20"
 
+        /**
+         * What to show for a failure. Our own errors keep their messages; OkHttp's and the JDK's name the host and port
+         * ("Failed to connect to /203.0.113.5:8080", "Unable to resolve host …"), so they become plain sentences like
+         * the Apple apps' URLSession ones, and other exceptions' raw messages aren't shown at all.
+         */
+        public fun describe(e: Throwable, fallback: String = "Something went wrong"): String = when (e) {
+            is HttpException -> e.message ?: fallback
+            is java.net.UnknownHostException -> "Couldn't find the server. Check the address."
+            is java.net.SocketTimeoutException, is java.io.InterruptedIOException -> "The server didn't answer in time."
+            is java.net.ConnectException, is java.net.NoRouteToHostException -> "Couldn't connect to the server."
+            is javax.net.ssl.SSLException -> "A secure connection to the server failed."
+            is java.io.EOFException, is java.net.SocketException -> "The connection to the server was lost."
+            is java.io.IOException -> "A network error occurred."
+            else -> e.message?.takeIf { it.isNotBlank() && !it.contains("://") && !it.contains('/') } ?: fallback
+        }
+
         /** One connection pool for the app; no HTTP cache (playlists are huge and always fresh). */
         public val shared: OkHttpClient by lazy {
             OkHttpClient.Builder()
