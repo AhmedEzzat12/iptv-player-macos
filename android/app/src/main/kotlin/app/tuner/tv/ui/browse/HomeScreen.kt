@@ -75,6 +75,8 @@ import app.tuner.core.models.SmartContinueWatching
 import app.tuner.core.models.VODFormat
 import app.tuner.core.models.WatchProgress
 import app.tuner.tv.ui.ItemMenu
+import app.tuner.tv.ui.TitleMenu
+import app.tuner.tv.ui.TitleRef
 import app.tuner.tv.ui.MenuAction
 import app.tuner.core.models.VODItem
 import app.tuner.data.Change
@@ -130,6 +132,8 @@ fun HomeScreen(onPlay: (PlaybackItem) -> Unit, onOpenMovie: (String) -> Unit, on
     var hasSources by remember { mutableStateOf(true) }
     // The Continue Watching card whose long-press menu is open.
     var cwMenu by remember { mutableStateOf<ContinueWatchingItem?>(null) }
+    var posterMenu by remember { mutableStateOf<TitleRef?>(null) }
+    var favorites by rememberScreenState("home.favorites") { emptyList<VODItem>() }
     var revision by remember { mutableIntStateOf(0) }
     var guideRevision by remember { mutableIntStateOf(0) }
     // Provider details and online metadata for the hero titles, fetched once per title while the app runs (they were
@@ -147,6 +151,7 @@ fun HomeScreen(onPlay: (PlaybackItem) -> Unit, onOpenMovie: (String) -> Unit, on
             app.library.series(sort = VODSort.RATING, limit = 20).map { VODItem.SeriesItem(it) }
         topRated = rated.filter { it.rating != null }.sortedByDescending { it.rating }.take(20)
         hero = VODItem.heroPicks(movies, shows)
+        favorites = app.library.favoriteTitles()
         loaded = true
     }
     // The guide changes every few minutes; only On Now follows it (the rest of Home doesn't reload for it).
@@ -239,17 +244,26 @@ fun HomeScreen(onPlay: (PlaybackItem) -> Unit, onOpenMovie: (String) -> Unit, on
                 item(key = "movies") {
                     RowScrolling(rowScrolling, rows) {
                         Shelf("Recently Added Movies", movies, { it.id }, startInset = PageStart, focusFirst = current == null && cw.isEmpty() && onNow.isEmpty()) { m ->
-                            PosterCard(m.name, m.posterURL, m.year) { onOpenMovie(m.id) }
+                            PosterCard(m.name, m.posterURL, m.year, onLongClick = { posterMenu = TitleRef(m.id, m.name, false) }) { onOpenMovie(m.id) }
                         }
                     }
                 }
                 item(key = "shows") {
-                    RowScrolling(rowScrolling, rows) { Shelf("Recently Added Shows", shows, { it.id }, startInset = PageStart) { s -> PosterCard(s.name, s.coverURL, s.year) { onOpenSeries(s.id) } } }
+                    RowScrolling(rowScrolling, rows) { Shelf("Recently Added Shows", shows, { it.id }, startInset = PageStart) { s -> PosterCard(s.name, s.coverURL, s.year, onLongClick = { posterMenu = TitleRef(s.id, s.name, true) }) { onOpenSeries(s.id) } } }
                 }
                 item(key = "top") {
                     RowScrolling(rowScrolling, rows) {
                         Shelf("Top Rated", topRated, { it.id }, startInset = PageStart) { t ->
-                            PosterCard(t.title, t.posterURL, t.rating?.let { "★ ${VODFormat.rating(it)}" }) {
+                            PosterCard(t.title, t.posterURL, t.rating?.let { "★ ${VODFormat.rating(it)}" }, onLongClick = { posterMenu = TitleRef(t.mediaId, t.title, !t.isMovie) }) {
+                                if (t.isMovie) onOpenMovie(t.mediaId) else onOpenSeries(t.mediaId)
+                            }
+                        }
+                    }
+                }
+                item(key = "favorites") {
+                    RowScrolling(rowScrolling, rows) {
+                        Shelf("Your Favorites", favorites, { it.id }, startInset = PageStart) { t ->
+                            PosterCard(t.title, t.posterURL, t.year, onLongClick = { posterMenu = TitleRef(t.mediaId, t.title, !t.isMovie) }) {
                                 if (t.isMovie) onOpenMovie(t.mediaId) else onOpenSeries(t.mediaId)
                             }
                         }
@@ -257,6 +271,7 @@ fun HomeScreen(onPlay: (PlaybackItem) -> Unit, onOpenMovie: (String) -> Unit, on
                 }
             }
         }
+        posterMenu?.let { ref -> TitleMenu(ref, onOpen = { if (it.isSeries) onOpenSeries(it.id) else onOpenMovie(it.id) }) { posterMenu = null } }
         cwMenu?.let { item -> ContinueWatchingMenu(item, onDismiss = { cwMenu = null },
             onPlay = { scope.launch { playContinue(app, item, onPlay) } },
             onGoTo = { p -> if (p.kind == MediaKind.MOVIE) onOpenMovie(p.mediaId) else p.seriesId?.let(onOpenSeries) },

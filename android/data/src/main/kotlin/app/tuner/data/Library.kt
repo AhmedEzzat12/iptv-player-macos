@@ -350,6 +350,36 @@ public class Library(private val database: AppDatabase) : MetadataCache {
             if (watched) duration else 0.0, duration, watched, System.currentTimeMillis()))
     }
 
+    // Movie and show favourites (AppDatabase+User: isVODFavorite, setVODFavorite, favoriteMovies, favoriteSeries)
+
+    public suspend fun isVodFavorite(mediaId: String): Boolean = user.isVodFavorite(mediaId)
+
+    /** Shows are stored with kind "episode", as on the Apple apps (MediaKind has no series case). */
+    public suspend fun setVodFavorite(mediaId: String, isSeries: Boolean, favorite: Boolean): Unit = write(Change.USER) {
+        if (favorite) user.addVodFavorite(mediaId, if (isSeries) MediaKind.EPISODE.raw else MediaKind.MOVIE.raw, System.currentTimeMillis())
+        else user.removeVodFavorite(mediaId)
+    }
+
+    public suspend fun vodFavoriteIds(): Set<String> = cached("vodFavoriteIds", Change.USER) { user.vodFavoriteIds().toSet() }
+
+    /** Favourite movies and shows, most recently added first. */
+    public suspend fun favoriteMovies(): List<Movie> = cached("favoriteMovies", Change.USER, Change.LIBRARY) {
+        lib.movies(SimpleSQLiteQuery("SELECT m.* FROM movie m JOIN vodFavorite f ON f.mediaId = m.id ORDER BY f.addedAt DESC")).map(::movie)
+    }
+
+    /** Favourite movies and shows together, most recently added first (Home's Your Favorites row). */
+    public suspend fun favoriteTitles(): List<app.tuner.core.models.VODItem> = cached("favoriteTitles", Change.USER, Change.LIBRARY) {
+        val order = database.openHelper.readableDatabase.query("SELECT mediaId FROM vodFavorite ORDER BY addedAt DESC").use { c ->
+            buildList { while (c.moveToNext()) add(c.getString(0)) }
+        }.withIndex().associate { (i, id) -> id to i }
+        (favoriteMovies().map { app.tuner.core.models.VODItem.MovieItem(it) } + favoriteSeries().map { app.tuner.core.models.VODItem.SeriesItem(it) })
+            .sortedBy { order[it.mediaId] ?: Int.MAX_VALUE }
+    }
+
+    public suspend fun favoriteSeries(): List<Series> = cached("favoriteSeries", Change.USER, Change.LIBRARY) {
+        lib.series(SimpleSQLiteQuery("SELECT m.* FROM series m JOIN vodFavorite f ON f.mediaId = m.id ORDER BY f.addedAt DESC")).map(::series)
+    }
+
     /** Forgets a resume point (Remove from Continue Watching). AppDatabase.deleteProgress. */
     public suspend fun deleteProgress(mediaId: String): Unit = write(Change.USER) { user.deleteProgress(mediaId) }
 

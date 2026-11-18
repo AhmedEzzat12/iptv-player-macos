@@ -1,6 +1,10 @@
 package app.tuner.tv.ui.browse
 
 import app.tuner.tv.ui.PillButton
+import app.tuner.tv.ui.TitleMenu
+import app.tuner.tv.ui.TitleRef
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.outlined.FavoriteBorder
 import app.tuner.tv.ui.rememberScreenState
 import app.tuner.tv.ui.artworkLayer
 import app.tuner.tv.ui.BackdropImage
@@ -117,12 +121,26 @@ fun VodGridScreen(kind: CategoryKind, onOpen: (String) -> Unit) {
     var exhausted by remember { mutableStateOf(false) }
     var menuCategory by remember { mutableStateOf<app.tuner.core.models.Category?>(null) }
     var renamingCategory by remember { mutableStateOf<app.tuner.core.models.Category?>(null) }
-    LaunchedEffect(Unit) { app.database.changes.collect { if (it == Change.LIBRARY) revision++ } }
+    var posterMenu by remember { mutableStateOf<TitleRef?>(null) }
+    // Favourites (a user change) show as their own category, first after All, while there are any of this kind.
+    var favoritesRevision by remember { mutableStateOf(0) }
+    var hasFavorites by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { app.database.changes.collect { if (it == Change.LIBRARY) revision++ else if (it == Change.USER) favoritesRevision++ } }
     LaunchedEffect(revision) { categories = app.library.categories(kind) }
 
-    suspend fun page(offset: Int): List<Triple<String, String, String?>> =
-        if (kind == CategoryKind.MOVIE) app.library.movies(selected, limit = 120, offset = offset).map { Triple(it.id, it.name, it.posterURL) }
-        else app.library.series(selected, limit = 120, offset = offset).map { Triple(it.id, it.name, it.coverURL) }
+    suspend fun favorites(): List<Triple<String, String, String?>> =
+        if (kind == CategoryKind.MOVIE) app.library.favoriteMovies().map { Triple(it.id, it.name, it.posterURL) }
+        else app.library.favoriteSeries().map { Triple(it.id, it.name, it.coverURL) }
+    LaunchedEffect(revision, favoritesRevision) {
+        hasFavorites = favorites().isNotEmpty()
+        if (selected == FAVORITES) items = favorites()
+    }
+
+    suspend fun page(offset: Int): List<Triple<String, String, String?>> = when {
+        selected == FAVORITES -> if (offset == 0) favorites() else emptyList()
+        kind == CategoryKind.MOVIE -> app.library.movies(selected, limit = 120, offset = offset).map { Triple(it.id, it.name, it.posterURL) }
+        else -> app.library.series(selected, limit = 120, offset = offset).map { Triple(it.id, it.name, it.coverURL) }
+    }
 
     LaunchedEffect(selected, revision) {
         items = page(0).also { if (selected == null) app.screens["vod.${kind.raw}.all"] = it }
@@ -166,6 +184,10 @@ fun VodGridScreen(kind: CategoryKind, onOpen: (String) -> Unit) {
                         SideListRow("All", selected == null, Modifier.focusRequester(requester("")).initialFocus()
                             .onFocusChanged { if (it.isFocused) { focusedCategory = null; focusedAny = true } }) { selected = null; focusedAny = false }
                     }
+                    if (hasFavorites || selected == FAVORITES) item(key = FAVORITES) {
+                        SideListRow("Favorites", selected == FAVORITES, Modifier.focusRequester(requester(FAVORITES))
+                            .onFocusChanged { if (it.isFocused) { focusedCategory = FAVORITES; focusedAny = true } }) { selected = FAVORITES; focusedAny = false }
+                    }
                     items(categories, key = { it.id }) { c ->
                         SideListRow(c.displayName, selected == c.id, Modifier.focusRequester(requester(c.id))
                             .onFocusChanged { if (it.isFocused) { focusedCategory = c.id; focusedAny = true } },
@@ -183,7 +205,7 @@ fun VodGridScreen(kind: CategoryKind, onOpen: (String) -> Unit) {
                     LazyVerticalGrid(GridCells.FixedSize(132.dp), Modifier.bleedStart(), state = grid, horizontalArrangement = Arrangement.spacedBy(18.dp),
                         verticalArrangement = Arrangement.spacedBy(22.dp), contentPadding = PaddingValues(top = 12.dp, start = FocusBleed, bottom = 48.dp, end = 4.dp)) {
                         itemsIndexed(items, key = { _, it -> it.first }) { index, (id, name, image) ->
-                            Box(Modifier.rememberedFocus(id)) { PosterCard(name, image, width = 132, onClick = { onOpen(id) }) }
+                            Box(Modifier.rememberedFocus(id)) { PosterCard(name, image, width = 132, onLongClick = { posterMenu = TitleRef(id, name, kind == CategoryKind.SERIES) }, onClick = { onOpen(id) }) }
                             if (index == items.size - 1 && !exhausted) LaunchedEffect(items.size) {
                                 val more = page(items.size)
                                 exhausted = more.size < 120
@@ -195,6 +217,7 @@ fun VodGridScreen(kind: CategoryKind, onOpen: (String) -> Unit) {
             }
         }
 
+        posterMenu?.let { ref -> TitleMenu(ref, onOpen = { onOpen(it.id) }) { posterMenu = null } }
         menuCategory?.let { cat ->
             ItemMenu(cat.displayName, listOf(
                 MenuAction("Rename…") { renamingCategory = cat },
@@ -206,6 +229,9 @@ fun VodGridScreen(kind: CategoryKind, onOpen: (String) -> Unit) {
         }
     }
 }
+
+/** The Favorites entry in the Movies / TV Shows category list (not a provider category id). */
+private const val FAVORITES = "__favorites"
 
 /**
  * Movie and show pages, like the Apple TV app's: the artwork fills the screen behind the page (under the rail too),
@@ -303,7 +329,8 @@ fun MovieDetailScreen(id: String, onPlay: (PlaybackItem) -> Unit) {
     var progress by remember { mutableStateOf<WatchProgress?>(null) }
     var revision by remember { mutableStateOf(0) }
     LaunchedEffect(Unit) { app.database.changes.collect { if (it != Change.GUIDE) revision++ } }
-    LaunchedEffect(id, revision) { progress = app.library.progress(id) }
+    var favorite by remember { mutableStateOf(false) }
+    LaunchedEffect(id, revision) { progress = app.library.progress(id); favorite = app.library.isVodFavorite(id) }
     LaunchedEffect(id) {
         movie = app.library.movie(id)
         movie?.let { m ->
@@ -324,6 +351,7 @@ fun MovieDetailScreen(id: String, onPlay: (PlaybackItem) -> Unit) {
             PillButton(if (resumable) "Resume" else "Play", icon = Icons.Filled.PlayArrow,
                 onClick = { onPlay(PlaybackItem.MovieItem(m, if (resumable) p!!.position else null)) }, modifier = Modifier.initialFocus(m.id))
             if (resumable) PillButton("Play from Beginning", icon = Icons.Filled.Replay, onClick = { onPlay(PlaybackItem.MovieItem(m, null)) })
+            FavoriteButton(favorite) { val on = !favorite; favorite = on; app.scope.launch { app.library.setVodFavorite(m.id, isSeries = false, favorite = on) } }
             // How far in, as the Apple TV app shows it beside Resume.
             if (resumable && p!!.duration > 0) Column(Modifier.width(120.dp).padding(start = 6.dp)) {
                 ProgressLine(p.fraction)
@@ -346,7 +374,8 @@ fun SeriesDetailScreen(id: String, onPlay: (PlaybackItem) -> Unit) {
     var season by remember { mutableStateOf<Int?>(null) }
     var revision by remember { mutableStateOf(0) }
     LaunchedEffect(Unit) { app.database.changes.collect { if (it != Change.GUIDE) revision++ } }
-    LaunchedEffect(id, revision) { progress = app.library.progress(id, forSeries = true) }
+    var favorite by remember { mutableStateOf(false) }
+    LaunchedEffect(id, revision) { progress = app.library.progress(id, forSeries = true); favorite = app.library.isVodFavorite(id) }
     LaunchedEffect(id) {
         series = app.library.seriesItem(id)
         val s = series ?: return@LaunchedEffect
@@ -385,6 +414,7 @@ fun SeriesDetailScreen(id: String, onPlay: (PlaybackItem) -> Unit) {
                 if (resume != null) {
                     PillButton("Play from Beginning", icon = Icons.Filled.Replay, onClick = { onPlay(PlaybackItem.EpisodeItem(resume.first, s, episodes, null)) })
                 }
+                FavoriteButton(favorite) { val on = !favorite; favorite = on; app.scope.launch { app.library.setVodFavorite(s.id, isSeries = true, favorite = on) } }
             }
         } else {
             Text("Loading episodes…", color = TunerColors.secondary)
@@ -441,6 +471,13 @@ fun SeriesDetailScreen(id: String, onPlay: (PlaybackItem) -> Unit) {
             MenuAction(if (watched) "Mark as Unwatched" else "Mark as Watched") { scope.launch { app.library.markWatched(record, watched = !watched) } },
         )) { episodeMenu = null }
     }
+}
+
+/** The heart beside Play on movie and show pages (MovieDetailView's favourite button): filled when it's a favourite. */
+@Composable
+private fun FavoriteButton(favorite: Boolean, onToggle: () -> Unit) {
+    app.tuner.tv.ui.RoundButton(if (favorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+        if (favorite) "Remove from Favorites" else "Add to Favorites", onClick = onToggle)
 }
 
 private fun minutes(seconds: Double): String {

@@ -62,6 +62,10 @@ interface UserDao {
     @Query("SELECT * FROM watchProgress WHERE seriesId = :seriesId") suspend fun seriesProgress(seriesId: String): List<WatchProgressEntity>
     @Upsert suspend fun saveProgress(p: WatchProgressEntity)
     @Query("DELETE FROM watchProgress WHERE mediaId = :mediaId") suspend fun deleteProgress(mediaId: String)
+    @Query("SELECT EXISTS(SELECT 1 FROM vodFavorite WHERE mediaId = :mediaId)") suspend fun isVodFavorite(mediaId: String): Boolean
+    @Query("INSERT OR REPLACE INTO vodFavorite (mediaId, kind, addedAt) VALUES (:mediaId, :kind, :addedAt)") suspend fun addVodFavorite(mediaId: String, kind: String, addedAt: Long)
+    @Query("DELETE FROM vodFavorite WHERE mediaId = :mediaId") suspend fun removeVodFavorite(mediaId: String)
+    @Query("SELECT mediaId FROM vodFavorite") suspend fun vodFavoriteIds(): List<String>
     @Query("""SELECT * FROM watchProgress WHERE kind IN ('movie','episode') AND (seriesId IS NOT NULL OR (completed = 0 AND position > 10))
         ORDER BY updatedAt DESC LIMIT 500""") suspend fun continueWatchingCandidates(): List<WatchProgressEntity>
 }
