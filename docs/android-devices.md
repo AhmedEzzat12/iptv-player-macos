@@ -77,3 +77,9 @@ cloud profile, so `profileinstaller` and `baseline-prof.txt` compile the app ahe
 interpreted/JIT: dexopt `status=verify`). Library reads map rows off the main thread. To compare builds fairly, force
 the compile Android would otherwise run in the background:
 `adb shell cmd package compile -m speed-profile -f app.antenna.player.scratch`.
+
+Then caching (same day): library reads are kept in memory until a write changes them (`ReadCache`), provider
+details for 6 hours and episode lists for 30 minutes (`TimedCache`), and each section redraws what it last showed on
+its first frame (`ScreenMemory`). Going back to Home showed a black page until its queries finished; now it's drawn
+at once. Opening a show no longer rewrites an unchanged episode list (which made every screen reload). Same run
+afterwards: **6.2% janky, p99 73 ms, 39 slow UI-thread frames**, and more frames drawn because content arrives sooner.

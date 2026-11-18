@@ -48,6 +48,11 @@ public class SyncService(private val library: Library, private val cacheDir: Fil
     /** Asked to sync while already syncing (e.g. the playlist was edited): run once more when the current one ends. */
     private val again = HashSet<String>()
     private val stalkerClients = HashMap<String, StalkerClient>()
+    /** Provider details per movie id, for a few hours: each visit to a movie page (and Home's hero) asked the panel
+     * again, so the page waited on the network every time. */
+    private val details = TimedCache<String, VODDetails>(capacity = 200, ttlMillis = 6 * 3600_000L)
+    /** When each show's episode list was last fetched: a show page refetched the whole list on every visit. */
+    private val episodesFetched = TimedCache<String, Unit>(capacity = 200, ttlMillis = 30 * 60_000L)
 
     public suspend fun stalkerClient(source: Source): StalkerClient = lock.withLock {
         stalkerClients.getOrPut("${source.id}|${source.url}|${source.mac}") { StalkerClient(source) }
@@ -240,6 +245,12 @@ public class SyncService(private val library: Library, private val cacheDir: Fil
         withContext(Dispatchers.Default) { episodesNow(series) }
 
     private suspend fun episodesNow(series: Series): List<app.tuner.core.models.Episode> {
+        // Fetched in the last half hour: the stored list is current enough (a refresh of the playlist updates it too).
+        if (episodesFetched.get(series.id) != null) return library.episodes(series.id).ifEmpty { fetchEpisodes(series) }
+        return fetchEpisodes(series)
+    }
+
+    private suspend fun fetchEpisodes(series: Series): List<app.tuner.core.models.Episode> {
         val source = library.source(series.sourceId) ?: return library.episodes(series.id)
         val fetched = runCatching {
             when (source.kind) {
@@ -248,7 +259,12 @@ public class SyncService(private val library: Library, private val cacheDir: Fil
                 Source.Kind.M3U -> null
             }
         }.getOrNull()
-        if (!fetched.isNullOrEmpty()) library.replaceEpisodes(mapOf(series.id to fetched))
+        if (fetched != null) episodesFetched.put(series.id, Unit)
+        // Stored only when something changed: every write tells all screens the library changed, so an unchanged list
+        // made Home and the grids reload each time a show page opened.
+        if (!fetched.isNullOrEmpty() && fetched.sortedBy { it.id } != library.episodes(series.id).sortedBy { it.id }) {
+            library.replaceEpisodes(mapOf(series.id to fetched))
+        }
         return library.episodes(series.id)
     }
 
@@ -256,7 +272,10 @@ public class SyncService(private val library: Library, private val cacheDir: Fil
     public suspend fun movieDetails(movie: app.tuner.core.models.Movie): VODDetails? =
         withContext(Dispatchers.Default) { movieDetailsNow(movie) }
 
-    private suspend fun movieDetailsNow(movie: app.tuner.core.models.Movie): VODDetails? {
+    private suspend fun movieDetailsNow(movie: app.tuner.core.models.Movie): VODDetails? =
+        details.get(movie.id) ?: fetchMovieDetails(movie)?.also { details.put(movie.id, it) }
+
+    private suspend fun fetchMovieDetails(movie: app.tuner.core.models.Movie): VODDetails? {
         val source = library.source(movie.sourceId) ?: return null
         if (source.kind != Source.Kind.XTREAM) return null
         return runCatching { XtreamClient(source).vodInfo(movie) }.getOrNull()

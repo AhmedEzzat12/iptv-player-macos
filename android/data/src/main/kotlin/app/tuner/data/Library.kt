@@ -45,7 +45,6 @@ public class Library(private val database: AppDatabase) : MetadataCache {
     private val caches get() = database.caches()
     private val guideDao get() = database.guide()
 
-    /** Runs `block` in one transaction, then tells screens what changed. */
     /**
      * Runs a read off the main thread. Room runs the query itself on its own executor, but turning thousands of rows
      * into models (a playlist's channels, a guide window, Continue Watching's ranking) ran on the caller's thread,
@@ -53,12 +52,26 @@ public class Library(private val database: AppDatabase) : MetadataCache {
      */
     private suspend fun <T> read(block: suspend () -> T): T = withContext(Dispatchers.Default) { block() }
 
+    /** Runs `block` in one transaction, forgets cached reads that depend on what changed, then tells screens. */
     private suspend fun <T> write(change: Change?, block: suspend () -> T): T =
-        database.withTransaction { block() }.also { if (change != null) database.changed(change) }
+        database.withTransaction { block() }.also { if (change != null) { memo.invalidate(change); database.changed(change) } }
+
+    private val memo = ReadCache()
+
+    /**
+     * A read whose result is kept in memory until a write of one of `dependsOn` changes it. Going back to a page (or
+     * any screen re-reading on a change it doesn't care about) then costs nothing: sections re-ran every query on each
+     * visit, and Home showed a blank page until they finished. Off the main thread like `read`.
+     */
+    private suspend fun <T> cached(key: String, vararg dependsOn: Change, block: suspend () -> T): T {
+        memo.get<T>(key)?.let { return it }
+        val generation = memo.generation(dependsOn)
+        return read(block).also { memo.put(key, it, dependsOn, generation) }
+    }
 
     // Sources (passwords encrypted at rest)
 
-    public suspend fun sources(): List<Source> = read { sourcesDao.all().map { source(it) } }
+    public suspend fun sources(): List<Source> = cached("sources", Change.LIBRARY) { sourcesDao.all().map { source(it) } }
 
     public suspend fun source(id: String): Source? = sourcesDao.get(id)?.let { source(it) }
 
@@ -159,7 +172,7 @@ public class Library(private val database: AppDatabase) : MetadataCache {
 
     // Reads
 
-    public suspend fun categories(kind: CategoryKind): List<Category> = read {
+    public suspend fun categories(kind: CategoryKind): List<Category> = cached("categories:${kind.raw}", Change.LIBRARY, Change.USER) {
         val count = when (kind) {
             CategoryKind.LIVE -> "(SELECT COUNT(*) FROM channel x WHERE x.categoryId = c.id)"
             CategoryKind.MOVIE -> "(SELECT COUNT(*) FROM movie x WHERE x.categoryId = c.id)"
@@ -168,7 +181,7 @@ public class Library(private val database: AppDatabase) : MetadataCache {
         val rows = lib.categories(SimpleSQLiteQuery("""SELECT c.id, c.sourceId, c.kind, c.name, c.providerOrder, p.alias, p.sortIndex AS prefSort,
             $count AS n FROM category c JOIN source s ON s.id = c.sourceId LEFT JOIN categoryPref p ON p.categoryId = c.id
             WHERE c.kind = ? AND COALESCE(p.isHidden, 0) = 0 ORDER BY s.sortIndex, p.sortIndex IS NULL, p.sortIndex, c.providerOrder""", arrayOf(kind.raw)))
-        return@read rows.map { Category(it.id, it.sourceId, kind, it.name, it.providerOrder, alias = it.alias, sortIndex = it.prefSort, itemCount = it.n) }
+        return@cached rows.map { Category(it.id, it.sourceId, kind, it.name, it.providerOrder, alias = it.alias, sortIndex = it.prefSort, itemCount = it.n) }
             .filter { it.itemCount > 0 || kind != CategoryKind.LIVE }
     }
 
@@ -183,7 +196,13 @@ public class Library(private val database: AppDatabase) : MetadataCache {
         c.catchupType, c.catchupSource, c.catchupDays, c.userAgent, c.referrer, c.isAdult, c.epgKey, p.isFavorite, p.favoriteOrder, p.isHidden,
         p.alias, p.epgIdOverride"""
 
-    public suspend fun channels(scope: ChannelScope, search: String? = null, limit: Int? = null): List<Channel> = read {
+    public suspend fun channels(scope: ChannelScope, search: String? = null, limit: Int? = null): List<Channel> =
+        // Searches aren't kept: each query is different and would push the pages' lists out of the cache.
+        if (search != null) channelsNow(scope, search, limit)
+        // The guide's key-matching rewrites channels' guide keys, so the guide is a dependency too.
+        else cached("channels:$scope:$limit", Change.LIBRARY, Change.USER, Change.GUIDE) { channelsNow(scope, null, limit) }
+
+    private suspend fun channelsNow(scope: ChannelScope, search: String?, limit: Int?): List<Channel> = read {
         var sql = "SELECT $channelColumns FROM channel c JOIN source s ON s.id = c.sourceId LEFT JOIN channelPref p ON p.channelId = c.id"
         val args = mutableListOf<Any>()
         val where = mutableListOf("COALESCE(p.isHidden, 0) = 0",
@@ -250,16 +269,18 @@ public class Library(private val database: AppDatabase) : MetadataCache {
     }
 
     public suspend fun movies(categoryId: String? = null, search: String? = null, sort: VODSort = VODSort.ADDED, limit: Int = 200, offset: Int = 0): List<Movie> =
-        read { lib.movies(vodQuery("movie", categoryId, search, sort, limit, offset)).map(::movie) }
+        if (search != null) read { lib.movies(vodQuery("movie", categoryId, search, sort, limit, offset)).map(::movie) }
+        else cached("movies:$categoryId:$sort:$limit:$offset", Change.LIBRARY, Change.USER) { lib.movies(vodQuery("movie", categoryId, null, sort, limit, offset)).map(::movie) }
 
     public suspend fun series(categoryId: String? = null, search: String? = null, sort: VODSort = VODSort.ADDED, limit: Int = 200, offset: Int = 0): List<Series> =
-        read { lib.series(vodQuery("series", categoryId, search, sort, limit, offset)).map(::series) }
+        if (search != null) read { lib.series(vodQuery("series", categoryId, search, sort, limit, offset)).map(::series) }
+        else cached("series:$categoryId:$sort:$limit:$offset", Change.LIBRARY, Change.USER) { lib.series(vodQuery("series", categoryId, null, sort, limit, offset)).map(::series) }
 
     public suspend fun movie(id: String): Movie? = lib.movie(id)?.let(::movie)
 
     public suspend fun seriesItem(id: String): Series? = lib.seriesItem(id)?.let(::series)
 
-    public suspend fun episodes(seriesId: String): List<Episode> = read { lib.episodes(seriesId).map { e ->
+    public suspend fun episodes(seriesId: String): List<Episode> = cached("episodes:$seriesId", Change.LIBRARY) { lib.episodes(seriesId).map { e ->
         Episode(id = e.id, seriesId = e.seriesId, sourceId = e.sourceId, season = e.season, number = e.number, title = e.title,
             providerId = e.providerId, streamURL = e.streamURL, plot = e.plot, imageURL = e.imageURL, durationSeconds = e.durationSeconds,
             containerExtension = e.containerExtension, airDate = e.airDate)
@@ -311,7 +332,7 @@ public class Library(private val database: AppDatabase) : MetadataCache {
     public suspend fun progress(mediaId: String): WatchProgress? = user.progress(mediaId)?.let(::progress)
 
     public suspend fun progress(seriesId: String, forSeries: Boolean): Map<String, WatchProgress> =
-        read { user.seriesProgress(seriesId).map(::progress).associateBy { it.mediaId } }
+        cached("progress:$seriesId", Change.USER) { user.seriesProgress(seriesId).map(::progress).associateBy { it.mediaId } }
 
     /** Saves a resume point; ignores zero-length media so a failed load can't wipe progress. */
     public suspend fun saveProgress(p: WatchProgress) {
@@ -329,10 +350,10 @@ public class Library(private val database: AppDatabase) : MetadataCache {
     )
 
     /** Resume points plus the next cached episode of shows whose latest episode was finished (SmartContinueWatching). */
-    public suspend fun continueWatching(limit: Int = 20): List<ContinueWatchingItem> = read {
+    public suspend fun continueWatching(limit: Int = 20): List<ContinueWatchingItem> = cached("continueWatching:$limit", Change.USER, Change.LIBRARY) {
         val records = user.continueWatchingCandidates().map(::progress)
         val episodes = SmartContinueWatching.showsNeedingEpisodes(records).associateWith { episodes(it) }
-        return@read SmartContinueWatching.rank(records, episodes, Instant.now(), limit).map { entry ->
+        return@cached SmartContinueWatching.rank(records, episodes, Instant.now(), limit).map { entry ->
             when (entry) {
                 is SmartContinueWatching.Entry.Resume -> ContinueWatchingItem.Resume(entry.progress)
                 is SmartContinueWatching.Entry.NextEpisode -> ContinueWatchingItem.NextEpisode(entry.episode,
