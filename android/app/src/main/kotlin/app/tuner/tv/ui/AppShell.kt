@@ -116,6 +116,15 @@ fun AppShell() {
     BackHandler(enabled = playing == null && (stack.isNotEmpty() || (contentHasFocus && selected != Section.Home))) {
         if (stack.isNotEmpty()) stack.removeAt(stack.lastIndex) else selected = Section.Home
     }
+    // Choosing a section closes the drawer: focus goes to the page once it has composed (a new section's content
+    // isn't there yet in the frame the click lands in, and focus left in the rail kept the drawer open).
+    var chose by remember { mutableStateOf(0) }
+    fun choose(section: Section) { selected = section; stack.clear(); chose++ }
+    LaunchedEffect(chose) {
+        if (chose == 0) return@LaunchedEffect
+        withFrameNanos { }; withFrameNanos { }
+        runCatching { contentFocus.requestFocus() }
+    }
     // Registered last, so it wins while the drawer is open: Back closes it and returns to the page.
     BackHandler(enabled = playing == null && drawerState.currentValue == DrawerValue.Open) {
         runCatching { contentFocus.requestFocus() }
@@ -144,10 +153,10 @@ fun AppShell() {
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
                     Section.entries.filter { it != Section.Settings }.forEach { section ->
-                        DrawerItem(section, selected, itemFocus.getValue(section), playing == null) { if (selected == it) stack.clear() else { selected = it; stack.clear() } }
+                        DrawerItem(section, selected, itemFocus.getValue(section), playing == null, ::choose)
                     }
                     Spacer(Modifier.weight(1f))
-                    DrawerItem(Section.Settings, selected, itemFocus.getValue(Section.Settings), playing == null) { selected = it; stack.clear() }
+                    DrawerItem(Section.Settings, selected, itemFocus.getValue(Section.Settings), playing == null, ::choose)
                 }
             },
         ) {
