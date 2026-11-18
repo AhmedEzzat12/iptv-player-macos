@@ -2,6 +2,7 @@ package app.tuner.tv.ui
 
 import androidx.compose.runtime.withFrameNanos
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import androidx.compose.ui.draw.alpha
 import app.tuner.tv.integration.HomeChannel
 import app.tuner.tv.integration.WatchNext
@@ -88,6 +89,7 @@ fun AppShell() {
     var selected by rememberSaveable { mutableStateOf(Section.launch) }
     val stack = remember { mutableStateListOf<Page>() }
     var playing by remember { mutableStateOf<PlaybackItem?>(null) }
+    val closeScope = androidx.compose.runtime.rememberCoroutineScope()
     var contentHasFocus by remember { mutableStateOf(false) }
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val itemFocus = remember { Section.entries.associateWith { FocusRequester() } }
@@ -219,7 +221,19 @@ fun AppShell() {
         }
         playing?.let { item ->
             // A new title (e.g. from Google TV's Continue watching row) restarts the player rather than being ignored.
-            androidx.compose.runtime.key(item) { PlayerScreen(item, onClose = { playing = null }) }
+            // Closing: the row or card that started playback takes focus back while the player is still up, then the
+            // player goes. Removed with focus inside, the player handed focus to the first focusable item on screen; on
+            // Live TV that was "All Channels", whose focus selects it, so Back landed in a different set of channels.
+            // (Asking the page for focus did the same: its restorer only knows the section, which starts at its top.)
+            androidx.compose.runtime.key(item) { PlayerScreen(item, onClose = {
+                closeScope.launch {
+                    if (stack.isEmpty()) {
+                        focusMemory.restoreKey = focusMemory.lastKey
+                        repeat(8) { if (focusMemory.restoreKey != null) withFrameNanos { } }
+                    }
+                    playing = null
+                }
+            }) }
         }
         // Closing the player: back to the card that started it (as for pages), else the page. Started from a pushed page
         // (a movie or episode page), the remembered card is the hidden one under that page: focus goes back to the page

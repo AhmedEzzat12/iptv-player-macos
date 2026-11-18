@@ -151,9 +151,11 @@ fun PlayerScreen(initial: PlaybackItem, onClose: () -> Unit) {
             .build().apply { playWhenReady = true }
     }
 
-    // Assistant ("pause", "resume"), remote media keys and the system's now-playing controls act on this player.
+    // Assistant ("pause", "resume"), remote media keys and the system's now-playing controls act on this player. Its id
+    // is unique per player: a new player can be composed before the last one's session is released (one fixed id
+    // crashed the app with "Session ID must be unique").
     val session = remember {
-        androidx.media3.session.MediaSession.Builder(context, player).setId("antenna-player").apply {
+        androidx.media3.session.MediaSession.Builder(context, player).setId("antenna-player-" + java.util.UUID.randomUUID()).apply {
             (context as? android.app.Activity)?.let { activity ->
                 setSessionActivity(android.app.PendingIntent.getActivity(activity, 0,
                     android.content.Intent(activity, activity.javaClass).addFlags(android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP),
@@ -506,7 +508,8 @@ fun PlayerScreen(initial: PlaybackItem, onClose: () -> Unit) {
         when {
             scrubTo != null -> commitScrub()
             upNext != null -> nextEpisode(1, completedCurrent = true)
-            !live && chromeVisible -> togglePlay()
+            // One press pauses (and shows the controls), as on the Apple TV; it took two (the first only showed them).
+            !live -> togglePlay()
         }
         chromeVisible = !chromeVisible || !player.playWhenReady || scrubTo != null
     }
@@ -644,7 +647,9 @@ fun PlayerScreen(initial: PlaybackItem, onClose: () -> Unit) {
                 onSleep = { o -> sleep = o?.let { SleepTimer(it) }; if (o == null) { sleepRemaining = null; player.volume = 1f } },
                 actionsTitle = if (item is PlaybackItem.Live) "Channel" else "Episodes",
                 actions = playerActions(item, favorite,
-                    onEpisode = { offset -> optionsOpen = false; nextEpisode(offset) },
+                    // Focus back to the player: closing the panel this way left it nowhere, so the remote's keys did
+                    // nothing (or reached the page hidden under the player).
+                    onEpisode = { offset -> optionsOpen = false; focus.requestFocus(); nextEpisode(offset) },
                     onFavorite = { live ->
                         val on = !favorite
                         favorite = on
