@@ -25,6 +25,7 @@ What's usable and what was deferred: `docs/android-roadmap.md`.
 | Fingerprint | `CloudSync/SourceFingerprint.swift` | `sync/SourceFingerprint.kt` | 666f598 | vectors |
 | Metadata | `Metadata/MediaMetadata, MetadataHTTP, TitleMatcher, CinemetaClient, TMDBClient, TVmazeClient, MetadataService` | `metadata/*.kt` | 666f598 | 37 tests + vectors; cache behind `MetadataCache` (Room `Library`) |
 | Skip lookups | `Skip/SkipSegmentService.swift` | `skip/SkipSegmentService.kt` | 666f598 | 7 tests; cache behind `SkipSegmentCache`; no learned intros (v1) |
+| VOD items, Home hero | `Views/VOD/VODCards.swift` (`VODItem`, `VODFormat`), `HomeView.swift` (`heroPicks`) | `models/VODItem.kt` | c361462 | 5 tests; app-target code on Apple, in core here so it's tested |
 
 ## Deliberate differences
 
@@ -37,3 +38,6 @@ What's usable and what was deferred: `docs/android-roadmap.md`.
   Shelf would be the tvOS one).
 - **Quick reopen default.** A closed movie or episode stays ready for 2 minutes by default on TV (Apple: 10). TV boxes
   have little RAM. The setting offers the same choices.
+- **Home's first focus.** TV Home opens on the hero's Play button, as the Apple TV app does, rather than on the first
+  Continue Watching card (appendix D): focusing a row scrolls it to the top, which hid the hero on every launch.
+  Continue Watching is the first row under the hero, one press down.
