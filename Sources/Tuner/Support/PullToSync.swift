@@ -51,6 +51,8 @@ private struct PullToSync: ViewModifier {
                 }
             }
             .overlay(alignment: .top) { hint }
+            // Leaving mid-pull (another tab, the player) sends no phase change: stop the ticker here.
+            .onDisappear { dragging = false; resetHold() }
             .sensoryFeedback(.selection, trigger: charge.isPastLine)
             .sensoryFeedback(.impact(weight: .medium), trigger: holdArmed) { _, armed in armed }
     }
