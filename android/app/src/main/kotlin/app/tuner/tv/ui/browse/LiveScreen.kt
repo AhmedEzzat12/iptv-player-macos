@@ -1,5 +1,6 @@
 package app.tuner.tv.ui.browse
 
+import app.tuner.tv.ui.rememberedFocus
 import androidx.tv.material3.LocalContentColor
 import app.tuner.tv.ui.RenameDialog
 import app.tuner.tv.ui.MenuAction
@@ -232,7 +233,7 @@ fun LiveScreen(onPlay: (PlaybackItem) -> Unit, initial: Library.ChannelScope = L
                                         if (ch.isFavorite) Text("★", color = TunerColors.accent)
                                     }
                                 },
-                                modifier = Modifier.fillMaxWidth().then(if (ch.id == channels.first().id) Modifier.focusRequester(firstChannel) else Modifier),
+                                modifier = Modifier.fillMaxWidth().rememberedFocus(ch.id).then(if (ch.id == channels.first().id) Modifier.focusRequester(firstChannel) else Modifier),
                             )
                         }
                     }

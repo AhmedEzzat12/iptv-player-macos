@@ -1,5 +1,7 @@
 package app.tuner.tv.ui
 
+import androidx.compose.runtime.withFrameNanos
+import androidx.compose.ui.draw.alpha
 import app.tuner.tv.integration.WatchNext
 import app.tuner.tv.app
 import androidx.compose.ui.platform.LocalContext
@@ -77,6 +79,7 @@ sealed class Page {
  * the full-screen player above everything. Back closes the open drawer (back to the page), pops a page, then goes to
  * Home; Back on Home leaves the app. (Back on the drawer used to leave the app, which closed it by accident.)
  */
+@OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class) // focusProperties.enter
 @Composable
 fun AppShell() {
     var selected by rememberSaveable { mutableStateOf(Section.launch) }
@@ -88,7 +91,17 @@ fun AppShell() {
     val contentFocus = remember { FocusRequester() }
     val sectionState = androidx.compose.runtime.saveable.rememberSaveableStateHolder()
 
-    fun open(page: Page) { stack.add(page) }
+
+    val sectionFocus = remember { FocusRequester() }
+    var returningFromPage by remember { mutableStateOf(false) }
+    val focusMemory = remember { FocusMemory() }
+    var savedKey by remember { mutableStateOf<String?>(null) }
+    var returningFromPlayer by remember { mutableStateOf(false) }
+    fun open(page: Page) {
+        // Remember the exact card that opened the page (restored when the page closes).
+        if (stack.isEmpty()) savedKey = focusMemory.lastKey
+        stack.add(page)
+    }
     val play: (PlaybackItem) -> Unit = { playing = it }
     val app = LocalContext.current.app
     LaunchedEffect(Unit) {
@@ -108,7 +121,7 @@ fun AppShell() {
         runCatching { contentFocus.requestFocus() }
     }
 
-    Box(Modifier.fillMaxSize()) {
+    androidx.compose.runtime.CompositionLocalProvider(LocalFocusMemory provides focusMemory) { Box(Modifier.fillMaxSize()) {
         // Like the Apple TV app's sidebar: a slim icon rail that opens over the page (with a fade) instead of pushing
         // it aside. Entering it focuses the current section, not whichever icon is level with the focused card.
         ModalNavigationDrawer(
@@ -145,13 +158,20 @@ fun AppShell() {
                     .padding(start = RAIL_WIDTH + 32.dp, end = 24.dp, top = 27.dp, bottom = 0.dp)
 
             ) {
-                when (val page = stack.lastOrNull()) {
-                    is Page.MovieDetail -> MovieDetailScreen(page.id, play)
-                    is Page.SeriesDetail -> SeriesDetailScreen(page.id, play)
-                    Page.AddPlaylist -> AddPlaylistScreen(onDone = { stack.removeAt(stack.lastIndex) })
-                    is Page.EditPlaylist -> EditPlaylistScreen(page.id, onDone = { stack.removeAt(stack.lastIndex) })
-                    // Each section's state (search text, grid scroll) survives a page pushed over it.
-                    null -> sectionState.SaveableStateProvider(selected.name) { when (selected) {
+                val page = stack.lastOrNull()
+                // The section stays composed (hidden) under a pushed page, so Back lands on the card that opened the
+                // page: disposing it lost the focus, and Back went to the top of Home (where OK then played the first
+                // Continue Watching title). Focus can't wander into it while hidden (`enter` is cancelled).
+                Box(
+                    Modifier.fillMaxSize()
+                        // Same modifiers in both states: adding/removing one recreated the focus nodes after it and lost
+                        // the saved card.
+                        .alpha(if (page != null) 0f else 1f)
+                        .focusProperties { if (page != null) enter = { FocusRequester.Cancel } }
+                        .focusRequester(sectionFocus).focusGroup()
+                ) {
+                    // Each section's state (search text, grid scroll) also survives switching sections.
+                    sectionState.SaveableStateProvider(selected.name) { when (selected) {
                         Section.Home -> HomeScreen(play, { open(Page.MovieDetail(it)) }, { open(Page.SeriesDetail(it)) }, { open(Page.AddPlaylist) })
                         Section.Live -> LiveScreen(play)
                         Section.Movies -> VodGridScreen(CategoryKind.MOVIE) { open(Page.MovieDetail(it)) }
@@ -162,16 +182,40 @@ fun AppShell() {
                         Section.Settings -> PlaylistsScreen(onAdd = { open(Page.AddPlaylist) }, onEdit = { open(Page.EditPlaylist(it)) })
                     } }
                 }
+                if (page != null) Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+                    when (page) {
+                        is Page.MovieDetail -> MovieDetailScreen(page.id, play)
+                        is Page.SeriesDetail -> SeriesDetailScreen(page.id, play)
+                        Page.AddPlaylist -> AddPlaylistScreen(onDone = { stack.removeAt(stack.lastIndex) })
+                        is Page.EditPlaylist -> EditPlaylistScreen(page.id, onDone = { stack.removeAt(stack.lastIndex) })
+                    }
+                }
+                // Back from the last page: focus returns to the section, whose restorer picks the card that opened it.
+                LaunchedEffect(page == null) {
+                    if (page == null && returningFromPage) {
+                        returningFromPage = false
+                        // The card that opened the page takes focus back (`rememberedFocus`); if it's gone, the section.
+                        focusMemory.restoreKey = savedKey
+                        repeat(8) { if (focusMemory.restoreKey != null) withFrameNanos { } }
+                        if (focusMemory.restoreKey != null) { focusMemory.restoreKey = null; runCatching { sectionFocus.requestFocus() } }
+                    } else if (page != null) returningFromPage = true
+                }
             }
         }
         playing?.let { item ->
             // A new title (e.g. from Google TV's Continue watching row) restarts the player rather than being ignored.
-            androidx.compose.runtime.key(item) { PlayerScreen(item, onClose = {
-                runCatching { contentFocus.requestFocus() }
-                playing = null
-            }) }
+            androidx.compose.runtime.key(item) { PlayerScreen(item, onClose = { playing = null }) }
         }
-    }
+        // Closing the player: back to the card that started it (as for pages), else the page.
+        LaunchedEffect(playing == null) {
+            if (playing == null && returningFromPlayer) {
+                returningFromPlayer = false
+                focusMemory.restoreKey = focusMemory.lastKey
+                repeat(8) { if (focusMemory.restoreKey != null) withFrameNanos { } }
+                if (focusMemory.restoreKey != null) { focusMemory.restoreKey = null; runCatching { contentFocus.requestFocus() } }
+            } else if (playing != null) returningFromPlayer = true
+        }
+    } }
 
 
 }

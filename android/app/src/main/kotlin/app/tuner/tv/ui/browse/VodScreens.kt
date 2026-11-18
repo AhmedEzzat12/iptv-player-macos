@@ -1,5 +1,6 @@
 package app.tuner.tv.ui.browse
 
+import app.tuner.tv.ui.rememberedFocus
 import app.tuner.core.metadata.VODRating
 import app.tuner.tv.ui.KeepInView
 import androidx.activity.compose.BackHandler
@@ -111,7 +112,7 @@ fun VodGridScreen(kind: CategoryKind, onOpen: (String) -> Unit) {
                 LazyVerticalGrid(GridCells.FixedSize(150.dp), Modifier.bleedStart(), horizontalArrangement = Arrangement.spacedBy(18.dp),
                     verticalArrangement = Arrangement.spacedBy(24.dp), contentPadding = PaddingValues(top = 12.dp, start = FocusBleed, bottom = 48.dp, end = 4.dp)) {
                     itemsIndexed(items, key = { _, it -> it.first }) { index, (id, name, image) ->
-                        PosterCard(name, image, onClick = { onOpen(id) })
+                        Box(Modifier.rememberedFocus(id)) { PosterCard(name, image, onClick = { onOpen(id) }) }
                         if (index == items.size - 1 && !exhausted) LaunchedEffect(items.size) {
                             val more = page(items.size)
                             exhausted = more.size < 120

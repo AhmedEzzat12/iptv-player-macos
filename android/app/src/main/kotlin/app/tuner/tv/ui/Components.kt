@@ -1,5 +1,6 @@
 package app.tuner.tv.ui
 
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -81,13 +82,18 @@ fun WideCard(title: String, subtitle: String?, imageURL: String?, progress: Doub
 @Composable
 fun <T> Shelf(title: String, items: List<T>, key: (T) -> String, focusFirst: Boolean = false, content: @Composable (T) -> Unit) {
     if (items.isEmpty()) return
+    // The first card takes focus once, when the page first shows it. Keyed on the first item, it took focus again
+    // whenever the row changed (Continue Watching reorders after anything is watched, and Home reloads on every
+    // database change) or the card scrolled back into view: coming back from a title or the player always landed on
+    // the first Continue Watching card.
+    var tookFocus by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(false) }
     Column(Modifier.padding(bottom = 28.dp)) {
         Text(title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(bottom = 4.dp))
         // Vertical room so a focused (grown) card never reaches the row title above.
         LazyRow(Modifier.bleedStart(), horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(20.dp),
             contentPadding = PaddingValues(start = FocusBleed, end = 48.dp, top = 12.dp, bottom = 6.dp)) {
             items(items.size, key = { key(items[it]) }) { i ->
-                Box(if (focusFirst && i == 0) Modifier.initialFocus(key(items[0])) else Modifier) { content(items[i]) }
+                Box(Modifier.rememberedFocus(key(items[i])).then(if (focusFirst && i == 0 && !tookFocus) Modifier.initialFocus().onFocusChanged { if (it.hasFocus) tookFocus = true } else Modifier)) { content(items[i]) }
             }
         }
     }

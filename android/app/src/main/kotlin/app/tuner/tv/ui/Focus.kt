@@ -1,5 +1,8 @@
 package app.tuner.tv.ui
 
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
@@ -62,4 +65,29 @@ val KeepInView: androidx.compose.foundation.gestures.BringIntoViewSpec = object 
             else -> end - containerSize
         }
     }
+}
+
+/**
+ * Which card had focus, so Back from a page (or the player) lands on the card that opened it. Cards in rows and grids
+ * record their key when focused (`rememberedFocus`); AppShell asks for it back when the page closes.
+ */
+class FocusMemory {
+    var lastKey: String? = null
+    var restoreKey by androidx.compose.runtime.mutableStateOf<String?>(null)
+}
+
+val LocalFocusMemory = androidx.compose.runtime.staticCompositionLocalOf { FocusMemory() }
+
+/** Records this card as focused under `key`, and takes focus back when AppShell restores that key. */
+@Composable
+fun Modifier.rememberedFocus(key: String): Modifier {
+    val memory = LocalFocusMemory.current
+    val requester = remember { FocusRequester() }
+    LaunchedEffect(memory.restoreKey) {
+        if (memory.restoreKey == key) {
+            withFrameNanos { }
+            if (runCatching { requester.requestFocus() }.isSuccess) memory.restoreKey = null
+        }
+    }
+    return focusRequester(requester).onFocusChanged { if (it.hasFocus) memory.lastKey = key }
 }
