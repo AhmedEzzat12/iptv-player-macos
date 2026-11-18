@@ -23,8 +23,9 @@ class KeyHoldHook : ContentProvider() {
     override fun onCreate(): Boolean {
         val receiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context, intent: Intent) {
-                val ms = intent.getIntExtra("ms", 2000)
-                val code = intent.getIntExtra("key", KeyEvent.KEYCODE_DPAD_CENTER)
+                // Only D-pad and OK keys, held for at most 10 s.
+                val ms = intent.getIntExtra("ms", 2000).coerceIn(0, 10_000)
+                val code = intent.getIntExtra("key", KeyEvent.KEYCODE_DPAD_CENTER).takeIf { it in ALLOWED_KEYS } ?: return
                 thread(name = "key-hold") {
                     val down = SystemClock.uptimeMillis()
                     send(KeyEvent(down, down, KeyEvent.ACTION_DOWN, code, 0))
@@ -39,7 +40,9 @@ class KeyHoldHook : ContentProvider() {
                 }
             }
         }
-        context!!.registerReceiver(receiver, IntentFilter("app.tuner.tv.debug.HOLD"), Context.RECEIVER_EXPORTED)
+        // Only senders holding DUMP may trigger it: adb's shell has it, ordinary apps can't get it, so another app on the
+        // device can't drive a debug build through this hook.
+        context!!.registerReceiver(receiver, IntentFilter("app.tuner.tv.debug.HOLD"), android.Manifest.permission.DUMP, null, Context.RECEIVER_EXPORTED)
         return true
     }
 
@@ -59,6 +62,11 @@ class KeyHoldHook : ContentProvider() {
             done.countDown()
         }
         done.await()
+    }
+
+    private companion object {
+        val ALLOWED_KEYS = setOf(KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_DPAD_UP,
+            KeyEvent.KEYCODE_DPAD_DOWN, KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_RIGHT)
     }
 
     override fun query(uri: Uri, p: Array<out String>?, s: String?, a: Array<out String>?, o: String?) = null
