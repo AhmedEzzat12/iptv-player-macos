@@ -30,5 +30,10 @@ What's usable and what was deferred: `docs/android-roadmap.md`.
 
 - **Xtream live format.** Android requests `.ts` first and falls back to `.m3u8`; Apple requests HLS for AVFoundation
   and TS for mpv. ExoPlayer plays raw TS well and starts faster.
+- **Typed searches are remembered.** Apple keeps a search only once a result from it is opened; with a remote,
+  typing is slow and a search is often just looked at, so TV also keeps one on going down to the results or after a
+  pause with results (`RecentSearches.rememberTyped`).
+- **Home screen channel.** Android TV launchers show an app's own row (`HomeChannel`); Apple has no equivalent (Top
+  Shelf would be the tvOS one).
 - **Quick reopen default.** A closed movie or episode stays ready for 2 minutes by default on TV (Apple: 10). TV boxes
   have little RAM. The setting offers the same choices.

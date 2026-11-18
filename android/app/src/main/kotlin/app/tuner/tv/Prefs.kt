@@ -35,6 +35,9 @@ class Prefs(context: Context) {
         get() = recentSearchesRaw.split('\n').filter { it.isNotBlank() }
         set(value) { recentSearchesRaw = value.joinToString("\n") }
 
+    /** The TV home screen channel's row id (HomeChannel); empty until it's made. */
+    var homeChannelId by string("homeChannelId", "")
+
     private fun bool(key: String, default: Boolean) = Pref(store.getBoolean(key, default)) { store.edit().putBoolean(key, it).apply() }
     private fun int(key: String, default: Int) = Pref(store.getInt(key, default)) { store.edit().putInt(key, it).apply() }
     private fun string(key: String, default: String) = Pref(store.getString(key, default) ?: default) { store.edit().putString(key, it).apply() }

@@ -57,7 +57,8 @@ import kotlinx.coroutines.delay
 
 /**
  * Search: channels, what's on TV, movies and shows by name, 300 ms after typing stops. With nothing typed, the recent
- * searches show as chips (a search is remembered once a result from it is opened or played, as in the Apple apps).
+ * searches show as chips. A search is remembered once a result from it is opened or played (as in the Apple apps),
+ * and also, unlike them, when typed: on going down to the results, or after a pause with results.
  */
 @Composable
 fun SearchScreen(onPlay: (PlaybackItem) -> Unit, onOpenMovie: (String) -> Unit, onOpenSeries: (String) -> Unit, focusSidebar: () -> Unit = {}) {
@@ -68,6 +69,7 @@ fun SearchScreen(onPlay: (PlaybackItem) -> Unit, onOpenMovie: (String) -> Unit, 
     var field by rememberSaveable(stateSaver = TextFieldValue.Saver) { mutableStateOf(TextFieldValue("")) }
     val query = field.text
     fun used() { app.prefs.recentSearches = RecentSearches.remember(app.prefs.recentSearches, query) }
+    fun typed() { app.prefs.recentSearches = RecentSearches.rememberTyped(app.prefs.recentSearches, query) }
     val play: (PlaybackItem) -> Unit = { used(); onPlay(it) }
     val openMovie: (String) -> Unit = { used(); onOpenMovie(it) }
     val openSeries: (String) -> Unit = { used(); onOpenSeries(it) }
@@ -84,6 +86,8 @@ fun SearchScreen(onPlay: (PlaybackItem) -> Unit, onOpenMovie: (String) -> Unit, 
         onTv = progs.mapNotNull { p -> byKey[p.epgKey]?.let { it to p } }
         movies = app.library.movies(search = query, limit = 50)
         shows = app.library.series(search = query, limit = 50)
+        // Typed and left alone with results: kept too, without opening anything (cancelled by more typing).
+        if (channels.isNotEmpty() || onTv.isNotEmpty() || movies.isNotEmpty() || shows.isNotEmpty()) { delay(2500); typed() }
     }
     LazyColumn(Modifier.fillMaxSize()) {
         item {
@@ -98,7 +102,7 @@ fun SearchScreen(onPlay: (PlaybackItem) -> Unit, onOpenMovie: (String) -> Unit, 
                             // and Left at the start of the text to the sidebar (the field kept Left for its cursor, so the only
                             // way out of Search was Back).
                             if (e.type != KeyEventType.KeyDown) false
-                            else if (e.key == Key.DirectionDown) { focusManager.moveFocus(FocusDirection.Down); true }
+                            else if (e.key == Key.DirectionDown) { typed(); focusManager.moveFocus(FocusDirection.Down); true }
                             else if (e.key == Key.DirectionLeft && field.selection.collapsed && field.selection.start == 0) { focusSidebar(); true }
                             else false
                         }

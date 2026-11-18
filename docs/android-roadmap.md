@@ -53,7 +53,9 @@ In order of how much a viewer would miss them:
   / Remove from Favorites** on live channels (favourites used to need a long press in the channel list). ⏭/⏮ on the
   remote already changed episode.
 - **Recent searches** on Search (`RecentSearches`, ported from `Preferences.rememberSearch` with tests): chips while
-  nothing is typed, remembered once a result is opened or played, up to 12, with Clear.
+  nothing is typed, remembered once a result is opened or played, up to 12, with Clear. Typed searches are kept too
+  (on going down to the results, or after 2.5 s with results); a newer search extending the newest entry replaces it
+  (`RecentSearches.rememberTyped`).
 - **IMDb / TMDB ratings** on movie and show pages (`VODRating`, ported from `VODEnrichment.rating`): the online rating
   with its source wins, the provider's own stays an unlabelled ★.
 - Fixes: refresh froze the app (parsing ran on the main thread), sidebar Back/Right, page-open sidebar flash,
@@ -75,6 +77,11 @@ In order of how much a viewer would miss them:
   TCL's Google TV launcher stores the entries but doesn't show a sideloaded app's in its Continue watching row;
   Google's current route there is the Engage SDK (continuation cluster), which needs Play distribution and Google's
   approval: part of the store work.
+- Home screen channel (2026-11-18, `integration/HomeChannel.kt`): the app's own preview channel, "Antenna", published
+  as the default channel with Up Next / Continue Watching, then recently added shows and movies, updated with Watch
+  Next. Titles play from their resume point; shows and movies open their page (`antenna:open/series|movie/<id>`).
+  Android TV's launcher shows it on Home; where Google TV shows it (Apps tab, or not at all for sideloaded apps) is
+  still to be checked on the TCL.
 - Voice search through the system search intent.
 - Focus audit on every page, banner and launcher icon review, low-RAM tuning (Coil memory cache, list prefetch),
   metadata (posters, ratings) shown wherever the Apple apps show them.

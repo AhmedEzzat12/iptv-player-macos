@@ -1,7 +1,9 @@
 package app.tuner.tv.ui
 
 import androidx.compose.runtime.withFrameNanos
+import kotlinx.coroutines.delay
 import androidx.compose.ui.draw.alpha
+import app.tuner.tv.integration.HomeChannel
 import app.tuner.tv.integration.WatchNext
 import app.tuner.tv.app
 import androidx.compose.ui.platform.LocalContext
@@ -108,7 +110,9 @@ fun AppShell() {
         app.playRequests.collect { uri ->
             if (uri != null) {
                 app.playRequests.value = null
-                WatchNext.resolve(app, uri)?.let { playing = it }
+                val page = HomeChannel.page(uri)
+                if (page != null) { playing = null; stack.clear(); stack.add(page) }
+                else WatchNext.resolve(app, uri)?.let { playing = it }
             }
         }
     }
@@ -116,14 +120,15 @@ fun AppShell() {
     BackHandler(enabled = playing == null && (stack.isNotEmpty() || (contentHasFocus && selected != Section.Home))) {
         if (stack.isNotEmpty()) stack.removeAt(stack.lastIndex) else selected = Section.Home
     }
-    // Choosing a section closes the drawer: focus goes to the page once it has composed (a new section's content
-    // isn't there yet in the frame the click lands in, and focus left in the rail kept the drawer open).
+    // Choosing a section closes the drawer: focus left in the rail kept it open over the page. A new section's own
+    // first focus (`initialFocus`: Search's field) goes first; the page only takes focus here if nothing did.
     var chose by remember { mutableStateOf(0) }
     fun choose(section: Section) { selected = section; stack.clear(); chose++ }
     LaunchedEffect(chose) {
         if (chose == 0) return@LaunchedEffect
-        withFrameNanos { }; withFrameNanos { }
-        runCatching { contentFocus.requestFocus() }
+        withFrameNanos { }
+        delay(200)
+        if (!contentHasFocus) runCatching { contentFocus.requestFocus() }
     }
     // Registered last, so it wins while the drawer is open: Back closes it and returns to the page.
     BackHandler(enabled = playing == null && drawerState.currentValue == DrawerValue.Open) {

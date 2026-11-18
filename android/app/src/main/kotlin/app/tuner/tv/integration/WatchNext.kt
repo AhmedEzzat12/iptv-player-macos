@@ -37,6 +37,9 @@ object WatchNext {
     suspend fun sync(app: TunerApplication) = lock.withLock {
         withContext(Dispatchers.IO) {
             runCatching { syncNow(app) }.onFailure { Log.w(TAG, "Watch Next update failed: ${it.javaClass.simpleName}") }
+            // The app's own row follows the same moments (launch, after playback).
+            runCatching { HomeChannel.syncNow(app, app.library.continueWatching(LIMIT)) }
+                .onFailure { Log.w(TAG, "Home channel update failed: ${it.javaClass.simpleName}") }
         }
     }
 
@@ -101,7 +104,7 @@ object WatchNext {
             .setIntent(intent)
     }
 
-    /** What a Watch Next link plays (null when the title is gone from the library). */
+    /** What a Watch Next (or home channel) link plays (null when the title is gone from the library). */
     suspend fun resolve(app: TunerApplication, uri: Uri): PlaybackItem? {
         if (uri.scheme != "antenna") return null
         val parts = uri.schemeSpecificPart.split('/').map { Uri.decode(it) }
