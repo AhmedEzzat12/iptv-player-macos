@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.Alignment
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -169,7 +170,6 @@ fun AppShell() {
                 Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
                     .focusRequester(contentFocus).focusRestorer().focusGroup()
                     .onFocusChanged { contentHasFocus = it.hasFocus }
-                    .padding(start = RAIL_WIDTH + 32.dp, end = 24.dp, top = 27.dp, bottom = 0.dp)
 
             ) {
                 val page = stack.lastOrNull()
@@ -177,7 +177,7 @@ fun AppShell() {
                 // page: disposing it lost the focus, and Back went to the top of Home (where OK then played the first
                 // Continue Watching title). Focus can't wander into it while hidden (`enter` is cancelled).
                 Box(
-                    Modifier.fillMaxSize()
+                    Modifier.fillMaxSize().padding(PageInsets)
                         // Same modifiers in both states: adding/removing one recreated the focus nodes after it and lost
                         // the saved card.
                         .alpha(if (page != null) 0f else 1f)
@@ -200,8 +200,9 @@ fun AppShell() {
                     when (page) {
                         is Page.MovieDetail -> MovieDetailScreen(page.id, play)
                         is Page.SeriesDetail -> SeriesDetailScreen(page.id, play)
-                        Page.AddPlaylist -> AddPlaylistScreen(onDone = { stack.removeAt(stack.lastIndex) })
-                        is Page.EditPlaylist -> EditPlaylistScreen(page.id, onDone = { stack.removeAt(stack.lastIndex) })
+                        // Movie and show pages run their artwork edge to edge and inset their own content.
+                        Page.AddPlaylist -> Box(Modifier.padding(PageInsets)) { AddPlaylistScreen(onDone = { stack.removeAt(stack.lastIndex) }) }
+                        is Page.EditPlaylist -> Box(Modifier.padding(PageInsets)) { EditPlaylistScreen(page.id, onDone = { stack.removeAt(stack.lastIndex) }) }
                     }
                 }
                 // Back from the last page: focus returns to the section, whose restorer picks the card that opened it.
@@ -272,3 +273,7 @@ private fun NavigationDrawerScope.DrawerItem(section: Section, selected: Section
 
 /** Closed rail: 48 dp pills plus 8 dp padding each side. Page content starts after it so titles are never under it. */
 private val RAIL_WIDTH = 64.dp
+
+/** Where a page's content starts: clear of the rail on the left. */
+val PageStart = RAIL_WIDTH + 32.dp
+val PageInsets = PaddingValues(start = PageStart, end = 24.dp, top = 27.dp)

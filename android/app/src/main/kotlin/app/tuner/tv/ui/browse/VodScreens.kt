@@ -11,6 +11,23 @@ import app.tuner.tv.ui.FocusBleed
 import app.tuner.tv.ui.bleedStart
 import app.tuner.tv.ui.PageTitle
 import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.gestures.animateScrollBy
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.text.style.TextOverflow
+import app.tuner.tv.ui.PageStart
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -41,6 +58,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Button
 import androidx.tv.material3.FilterChip
@@ -135,21 +153,66 @@ fun VodGridScreen(kind: CategoryKind, onOpen: (String) -> Unit) {
     }
 }
 
-/** Backdrop and title block shared by the movie and show pages (online metadata fills logo, backdrop and plot). */
+/**
+ * Movie and show pages, like the Apple TV app's: the artwork fills the screen behind the page (under the rail too),
+ * the title, details and buttons sit low on its left over a fade, and what follows (seasons and episodes, cast) peeks
+ * in at the bottom. The old 380 dp boxed backdrop took most of a 540 dp-tall TV screen: the season chips sat on its
+ * bottom edge and the episodes started off screen. Scrolling down dims the artwork; focus back in the top block
+ * scrolls back to the top so the title shows again.
+ */
 @Composable
-private fun Header(title: String, meta: MediaMetadata?, fallbackBackdrop: String?, details: String, plot: String?) {
-    Box(Modifier.fillMaxWidth().height(380.dp)) {
-        val backdrop = meta?.backdropURL ?: fallbackBackdrop
-        if (backdrop != null) AsyncImage(backdrop, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-        Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(listOf(Color.Black.copy(alpha = 0.92f), Color.Transparent))))
-        Column(Modifier.align(Alignment.BottomStart).width(760.dp).padding(bottom = 20.dp)) {
-            if (meta?.logoURL != null) AsyncImage(meta.logoURL, title, Modifier.height(120.dp).width(420.dp), contentScale = ContentScale.Fit, alignment = Alignment.CenterStart)
-            else Text(title, style = MaterialTheme.typography.displaySmall)
-            Spacer(Modifier.height(8.dp))
-            Text(details, color = Color.White.copy(alpha = 0.75f))
-            (meta?.overview ?: plot)?.let { Spacer(Modifier.height(8.dp)); Text(it, maxLines = 4, color = Color.White.copy(alpha = 0.85f)) }
+private fun DetailPage(backdrop: String?, poster: String?, list: LazyListState = rememberLazyListState(), hero: @Composable ColumnScope.() -> Unit, more: LazyListScope.() -> Unit) {
+    val scope = rememberCoroutineScope()
+    val scrolled by remember { derivedStateOf { list.firstVisibleItemIndex > 0 || list.firstVisibleItemScrollOffset > 40 } }
+    val dim by animateFloatAsState(if (scrolled) 0.7f else 0f, label = "dim")
+    val background = MaterialTheme.colorScheme.background
+    BoxWithConstraints(Modifier.fillMaxSize().background(background)) {
+        val screen = maxHeight
+        if (backdrop != null) AsyncImage(backdrop, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop, alignment = Alignment.TopCenter)
+        // A fade from the left (the text and the rail stay readable) and one into the page at the bottom.
+        Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(0f to background.copy(alpha = 0.97f), 0.42f to background.copy(alpha = 0.7f), 0.75f to Color.Transparent)))
+        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.3f to Color.Transparent, 0.95f to background)))
+        // Only a poster (no wide artwork): shown whole on the right, over the fades; stretched across the screen it was
+        // a blurry crop.
+        if (backdrop == null && poster != null) AsyncImage(poster, null,
+            Modifier.align(Alignment.TopEnd).padding(top = 40.dp, end = 64.dp).height(screen * 0.62f).aspectRatio(2f / 3f).clip(RoundedCornerShape(12.dp)),
+            contentScale = ContentScale.Crop)
+        Box(Modifier.fillMaxSize().background(background.copy(alpha = dim)))
+        // Scroll only when the focused control would be off screen, and then far enough to show the titles under an
+        // episode card too (the card alone came into view with its title cut off by the screen's edge).
+        val below = with(LocalDensity.current) { 64.dp.toPx() }
+        val spec = remember(below) { object : androidx.compose.foundation.gestures.BringIntoViewSpec {
+            override fun calculateScrollDistance(offset: Float, size: Float, containerSize: Float): Float =
+                if (offset + size > containerSize && offset >= 0f) minOf(offset, offset + size + below - containerSize)
+                else KeepInView.calculateScrollDistance(offset, size, containerSize)
+        } }
+        @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+        androidx.compose.runtime.CompositionLocalProvider(androidx.compose.foundation.gestures.LocalBringIntoViewSpec provides spec) {
+            LazyColumn(Modifier.fillMaxSize(), state = list, contentPadding = PaddingValues(start = PageStart, end = 48.dp, bottom = 48.dp)) {
+                item {
+                    Column(
+                        Modifier.fillMaxWidth().height(screen * 0.74f).padding(bottom = 22.dp)
+                            .onFocusChanged { if (it.hasFocus && list.firstVisibleItemIndex + list.firstVisibleItemScrollOffset > 0) scope.launch { list.animateScrollToItem(0) } },
+                        verticalArrangement = Arrangement.Bottom, content = hero,
+                    )
+                }
+                more()
+            }
         }
     }
+}
+
+/** The title block: the show's logo (online metadata) or its name, the details line and the plot. */
+@Composable
+private fun HeroTitle(title: String, meta: MediaMetadata?, details: String, plot: String?) {
+    if (meta?.logoURL != null) AsyncImage(meta.logoURL, title, Modifier.height(110.dp).widthIn(max = 420.dp), contentScale = ContentScale.Fit, alignment = Alignment.BottomStart)
+    else Text(title, Modifier.widthIn(max = 680.dp), style = MaterialTheme.typography.displaySmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
+    if (details.isNotEmpty()) { Spacer(Modifier.height(10.dp)); Text(details, color = Color.White.copy(alpha = 0.75f), style = MaterialTheme.typography.bodyLarge) }
+    plot?.takeIf { it.isNotBlank() }?.let {
+        Spacer(Modifier.height(10.dp))
+        Text(it, Modifier.widthIn(max = 600.dp), maxLines = 3, overflow = TextOverflow.Ellipsis, color = Color.White.copy(alpha = 0.85f), style = MaterialTheme.typography.bodyMedium)
+    }
+    Spacer(Modifier.height(20.dp))
 }
 
 @Composable
@@ -172,21 +235,18 @@ fun MovieDetailScreen(id: String, onPlay: (PlaybackItem) -> Unit) {
     val m = movie ?: return Placeholder("Loading…")
     val details = listOfNotNull(m.year ?: meta?.year, m.durationSeconds?.takeIf { it > 0 }?.let { "${(it / 60).coerceAtLeast(1)} min" } ?: meta?.runtimeMinutes?.let { "$it min" },
         VODRating.of(m.rating, meta)?.text, m.genre ?: meta?.genres?.joinToString(", ")).joinToString("  ·  ")
-    // Only scroll when the focused control would be off screen (keeps the backdrop and title in view).
-    @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
-    androidx.compose.runtime.CompositionLocalProvider(androidx.compose.foundation.gestures.LocalBringIntoViewSpec provides KeepInView) { LazyColumn {
-        item { Header(m.name, meta, m.backdropURL ?: m.posterURL, details, m.plot) }
-        item {
-            Row(horizontalArrangement = Arrangement.spacedBy(14.dp), modifier = Modifier.padding(top = 16.dp)) {
-                val resumable = progress?.let { !it.completed && it.position > 10 } == true
-                Button(onClick = { onPlay(PlaybackItem.MovieItem(m, if (resumable) progress!!.position else null)) }, modifier = Modifier.initialFocus(m.id)) {
-                    Text(if (resumable) "Resume ${minutes(progress!!.position)}" else "Play")
-                }
-                if (resumable) OutlinedButton(onClick = { onPlay(PlaybackItem.MovieItem(m, null)) }) { Text("Play from Beginning") }
+    DetailPage(meta?.backdropURL ?: m.backdropURL, m.posterURL ?: meta?.posterURL, hero = {
+        HeroTitle(m.name, meta, details, meta?.overview ?: m.plot)
+        Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            val resumable = progress?.let { !it.completed && it.position > 10 } == true
+            Button(onClick = { onPlay(PlaybackItem.MovieItem(m, if (resumable) progress!!.position else null)) }, modifier = Modifier.initialFocus(m.id)) {
+                Text(if (resumable) "Resume ${minutes(progress!!.position)}" else "Play")
             }
+            if (resumable) OutlinedButton(onClick = { onPlay(PlaybackItem.MovieItem(m, null)) }) { Text("Play from Beginning") }
         }
-        m.cast?.let { item { Text("Cast: $it", Modifier.padding(top = 20.dp), color = Color.White.copy(alpha = 0.7f), maxLines = 2) } }
-    } }
+    }) {
+        m.cast?.let { item { Text("Cast: $it", Modifier.padding(top = 8.dp).widthIn(max = 900.dp), color = Color.White.copy(alpha = 0.7f), maxLines = 2) } }
+    }
 }
 
 @Composable
@@ -219,53 +279,55 @@ fun SeriesDetailScreen(id: String, onPlay: (PlaybackItem) -> Unit) {
     val details = listOfNotNull(s.year ?: meta?.year, VODRating.of(s.rating, meta)?.text,
         s.genre ?: meta?.genres?.joinToString(", "), if (seasons.isNotEmpty()) "${seasons.count { it > 0 }} seasons" else null).joinToString("  ·  ")
 
-    // Only scroll when the focused control would be off screen (keeps the backdrop and title in view).
-    @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
-    androidx.compose.runtime.CompositionLocalProvider(androidx.compose.foundation.gestures.LocalBringIntoViewSpec provides KeepInView) { LazyColumn {
-        item { Header(s.name, meta, s.backdropURL ?: s.coverURL, details, s.plot) }
-        item {
-            if (episodes.isNotEmpty()) {
-                val primary = resume ?: upNext?.let { it to null } ?: (episodes.first { it.season == seasons.first() } to null)
-                val label = when {
-                    resume != null -> "Resume S${resume.first.season}, E${resume.first.number}"
-                    upNext != null -> "Play S${upNext.season}, E${upNext.number}"
-                    else -> "Play"
+    val page = rememberLazyListState()
+    val scope = rememberCoroutineScope()
+    DetailPage(meta?.backdropURL ?: s.backdropURL, s.coverURL ?: meta?.posterURL, page, hero = {
+        HeroTitle(s.name, meta, details, meta?.overview ?: s.plot)
+        if (episodes.isNotEmpty()) {
+            val primary = resume ?: upNext?.let { it to null } ?: (episodes.first { it.season == seasons.first() } to null)
+            val label = when {
+                resume != null -> "Resume S${resume.first.season}, E${resume.first.number}"
+                upNext != null -> "Play S${upNext.season}, E${upNext.number}"
+                else -> "Play"
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(14.dp), modifier = Modifier.focusGroup()) {
+                Button(onClick = { onPlay(PlaybackItem.EpisodeItem(primary.first, s, episodes, primary.second)) }, modifier = Modifier.initialFocus(s.id)) {
+                    Text(label)
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(14.dp), modifier = Modifier.padding(vertical = 16.dp).focusGroup()) {
-                    Button(onClick = { onPlay(PlaybackItem.EpisodeItem(primary.first, s, episodes, primary.second)) }, modifier = Modifier.initialFocus(s.id)) {
-                        Text(label)
-                    }
-                    if (resume != null) {
-                        OutlinedButton(onClick = { onPlay(PlaybackItem.EpisodeItem(resume.first, s, episodes, null)) }) {
-                            Text("Play from Beginning")
-                        }
-                    }
+                if (resume != null) {
+                    OutlinedButton(onClick = { onPlay(PlaybackItem.EpisodeItem(resume.first, s, episodes, null)) }) { Text("Play from Beginning") }
                 }
             }
+        } else {
+            Text("Loading episodes…", color = Color.White.copy(alpha = 0.7f))
         }
+    }) {
         if (seasons.size > 1) item {
-            // Room around the chips (as on the Movies page): a focused chip grows and otherwise overlaps the buttons
-            // above and the episodes below, and its edges are clipped.
+            // Room around the chips: a focused chip grows, and would otherwise overlap what's above and below.
             LazyRow(Modifier.bleedStart(), horizontalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(vertical = 8.dp, horizontal = FocusBleed)) {
                 items(seasons) { n -> FilterChip(selected = n == shown, onClick = { season = n }) { Text(if (n == 0) "Specials" else "Season $n") } }
             }
+        } else if (episodes.isNotEmpty()) item {
+            Text("Episodes", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 8.dp))
         }
         item {
             val list = episodes.filter { it.season == shown }
-            if (list.isEmpty()) Text("Loading episodes…", Modifier.padding(top = 16.dp)) else
-            LazyRow(Modifier.bleedStart(), horizontalArrangement = Arrangement.spacedBy(20.dp), contentPadding = PaddingValues(vertical = 16.dp, horizontal = FocusBleed)) {
+            // The episodes are the page's last row: show all of it, titles under the cards included. After the focused
+            // card's own bring-into-view scroll, which would otherwise cancel this one.
+            if (list.isNotEmpty()) LazyRow(Modifier.bleedStart().onFocusChanged { if (it.hasFocus) scope.launch { delay(250); page.animateScrollBy(100_000f) } },
+                horizontalArrangement = Arrangement.spacedBy(20.dp), contentPadding = PaddingValues(top = 12.dp, bottom = 16.dp, start = FocusBleed, end = 48.dp)) {
                 items(list, key = { it.id }) { e ->
                     val p = progress[e.id]
                     val still = e.imageURL ?: meta?.episode(e.season, e.number)?.stillURL
                     WideCard("E${e.number} · ${e.title}", e.durationSeconds?.takeIf { it > 0 }?.let { "${(it / 60).coerceAtLeast(1)} min" }, still,
-                        progress = p?.let { if (it.completed) 1.0 else it.fraction }) {
+                        width = 220, progress = p?.let { if (it.completed) 1.0 else it.fraction }) {
                         val start = p?.takeIf { !it.completed && it.position > 10 }?.position
                         onPlay(PlaybackItem.EpisodeItem(e, s, episodes, start))
                     }
                 }
             }
         }
-    } }
+    }
 }
 
 private fun minutes(seconds: Double): String {

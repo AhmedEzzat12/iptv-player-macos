@@ -77,6 +77,11 @@ In order of how much a viewer would miss them:
   TCL's Google TV launcher stores the entries but doesn't show a sideloaded app's in its Continue watching row;
   Google's current route there is the Engage SDK (continuation cluster), which needs Play distribution and Google's
   approval: part of the store work.
+- Movie and show pages redesigned (2026-11-18, `DetailPage` in `VodScreens.kt`): the artwork fills the screen behind
+  the page and the rail, title/details/plot/buttons sit low on the left over fades, seasons and episodes peek in at
+  the bottom (the boxed 380 dp backdrop left the episodes off a 540 dp-tall screen). A title with only a poster shows
+  it whole on the right. Focusing the episodes scrolls to the end (titles under the cards); focus back up returns to
+  the top.
 - Home screen channel (2026-11-18, `integration/HomeChannel.kt`): the app's own preview channel, "Antenna", published
   as the default channel with Up Next / Continue Watching, then recently added shows and movies, updated with Watch
   Next. Titles play from their resume point; shows and movies open their page (`antenna:open/series|movie/<id>`).
