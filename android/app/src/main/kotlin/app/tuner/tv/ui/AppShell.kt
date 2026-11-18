@@ -235,7 +235,11 @@ fun AppShell() {
             // player goes. Removed with focus inside, the player handed focus to the first focusable item on screen; on
             // Live TV that was "All Channels", whose focus selects it, so Back landed in a different set of channels.
             // (Asking the page for focus did the same: its restorer only knows the section, which starts at its top.)
-            androidx.compose.runtime.key(item) { PlayerScreen(item, onClose = {
+            androidx.compose.runtime.key(item) { PlayerScreen(item, onGoToShow = { id ->
+                // Go to Show from the player: its page, unless it's already the one under the player.
+                playing = null
+                if ((stack.lastOrNull() as? Page.SeriesDetail)?.id != id) open(Page.SeriesDetail(id))
+            }, onClose = {
                 closeScope.launch {
                     if (stack.isEmpty()) {
                         focusMemory.restoreKey = focusMemory.lastKey

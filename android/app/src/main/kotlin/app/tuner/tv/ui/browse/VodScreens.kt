@@ -88,6 +88,7 @@ import app.tuner.core.models.Category
 import app.tuner.core.models.CategoryKind
 import app.tuner.core.models.Episode
 import app.tuner.core.models.Movie
+import app.tuner.core.models.MediaKind
 import app.tuner.core.models.Series
 import app.tuner.core.models.SmartContinueWatching
 import app.tuner.core.models.WatchProgress
@@ -367,6 +368,8 @@ fun SeriesDetailScreen(id: String, onPlay: (PlaybackItem) -> Unit) {
 
     val page = rememberLazyListState()
     val scope = rememberCoroutineScope()
+    // The episode whose long-press menu is open.
+    var episodeMenu by remember { mutableStateOf<Episode?>(null) }
     DetailPage(meta?.backdropURL ?: s.backdropURL, s.coverURL ?: meta?.posterURL, page, hero = {
         HeroTitle("TV Show", s.name, meta, details, meta?.overview ?: s.plot)
         if (episodes.isNotEmpty()) {
@@ -414,7 +417,8 @@ fun SeriesDetailScreen(id: String, onPlay: (PlaybackItem) -> Unit) {
                     }
                     WideCard("${e.number}. ${e.title}", listOfNotNull(e.durationSeconds?.takeIf { it > 0 }?.let { "${(it / 60).coerceAtLeast(1)} min" }, e.airDate?.take(10)).joinToString("  ·  ").ifEmpty { null },
                         still, width = 260, progress = p?.takeIf { !it.completed && it.position > 10 }?.fraction, badge = badge,
-                        detail = e.plot?.takeIf { it.isNotBlank() } ?: meta?.episode(e.season, e.number)?.overview) {
+                        detail = e.plot?.takeIf { it.isNotBlank() } ?: meta?.episode(e.season, e.number)?.overview,
+                        onLongClick = { episodeMenu = e }) {
                         val start = p?.takeIf { !it.completed && it.position > 10 }?.position
                         onPlay(PlaybackItem.EpisodeItem(e, s, episodes, start))
                     }
@@ -422,6 +426,20 @@ fun SeriesDetailScreen(id: String, onPlay: (PlaybackItem) -> Unit) {
             }
         }
         castAndCrew(s.cast, s.director)
+    }
+    episodeMenu?.let { e ->
+        val p = progress[e.id]
+        val inProgress = p != null && !p.completed && p.position > 10
+        val watched = p?.completed == true
+        // A record to mark: the episode's own, else a new one like the player saves (SeriesDetailView's setWatched).
+        val record = p ?: WatchProgress(e.id, MediaKind.EPISODE, e.sourceId, seriesId = s.id, title = s.name,
+            subtitle = "S${e.season}, E${e.number} · ${e.title}", posterURL = e.imageURL ?: s.backdropURL ?: s.coverURL,
+            position = 0.0, duration = (e.durationSeconds ?: 0).toDouble())
+        ItemMenu("S${e.season}, E${e.number} · ${e.title}", listOfNotNull(
+            MenuAction(if (inProgress) "Resume" else "Play") { onPlay(PlaybackItem.EpisodeItem(e, s, episodes, if (inProgress) p!!.position else null)) },
+            if (inProgress) MenuAction("Play from Beginning") { onPlay(PlaybackItem.EpisodeItem(e, s, episodes, null)) } else null,
+            MenuAction(if (watched) "Mark as Unwatched" else "Mark as Watched") { scope.launch { app.library.markWatched(record, watched = !watched) } },
+        )) { episodeMenu = null }
     }
 }
 

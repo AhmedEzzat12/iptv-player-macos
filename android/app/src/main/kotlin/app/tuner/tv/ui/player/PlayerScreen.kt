@@ -94,7 +94,7 @@ import java.time.Instant
  */
 @OptIn(UnstableApi::class)
 @Composable
-fun PlayerScreen(initial: PlaybackItem, onClose: () -> Unit) {
+fun PlayerScreen(initial: PlaybackItem, onClose: () -> Unit, onGoToShow: (String) -> Unit = {}) {
     val context = LocalContext.current
     val app = context.app
     val scope = rememberCoroutineScope()
@@ -679,6 +679,7 @@ fun PlayerScreen(initial: PlaybackItem, onClose: () -> Unit) {
                     // Focus back to the player: closing the panel this way left it nowhere, so the remote's keys did
                     // nothing (or reached the page hidden under the player).
                     onEpisode = { offset -> optionsOpen = false; focus.requestFocus(); nextEpisode(offset) },
+                    onGoToShow = { id -> scope.launch { saveProgress(); onGoToShow(id) } },
                     onFavorite = { live ->
                         val on = !favorite
                         favorite = on
@@ -691,11 +692,14 @@ fun PlayerScreen(initial: PlaybackItem, onClose: () -> Unit) {
 
 /** The options panel's shortcuts: next and previous episode (named, so the viewer sees where it goes), or the live
  * channel's favourite toggle. */
-private fun playerActions(item: PlaybackItem, favorite: Boolean, onEpisode: (Int) -> Unit, onFavorite: (PlaybackItem.Live) -> Unit): List<PlayerAction> =
+private fun playerActions(item: PlaybackItem, favorite: Boolean, onEpisode: (Int) -> Unit, onFavorite: (PlaybackItem.Live) -> Unit,
+                          onGoToShow: (String) -> Unit): List<PlayerAction> =
     when (item) {
         is PlaybackItem.EpisodeItem -> listOfNotNull(
             EpisodeNavigation.neighbor(item.episode.id, item.episodes, 1)?.let { PlayerAction("Next Episode · S${it.season}, E${it.number}") { onEpisode(1) } },
             EpisodeNavigation.neighbor(item.episode.id, item.episodes, -1)?.let { PlayerAction("Previous Episode · S${it.season}, E${it.number}") { onEpisode(-1) } },
+            // Stops playback and opens the show's page (an episode started from Home has no page under the player).
+            PlayerAction("Go to Show") { onGoToShow(item.series.id) },
         )
         is PlaybackItem.Live -> listOf(PlayerAction(if (favorite) "Remove from Favorites" else "Add to Favorites") { onFavorite(item) })
         else -> emptyList()

@@ -61,6 +61,7 @@ interface UserDao {
     @Query("SELECT * FROM watchProgress WHERE mediaId = :mediaId") suspend fun progress(mediaId: String): WatchProgressEntity?
     @Query("SELECT * FROM watchProgress WHERE seriesId = :seriesId") suspend fun seriesProgress(seriesId: String): List<WatchProgressEntity>
     @Upsert suspend fun saveProgress(p: WatchProgressEntity)
+    @Query("DELETE FROM watchProgress WHERE mediaId = :mediaId") suspend fun deleteProgress(mediaId: String)
     @Query("""SELECT * FROM watchProgress WHERE kind IN ('movie','episode') AND (seriesId IS NOT NULL OR (completed = 0 AND position > 10))
         ORDER BY updatedAt DESC LIMIT 500""") suspend fun continueWatchingCandidates(): List<WatchProgressEntity>
 }

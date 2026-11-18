@@ -343,6 +343,16 @@ public class Library(private val database: AppDatabase) : MetadataCache {
         }
     }
 
+    /** Marks a movie or episode watched (played to the end) or unwatched (back to the start). AppDatabase.markWatched. */
+    public suspend fun markWatched(p: WatchProgress, watched: Boolean): Unit = write(Change.USER) {
+        val duration = maxOf(p.duration, 1.0)
+        user.saveProgress(WatchProgressEntity(p.mediaId, p.kind.raw, p.sourceId, p.seriesId, p.title, p.subtitle, p.posterURL,
+            if (watched) duration else 0.0, duration, watched, System.currentTimeMillis()))
+    }
+
+    /** Forgets a resume point (Remove from Continue Watching). AppDatabase.deleteProgress. */
+    public suspend fun deleteProgress(mediaId: String): Unit = write(Change.USER) { user.deleteProgress(mediaId) }
+
     private fun progress(e: WatchProgressEntity) = WatchProgress(
         mediaId = e.mediaId, kind = MediaKind.of(e.kind) ?: MediaKind.MOVIE, sourceId = e.sourceId, seriesId = e.seriesId, title = e.title,
         subtitle = e.subtitle, posterURL = e.posterURL, position = e.position, duration = e.duration, completed = e.completed,

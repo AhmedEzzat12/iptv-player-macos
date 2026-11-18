@@ -73,6 +73,9 @@ import app.tuner.core.models.Program
 import app.tuner.core.models.Series
 import app.tuner.core.models.SmartContinueWatching
 import app.tuner.core.models.VODFormat
+import app.tuner.core.models.WatchProgress
+import app.tuner.tv.ui.ItemMenu
+import app.tuner.tv.ui.MenuAction
 import app.tuner.core.models.VODItem
 import app.tuner.data.Change
 import app.tuner.data.Library
@@ -125,6 +128,8 @@ fun HomeScreen(onPlay: (PlaybackItem) -> Unit, onOpenMovie: (String) -> Unit, on
     var hero by rememberScreenState("home.hero") { emptyList<VODItem>() }
     var loaded by rememberScreenState("home.loaded") { false }
     var hasSources by remember { mutableStateOf(true) }
+    // The Continue Watching card whose long-press menu is open.
+    var cwMenu by remember { mutableStateOf<ContinueWatchingItem?>(null) }
     var revision by remember { mutableIntStateOf(0) }
     var guideRevision by remember { mutableIntStateOf(0) }
     // Provider details and online metadata for the hero titles, fetched once per title while the app runs (they were
@@ -213,7 +218,8 @@ fun HomeScreen(onPlay: (PlaybackItem) -> Unit, onOpenMovie: (String) -> Unit, on
                         Shelf("Continue Watching", cw, { it.id }, startInset = PageStart, focusFirst = current == null) { item ->
                             WideCard(item.progress.title, item.progress.subtitle, item.progress.posterURL,
                                 progress = if (item is ContinueWatchingItem.Resume) item.progress.fraction else null,
-                                badge = if (item is ContinueWatchingItem.NextEpisode) "UP NEXT" else null) { scope.launch { playContinue(app, item, onPlay) } }
+                                badge = if (item is ContinueWatchingItem.NextEpisode) "UP NEXT" else null,
+                                onLongClick = { cwMenu = item }) { scope.launch { playContinue(app, item, onPlay) } }
                         }
                     }
                 }
@@ -251,6 +257,17 @@ fun HomeScreen(onPlay: (PlaybackItem) -> Unit, onOpenMovie: (String) -> Unit, on
                 }
             }
         }
+        cwMenu?.let { item -> ContinueWatchingMenu(item, onDismiss = { cwMenu = null },
+            onPlay = { scope.launch { playContinue(app, item, onPlay) } },
+            onGoTo = { p -> if (p.kind == MediaKind.MOVIE) onOpenMovie(p.mediaId) else p.seriesId?.let(onOpenSeries) },
+            onWatched = { p -> scope.launch { app.library.markWatched(p, watched = true) } },
+            onRemove = { scope.launch {
+                when (item) {
+                    is ContinueWatchingItem.Resume -> app.library.deleteProgress(item.progress.mediaId)
+                    // A not-started record of the next episode is newer than the finished one, so the show leaves the row.
+                    is ContinueWatchingItem.NextEpisode -> app.library.markWatched(item.progress, watched = false)
+                }
+            } }) }
         // Cards scrolled past the first fade out under the rail rather than crowding its icons.
         Box(Modifier.width(PageStart - 4.dp).fillMaxHeight().background(Brush.horizontalGradient(0f to TunerColors.background, 0.6f to TunerColors.background.copy(alpha = 0.88f), 1f to TunerColors.background.copy(alpha = 0f))))
     }
@@ -380,6 +397,26 @@ private suspend fun playTitle(app: TunerApplication, item: VODItem, onPlay: (Pla
             }
         }
     }
+}
+
+/**
+ * Long-press on a Continue Watching card (HomeView's context menu): play it, go to its movie or show page, mark it
+ * watched, or take it out of the row.
+ */
+@Composable
+private fun ContinueWatchingMenu(item: ContinueWatchingItem, onDismiss: () -> Unit, onPlay: () -> Unit, onGoTo: (WatchProgress) -> Unit,
+                                 onWatched: (WatchProgress) -> Unit, onRemove: () -> Unit) {
+    val p = item.progress
+    val play = when (item) {
+        is ContinueWatchingItem.Resume -> "Resume"
+        is ContinueWatchingItem.NextEpisode -> "Play S${item.episode.season}, E${item.episode.number}"
+    }
+    ItemMenu(listOfNotNull(p.title, p.subtitle).joinToString(" · "), listOf(
+        MenuAction(play, onPlay),
+        MenuAction(if (p.kind == MediaKind.MOVIE) "Go to Movie" else "Go to Show") { onGoTo(p) },
+        MenuAction("Mark as Watched") { onWatched(p) },
+        MenuAction("Remove from Continue Watching", onRemove),
+    ), onDismiss)
 }
 
 /** Continue Watching plays directly: a resume point resumes, a next episode starts from the beginning. */
