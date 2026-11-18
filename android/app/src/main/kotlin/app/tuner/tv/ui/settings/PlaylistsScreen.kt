@@ -67,6 +67,13 @@ import app.tuner.core.providers.XtreamURLs
 import app.tuner.tv.app
 import app.tuner.tv.share.PlaylistShareServer
 import app.tuner.tv.ui.TunerColors
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.foundation.focusGroup
+import androidx.compose.ui.focus.focusProperties
+import app.tuner.tv.ui.Eyebrow
+import app.tuner.tv.ui.SideListRow
 import app.tuner.tv.ui.initialFocus
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
@@ -74,7 +81,15 @@ import kotlinx.coroutines.launch
 import java.text.DateFormat
 import java.util.Date
 
-/** Settings: Playlists (status, Refresh, Remove, Add a Playlist), then Playback and Guide & Library options. */
+/** Settings' panes, in the order of the list on the left. */
+private enum class SettingsPane(val title: String) { PLAYLISTS("Playlists"), PLAYBACK("Playback"), GUIDE("Guide & Library"), HIDDEN("Hidden"), ABOUT("About") }
+
+/**
+ * Settings, as on the Apple TV: the panes in a list on the left, the chosen pane on the right (Appendix D → Settings).
+ * Moving through the list shows each pane; Right goes into it and Left comes back. It was one long list of oversized
+ * rows whose focused row grew past the screen's edge.
+ */
+@OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
 @Composable
 fun PlaylistsScreen(onAdd: () -> Unit, onEdit: (String) -> Unit) {
     val app = LocalContext.current.app
@@ -86,113 +101,159 @@ fun PlaylistsScreen(onAdd: () -> Unit, onEdit: (String) -> Unit) {
     var pendingRemove by remember { mutableStateOf<Source?>(null) }
     var hiddenChannels by remember { mutableStateOf<List<Channel>>(emptyList()) }
     var hiddenCategories by remember { mutableStateOf<List<Triple<String, String, CategoryKind>>>(emptyList()) }
+    var pane by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(SettingsPane.PLAYLISTS) }
     LaunchedEffect(revision, progress?.done) { sources = app.library.sources() }
     LaunchedEffect(Unit) { app.database.changes.collect { revision++ } }
     LaunchedEffect(revision) {
         hiddenChannels = app.library.hiddenChannels()
         hiddenCategories = app.library.hiddenCategories()
     }
+    val paneFocus = remember { SettingsPane.entries.associateWith { androidx.compose.ui.focus.FocusRequester() } }
 
-    Box(Modifier.fillMaxSize()) {
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp), contentPadding = PaddingValues(bottom = 48.dp)) {
-            item { PageTitle("Settings") }
-            item { SectionTitle("Playlists") }
-            item { PillButton("Add a Playlist", onClick = onAdd, modifier = Modifier.initialFocus()) }
-            items(sources, key = { it.id }) { s ->
-                Column(Modifier.fillMaxWidth().background(TunerColors.surface, RoundedCornerShape(14.dp)).padding(20.dp)) {
-                    Text(s.name, style = MaterialTheme.typography.titleLarge)
-                    Text("${s.kind.displayName} · ${host(s.url)}", color = Color.White.copy(alpha = 0.6f))
-                    val counts = "${s.channelCount} channels · ${s.movieCount} movies · ${s.seriesCount} shows"
-                    val synced = s.lastSyncedAt?.let { " · updated " + DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(Date(it.toEpochMilli())) } ?: ""
-                    Text(counts + synced, color = Color.White.copy(alpha = 0.6f))
-                    s.expiresAt?.let { Text("Expires " + DateFormat.getDateInstance().format(Date(it.toEpochMilli())), color = Color.White.copy(alpha = 0.6f)) }
-                    if (progress?.sourceId == s.id && progress?.done == false) Text(progress!!.step, color = TunerColors.accent)
-                    if (s.needsPassword) Text("Password needed: add the playlist again", color = Color(0xFFFFB74D))
-                    s.lastError?.let { Text(it, color = Color(0xFFFF6E6E), maxLines = 3) }
-                    Spacer(Modifier.height(12.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        PillButton("Refresh", onClick = { scope.launch { app.sync.sync(s.id); revision++ } }) // sync runs off the main thread
-                        PillButton("Edit", onClick = { onEdit(s.id) })
-                        PillButton("Remove", onClick = { pendingRemove = s })
+    Row(Modifier.fillMaxSize()) {
+        Column(Modifier.width(250.dp).fillMaxHeight()) {
+            PageTitle("Settings")
+            Spacer(Modifier.height(8.dp))
+            // Entering the list lands on the open pane, not on whichever row is level with the focused setting.
+            Column(Modifier.focusProperties { enter = { paneFocus.getValue(pane) } }.focusGroup(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                SettingsPane.entries.forEach { p ->
+                    SideListRow(p.title, p == pane, Modifier.focusRequester(paneFocus.getValue(p)).initialFocus(enabled = p == SettingsPane.PLAYLISTS)
+                        .onFocusChanged { if (it.isFocused) pane = p }) { pane = p }
+                }
+            }
+        }
+        Spacer(Modifier.width(32.dp))
+        LazyColumn(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(6.dp), contentPadding = PaddingValues(top = 58.dp, bottom = 48.dp, end = 8.dp)) {
+            when (pane) {
+                SettingsPane.PLAYLISTS -> {
+                    item { PillButton("Add a Playlist", icon = androidx.compose.material.icons.Icons.Filled.Add, onClick = onAdd) }
+                    item { Spacer(Modifier.height(6.dp)) }
+                    if (sources.isEmpty()) item { PaneNote("No playlists yet. Add one from your phone, or type it in.") }
+                    items(sources, key = { it.id }) { s ->
+                        Column(Modifier.fillMaxWidth().background(Color.White.copy(alpha = 0.06f), RoundedCornerShape(18.dp)).padding(22.dp)) {
+                            Text(s.kind.displayName.uppercase() + "  ·  " + host(s.url), style = Eyebrow, color = TunerColors.secondary)
+                            Spacer(Modifier.height(6.dp))
+                            Text(s.name, style = MaterialTheme.typography.titleLarge)
+                            Spacer(Modifier.height(4.dp))
+                            val counts = "${s.channelCount} channels · ${s.movieCount} movies · ${s.seriesCount} shows"
+                            val synced = s.lastSyncedAt?.let { " · updated " + DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(Date(it.toEpochMilli())) } ?: ""
+                            Text(counts + synced, color = TunerColors.secondary, style = MaterialTheme.typography.bodyMedium)
+                            s.expiresAt?.let { Text("Expires " + DateFormat.getDateInstance().format(Date(it.toEpochMilli())), color = TunerColors.secondary, style = MaterialTheme.typography.bodyMedium) }
+                            if (progress?.sourceId == s.id && progress?.done == false) Text(progress!!.step, color = TunerColors.accent, style = MaterialTheme.typography.bodyMedium)
+                            if (s.needsPassword) Text("Password needed: add the playlist again", color = Color(0xFFFFB74D), style = MaterialTheme.typography.bodyMedium)
+                            s.lastError?.let { Text(it, color = Color(0xFFFF6E6E), maxLines = 3, style = MaterialTheme.typography.bodyMedium) }
+                            Spacer(Modifier.height(14.dp))
+                            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                PillButton("Refresh", onClick = { scope.launch { app.sync.sync(s.id); revision++ } }) // sync runs off the main thread
+                                PillButton("Edit", onClick = { onEdit(s.id) })
+                                PillButton("Remove", onClick = { pendingRemove = s })
+                            }
+                        }
+                    }
+                }
+                SettingsPane.PLAYBACK -> {
+                    item {
+                        OptionRow("Live stream format", if (prefs.liveFormat == "hls") "HLS" else "Automatic (TS, then HLS)",
+                            "Xtream live channels. Try HLS if channels stutter or won't start.") {
+                            prefs.liveFormat = if (prefs.liveFormat == "hls") "ts" else "hls"
+                        }
+                    }
+                    item {
+                        OptionRow("Automatic failover", onOff(prefs.autoFailover), "When a live stream stops, try the channel in your other playlists.") {
+                            prefs.autoFailover = !prefs.autoFailover
+                        }
+                    }
+                    item { OptionRow("Resume where you left off", onOff(prefs.resumePlayback)) { prefs.resumePlayback = !prefs.resumePlayback } }
+                    item { OptionRow("Play the next episode automatically", onOff(prefs.autoplayNextEpisode)) { prefs.autoplayNextEpisode = !prefs.autoplayNextEpisode } }
+                    item {
+                        OptionRow("“Up Next” countdown", if (prefs.upNextCountdown == 0) "Off" else "${prefs.upNextCountdown} seconds") {
+                            prefs.upNextCountdown = cycle(listOf(0, 5, 10, 15, 20, 30), prefs.upNextCountdown)
+                        }
+                    }
+                    item {
+                        OptionRow("Skip intro and credits", when (prefs.skipSegments) {
+                            SkipMode.BUTTON -> "Show a button"; SkipMode.AUTOMATIC -> "Skip automatically"; SkipMode.OFF -> "Off"
+                        }, "Timings come from public intro databases, when they know the title.") {
+                            prefs.skipSegmentsRaw = cycle(SkipMode.entries.map { it.raw }, prefs.skipSegmentsRaw)
+                        }
+                    }
+                }
+                SettingsPane.GUIDE -> {
+                    item {
+                        OptionRow("Refresh channels and guide", refreshTitle(prefs.liveRefreshHours), "Checked when the app starts.") {
+                            prefs.liveRefreshHours = cycle(listOf(0, 3, 6, 12, 24), prefs.liveRefreshHours)
+                        }
+                    }
+                    item {
+                        OptionRow("Refresh movies and shows", refreshTitle(prefs.vodRefreshHours)) {
+                            prefs.vodRefreshHours = cycle(listOf(0, 12, 24, 48, 168), prefs.vodRefreshHours)
+                        }
+                    }
+                }
+                SettingsPane.HIDDEN -> {
+                    if (hiddenChannels.isEmpty() && hiddenCategories.isEmpty()) {
+                        item { PaneNote("Nothing is hidden. Hold OK on a channel or category to hide it.") }
+                    }
+                    items(hiddenCategories, key = { "cat" + it.first }) { (id, name, kind) ->
+                        val where = when (kind) { CategoryKind.LIVE -> "Live TV category"; CategoryKind.MOVIE -> "Movies category"; else -> "TV Shows category" }
+                        OptionRow(name, "Show", where) { scope.launch { app.library.setCategoryHidden(id, false) } }
+                    }
+                    items(hiddenChannels, key = { "ch" + it.id }) { ch ->
+                        OptionRow(ch.displayName, "Show", "Channel") { scope.launch { app.library.setChannelHidden(ch.id, false) } }
+                    }
+                }
+                SettingsPane.ABOUT -> {
+                    item {
+                        val context = LocalContext.current
+                        val info = remember { runCatching { context.packageManager.getPackageInfo(context.packageName, 0) }.getOrNull() }
+                        Column(Modifier.fillMaxWidth().background(Color.White.copy(alpha = 0.06f), RoundedCornerShape(18.dp)).padding(22.dp)) {
+                            Text("Antenna", style = MaterialTheme.typography.headlineSmall)
+                            Spacer(Modifier.height(4.dp))
+                            Text("Version ${info?.versionName ?: "?"} (${info?.longVersionCode ?: 0})", color = TunerColors.secondary, style = MaterialTheme.typography.bodyMedium)
+                            Spacer(Modifier.height(14.dp))
+                            Text("You're responsible for the playlists you add. Antenna doesn't provide any channels or content.",
+                                color = TunerColors.secondary, style = MaterialTheme.typography.bodyMedium)
+                        }
                     }
                 }
             }
-
-            item { SectionTitle("Playback") }
-            item {
-                OptionRow("Live stream format", if (prefs.liveFormat == "hls") "HLS" else "Automatic (TS, then HLS)",
-                    "Xtream live channels. Try HLS if channels stutter or won't start.") {
-                    prefs.liveFormat = if (prefs.liveFormat == "hls") "ts" else "hls"
-                }
-            }
-            item {
-                OptionRow("Automatic failover", onOff(prefs.autoFailover), "When a live stream stops, try the channel in your other playlists.") {
-                    prefs.autoFailover = !prefs.autoFailover
-                }
-            }
-            item { OptionRow("Resume where you left off", onOff(prefs.resumePlayback)) { prefs.resumePlayback = !prefs.resumePlayback } }
-            item { OptionRow("Play the next episode automatically", onOff(prefs.autoplayNextEpisode)) { prefs.autoplayNextEpisode = !prefs.autoplayNextEpisode } }
-            item {
-                OptionRow("“Up Next” countdown", if (prefs.upNextCountdown == 0) "Off" else "${prefs.upNextCountdown} seconds") {
-                    prefs.upNextCountdown = cycle(listOf(0, 5, 10, 15, 20, 30), prefs.upNextCountdown)
-                }
-            }
-            item {
-                OptionRow("Skip intro and credits", when (prefs.skipSegments) {
-                    SkipMode.BUTTON -> "Show a button"; SkipMode.AUTOMATIC -> "Skip automatically"; SkipMode.OFF -> "Off"
-                }, "Timings come from public intro databases, when they know the title.") {
-                    prefs.skipSegmentsRaw = cycle(SkipMode.entries.map { it.raw }, prefs.skipSegmentsRaw)
-                }
-            }
-
-            if (hiddenChannels.isNotEmpty() || hiddenCategories.isNotEmpty()) {
-                item { SectionTitle("Hidden") }
-                items(hiddenCategories, key = { "cat" + it.first }) { (id, name, kind) ->
-                    val where = when (kind) { CategoryKind.LIVE -> "Live TV category"; CategoryKind.MOVIE -> "Movies category"; else -> "TV Shows category" }
-                    OptionRow(name, "Show", where) { scope.launch { app.library.setCategoryHidden(id, false) } }
-                }
-                items(hiddenChannels, key = { "ch" + it.id }) { ch ->
-                    OptionRow(ch.displayName, "Show", "Channel") { scope.launch { app.library.setChannelHidden(ch.id, false) } }
-                }
-            }
-
-            item { SectionTitle("Guide & Library") }
-            item {
-                OptionRow("Refresh channels and guide", refreshTitle(prefs.liveRefreshHours), "Checked when the app starts.") {
-                    prefs.liveRefreshHours = cycle(listOf(0, 3, 6, 12, 24), prefs.liveRefreshHours)
-                }
-            }
-            item {
-                OptionRow("Refresh movies and shows", refreshTitle(prefs.vodRefreshHours)) {
-                    prefs.vodRefreshHours = cycle(listOf(0, 12, 24, 48, 168), prefs.vodRefreshHours)
-                }
-            }
         }
+    }
 
-        pendingRemove?.let { s ->
-            ConfirmDialog("Remove “${s.name}”?", "Its channels, movies, shows and guide are removed from Antenna. You can add it again at any time.",
-                "Remove Playlist", onConfirm = { scope.launch { app.library.deleteSource(s.id); revision++ } }) { pendingRemove = null }
-        }
+    pendingRemove?.let { s ->
+        ConfirmDialog("Remove “${s.name}”?", "Its channels, movies, shows and guide are removed from Antenna. You can add it again at any time.",
+            "Remove Playlist", onConfirm = { scope.launch { app.library.deleteSource(s.id); revision++ } }) { pendingRemove = null }
     }
 }
 
 @Composable
-private fun SectionTitle(text: String) {
-    Text(text, style = MaterialTheme.typography.titleMedium, color = TunerColors.accent, modifier = Modifier.padding(top = 12.dp))
+private fun PaneNote(text: String) {
+    Text(text, style = MaterialTheme.typography.bodyMedium, color = TunerColors.secondary, modifier = Modifier.padding(vertical = 8.dp))
 }
 
-/** A setting: OK moves to the next value. */
+/**
+ * A setting: OK moves to the next value. Compact, quiet until focused, then white; it doesn't grow, so it stays inside
+ * the page (ListItem's focused row ran past the screen's edge).
+ */
 @Composable
 private fun OptionRow(title: String, value: String, detail: String? = null, onClick: () -> Unit) {
-    ListItem(
-        selected = false,
-        onClick = onClick,
-        headlineContent = { Text(title) },
-        // No fixed colours: the row darkens its text when focused (grey on the white focus would be unreadable).
-        supportingContent = detail?.let { { Text(it) } },
-        trailingContent = { Text(value, style = MaterialTheme.typography.titleSmall) },
-        modifier = Modifier.fillMaxWidth(),
-    )
+    androidx.tv.material3.Surface(
+        onClick = onClick, modifier = Modifier.fillMaxWidth().height(if (detail != null) 64.dp else 52.dp),
+        shape = androidx.tv.material3.ClickableSurfaceDefaults.shape(RoundedCornerShape(14.dp)),
+        colors = androidx.tv.material3.ClickableSurfaceDefaults.colors(containerColor = Color.White.copy(alpha = 0.06f), contentColor = Color.White,
+            focusedContainerColor = Color.White, focusedContentColor = TunerColors.onFocus),
+        scale = androidx.tv.material3.ClickableSurfaceDefaults.scale(focusedScale = 1f),
+    ) {
+        Row(Modifier.fillMaxSize().padding(horizontal = 18.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(title, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                if (detail != null) Text(detail, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    color = androidx.tv.material3.LocalContentColor.current.copy(alpha = 0.6f))
+            }
+            Spacer(Modifier.width(16.dp))
+            Text(value, style = MaterialTheme.typography.bodyMedium, color = androidx.tv.material3.LocalContentColor.current.copy(alpha = 0.7f))
+        }
+    }
 }
 
 private fun onOff(on: Boolean) = if (on) "On" else "Off"

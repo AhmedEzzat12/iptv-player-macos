@@ -1,5 +1,9 @@
 package app.tuner.tv.ui.player
 
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.height
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Check
 import androidx.annotation.OptIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -143,29 +147,42 @@ fun PlayerOptionsPanel(
     val firstSelected = if (actions.isNotEmpty()) sections.first().second.first().key
         else sections.firstOrNull()?.second?.firstOrNull { it.selected }?.key
 
-    Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.45f))) {
+    // A dark glass panel on the right with rounded inner corners, small grey section titles and quiet rows that turn
+    // white when focused (the Apple TV app's player menus). The ticked choice keeps a check, not a grey fill, so the
+    // focused row is the only bright one.
+    Box(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Brush.horizontalGradient(0.4f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.6f)))) {
         LazyColumn(
-            Modifier.align(Alignment.CenterEnd).width(420.dp).fillMaxHeight()
-                .background(TunerColors.surface.copy(alpha = 0.97f)).padding(horizontal = 20.dp),
+            Modifier.align(Alignment.CenterEnd).padding(vertical = 24.dp, horizontal = 24.dp).width(400.dp).fillMaxHeight()
+                .background(TunerColors.raised.copy(alpha = 0.96f), androidx.compose.foundation.shape.RoundedCornerShape(26.dp)).padding(horizontal = 14.dp),
             verticalArrangement = Arrangement.spacedBy(2.dp),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 32.dp),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 18.dp),
         ) {
             for ((title, rows) in sections) {
                 item(key = "h$title") {
                     Text(
-                        if (title == "Sleep Timer" && sleepRemaining != null) "$title · ${SleepTimer.label(sleepRemaining)} left" else title,
-                        style = MaterialTheme.typography.titleSmall, color = TunerColors.accent,
-                        modifier = Modifier.padding(start = 12.dp, top = 18.dp, bottom = 6.dp),
+                        (if (title == "Sleep Timer" && sleepRemaining != null) "$title · ${SleepTimer.label(sleepRemaining)} left" else title).uppercase(),
+                        style = app.tuner.tv.ui.Eyebrow, color = TunerColors.secondary,
+                        modifier = Modifier.padding(start = 14.dp, top = 14.dp, bottom = 6.dp),
                     )
                 }
                 items(rows, key = { it.key }) { row ->
-                    ListItem(
-                        selected = row.selected,
+                    androidx.tv.material3.Surface(
                         onClick = row.onClick,
-                        headlineContent = { Text(row.title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                        trailingContent = { if (row.selected) Text("✓") else if (row.key.startsWith("x")) Text("›") },
-                        modifier = Modifier.fillMaxWidth().initialFocus(enabled = row.key == firstSelected),
-                    )
+                        modifier = Modifier.fillMaxWidth().height(46.dp).initialFocus(enabled = row.key == firstSelected),
+                        shape = androidx.tv.material3.ClickableSurfaceDefaults.shape(androidx.compose.foundation.shape.RoundedCornerShape(12.dp)),
+                        colors = androidx.tv.material3.ClickableSurfaceDefaults.colors(containerColor = Color.Transparent, contentColor = Color.White,
+                            focusedContainerColor = Color.White, focusedContentColor = TunerColors.onFocus),
+                        scale = androidx.tv.material3.ClickableSurfaceDefaults.scale(focusedScale = 1f),
+                    ) {
+                        androidx.compose.foundation.layout.Row(Modifier.fillMaxSize().padding(horizontal = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Box(Modifier.width(28.dp)) {
+                                if (row.selected) androidx.tv.material3.Icon(androidx.compose.material.icons.Icons.Filled.Check, null, Modifier.size(18.dp))
+                            }
+                            Text(row.title, Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.titleSmall,
+                                fontWeight = if (row.selected) androidx.compose.ui.text.font.FontWeight.SemiBold else androidx.compose.ui.text.font.FontWeight.Normal)
+                            if (row.key.startsWith("x")) androidx.tv.material3.Icon(androidx.compose.material.icons.Icons.Filled.ChevronRight, null, Modifier.size(20.dp))
+                        }
+                    }
                 }
             }
         }
