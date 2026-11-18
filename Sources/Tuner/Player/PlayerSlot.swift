@@ -130,6 +130,7 @@ final class PlayerSlot: Identifiable {
     /// Finite media: the last position seen and when it last moved (`EndOfMediaStall`).
     @ObservationIgnored private var finiteLastPosition: Double?
     @ObservationIgnored private var finiteLastAdvance = Date()
+    @ObservationIgnored private var finiteLastBuffered: Double?
     /// How long a closed movie or episode stays ready to continue (Settings → Playback; 0 = not kept).
     private var keepWarmFor: Duration { .seconds(max(services.prefs.keepWarmMinutes, 0) * 60) }
 
@@ -480,6 +481,7 @@ final class PlayerSlot: Identifiable {
         triedKinds = []
         engineMemoryPending = nil
         finiteLastPosition = nil
+        finiteLastBuffered = nil
         finiteLastAdvance = Date()
         userPaused = false
         engineLoaded = false
@@ -853,6 +855,7 @@ final class PlayerSlot: Identifiable {
         failureHandled = false
         lastHTTPStatus = nil
         finiteLastPosition = nil
+        finiteLastBuffered = nil
         finiteLastAdvance = Date()
         userPaused = false
         engineLoaded = true
@@ -940,8 +943,12 @@ final class PlayerSlot: Identifiable {
     /// The stream gave out in the last seconds of a movie or episode (see `EndOfMediaStall`). Not while paused.
     private func stalledAtEnd(_ s: EngineSnapshot) -> Bool {
         let now = Date()
-        if userPaused || s.position != finiteLastPosition {
+        // Data still arriving (a slow rebuffer, not a dead end) counts as progress too: only a stream that has stopped
+        // both playing and loading has run out.
+        let loading = (s.bufferedEnd ?? 0) > (finiteLastBuffered ?? 0) + 0.25
+        if userPaused || s.position != finiteLastPosition || loading {
             finiteLastPosition = s.position
+            finiteLastBuffered = s.bufferedEnd
             finiteLastAdvance = now
             return false
         }

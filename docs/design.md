@@ -55,7 +55,8 @@ Apple frameworks plus SQLite and libmpv.
   meanwhile, reopening fails over to the normal reconnect.
 - **A stall at the very end is the end** (`EndOfMediaStall`): provider files often report a few seconds more than the
   picture runs, so neither engine ever reports the end and the Up Next countdown froze on the last frame. Playback
-  that stops advancing for 3 s within the last 15 s (not paused) finishes the item, so autoplay goes on.
+  that stops advancing for 3 s within the last 15 s (not paused, and nothing more arriving in the buffer: a slow
+  rebuffer near the end isn't a dead end) finishes the item, so autoplay goes on. The TV app does the same.
 - **Seeking feels immediate**: ±10 s and scrubber seeks move the time and scrubber at once (`seekGoal`; the engines
   only report the new position on a later 0.5 s poll), and quick taps add up from the previous target.
 - **Loading** has no text: the play button turns into a spinner while the stream opens or buffers (TV app); with the

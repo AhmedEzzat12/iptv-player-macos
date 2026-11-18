@@ -386,6 +386,7 @@ fun PlayerScreen(initial: PlaybackItem, onClose: () -> Unit) {
     LaunchedEffect(Unit) {
         var ticks = 0
         var lastPos = -1.0
+        var lastBuffered = 0L
         var stalledSince = System.currentTimeMillis()
         while (true) {
             delay(500)
@@ -432,7 +433,11 @@ fun PlayerScreen(initial: PlaybackItem, onClose: () -> Unit) {
             if (item !is PlaybackItem.Live && duration > 0) {
                 if (item is PlaybackItem.EpisodeItem) upNext = if (sleep?.isEndOfItem == true || !app.prefs.autoplayNextEpisode || app.prefs.upNextCountdown == 0) null
                     else UpNextCountdown.secondsLeft(position, duration, app.prefs.upNextCountdown)
-                if (position != lastPos || !player.playWhenReady) { lastPos = position; stalledSince = System.currentTimeMillis() }
+                // Data still arriving (a slow rebuffer near the end) counts as progress: only a stream that has stopped
+                // both playing and loading has run out (PlayerSlot.stalledAtEnd).
+                val buffered = player.bufferedPosition
+                val loading = buffered > lastBuffered + 250
+                if (position != lastPos || !player.playWhenReady || loading) { lastPos = position; lastBuffered = buffered; stalledSince = System.currentTimeMillis() }
                 if (player.playWhenReady && EndOfMediaStall.hasEnded(position, duration, (System.currentTimeMillis() - stalledSince) / 1000.0)) {
                     saveProgress(completed = true)
                     if (sleep?.isEndOfItem == true || !app.prefs.autoplayNextEpisode || !nextEpisode(1)) onClose()
