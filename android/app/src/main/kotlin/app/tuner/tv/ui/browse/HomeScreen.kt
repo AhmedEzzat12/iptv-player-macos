@@ -51,6 +51,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -88,6 +89,8 @@ import app.tuner.tv.ui.PosterCard
 import app.tuner.tv.ui.Shelf
 import app.tuner.tv.ui.TunerColors
 import app.tuner.tv.ui.WideCard
+import app.tuner.tv.ui.artworkLayer
+import app.tuner.tv.ui.BackdropImage
 import app.tuner.tv.ui.initialFocus
 import coil3.compose.AsyncImage
 import kotlinx.coroutines.async
@@ -172,7 +175,6 @@ fun HomeScreen(onPlay: (PlaybackItem) -> Unit, onOpenMovie: (String) -> Unit, on
         }
 
         if (current != null) HeroBackdrop(current, heroMeta[current.id], dimmed = scrolled)
-        else Box(Modifier.fillMaxSize().background(TunerColors.background))
 
         // Down to a row brings it up to the top with its title showing (as in the Apple TV app). The rows' own
         // horizontal lists keep the usual scrolling (`RowScrolling`).
@@ -255,25 +257,30 @@ fun HomeScreen(onPlay: (PlaybackItem) -> Unit, onOpenMovie: (String) -> Unit, on
  * The hero's artwork behind the whole page (under the rail too): online fan art first, then the provider's backdrop;
  * with neither, the poster stands on the right. Fades left and bottom keep the text readable; once the rows are
  * scrolled up it dims, so cards read over it.
+ *
+ * Drawn once into an offscreen layer (`ArtworkLayer`): TV GPUs redraw the whole screen every frame, and the picture
+ * with its three full-screen fades made every Home frame take 80–100 ms on the TCL TV, even when only a card's focus
+ * moved. The dimming fades the cached layer over the page background instead of adding another full-screen fill.
  */
 @Composable
 private fun HeroBackdrop(item: VODItem, meta: MediaMetadata?, dimmed: Boolean) {
     val bg = TunerColors.background
     val dim by animateFloatAsState(if (dimmed) 0.78f else 0f, tween(400), label = "dim")
-    Box(Modifier.fillMaxSize().background(bg)) {
+    // Each title's picture and fades get their own cached layer, so the 8-second crossfade only changes the two layers'
+    // alpha; one layer around the crossfade had to be redrawn on every frame of it.
+    Box(Modifier.fillMaxSize().graphicsLayer { alpha = 1f - dim }) {
         Crossfade(item.id to (meta?.backdropURL ?: item.backdropURL), animationSpec = tween(700), label = "backdrop") { (_, backdrop) ->
-            Box(Modifier.fillMaxSize()) {
+            Box(Modifier.artworkLayer()) {
                 if (backdrop != null) {
-                    AsyncImage(backdrop, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop, alignment = Alignment.TopCenter)
+                    BackdropImage(backdrop)
                 } else (item.posterURL ?: meta?.posterURL)?.let { poster ->
                     AsyncImage(poster, null, Modifier.align(Alignment.TopEnd).padding(top = 40.dp, end = 72.dp).fillMaxHeight(0.62f)
                         .aspectRatio(2f / 3f).clip(RoundedCornerShape(14.dp)), contentScale = ContentScale.Crop)
                 }
+                Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(0f to bg.copy(alpha = 0.92f), 0.45f to bg.copy(alpha = 0.55f), 0.8f to Color.Transparent)))
+                Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0f to Color.Black.copy(alpha = 0.35f), 0.2f to Color.Transparent, 0.55f to Color.Transparent, 0.9f to bg)))
             }
         }
-        Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(0f to bg.copy(alpha = 0.92f), 0.45f to bg.copy(alpha = 0.55f), 0.8f to Color.Transparent)))
-        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0f to Color.Black.copy(alpha = 0.35f), 0.2f to Color.Transparent, 0.55f to Color.Transparent, 0.9f to bg)))
-        Box(Modifier.fillMaxSize().background(bg.copy(alpha = dim)))
     }
 }
 

@@ -24,6 +24,9 @@ class MainActivity : ComponentActivity() {
                 AppShell()
             }
         }
+        // The app draws its own background; the window's (shown while launching) would be one more full-screen fill
+        // under it on every frame.
+        window.setBackgroundDrawable(null)
     }
 
     override fun onNewIntent(intent: Intent) {

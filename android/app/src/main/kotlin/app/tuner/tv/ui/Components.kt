@@ -31,6 +31,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
@@ -48,6 +49,7 @@ import androidx.tv.material3.IconButtonDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
+import coil3.request.crossfade
 
 /** How much a focused card grows (Appendix D → Focus). `FocusBleed` leaves room for it at the start of a row. */
 const val CARD_FOCUS_SCALE = 1.08f
@@ -143,6 +145,28 @@ fun WideCard(
         }
         CardCaption(title, subtitle, focused, detail)
     }
+}
+
+/**
+ * Full-screen artwork (a backdrop and the fades over it) rendered into its own offscreen layer. The layer is drawn
+ * again only when what's inside changes (a new picture loading), so each frame composites one textured quad instead
+ * of the picture plus every full-screen gradient: TV GPUs redraw the whole screen on every frame, and those fills were
+ * what made the Home and title pages miss nearly every frame on the TCL TV. `alpha` fades the cached layer (no redraw).
+ */
+fun Modifier.artworkLayer(alpha: Float = 1f): Modifier = fillMaxSize().graphicsLayer {
+    compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen
+    this.alpha = alpha
+}
+
+/**
+ * A full-screen backdrop for inside an `artworkLayer`. It appears in one step rather than with Coil's fade-in: each
+ * frame of a fade redrew the whole cached layer (picture and gradients), the slowest frames left when opening a title.
+ */
+@Composable
+fun BackdropImage(url: String, modifier: Modifier = Modifier) {
+    val context = coil3.compose.LocalPlatformContext.current
+    val request = remember(url) { coil3.request.ImageRequest.Builder(context).data(url).crossfade(false).build() }
+    AsyncImage(request, null, modifier.fillMaxSize(), contentScale = ContentScale.Crop, alignment = Alignment.TopCenter)
 }
 
 /** A thin rounded progress bar: a white fill on a translucent track (the Apple TV app's, over artwork). */

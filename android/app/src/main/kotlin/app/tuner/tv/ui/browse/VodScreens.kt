@@ -1,6 +1,8 @@
 package app.tuner.tv.ui.browse
 
 import app.tuner.tv.ui.PillButton
+import app.tuner.tv.ui.artworkLayer
+import app.tuner.tv.ui.BackdropImage
 import app.tuner.tv.ui.Eyebrow
 import app.tuner.tv.ui.ProgressLine
 import app.tuner.tv.ui.SectionHeader
@@ -215,18 +217,21 @@ private fun DetailPage(backdrop: String?, poster: String?, list: LazyListState =
     val scrolled by remember { derivedStateOf { list.firstVisibleItemIndex > 0 || list.firstVisibleItemScrollOffset > 40 } }
     val dim by animateFloatAsState(if (scrolled) 0.7f else 0f, label = "dim")
     val background = MaterialTheme.colorScheme.background
-    BoxWithConstraints(Modifier.fillMaxSize().background(background)) {
+    BoxWithConstraints(Modifier.fillMaxSize()) {
         val screen = maxHeight
-        if (backdrop != null) AsyncImage(backdrop, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop, alignment = Alignment.TopCenter)
-        // A fade from the left (the text and the rail stay readable) and one into the page at the bottom.
-        Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(0f to background.copy(alpha = 0.97f), 0.42f to background.copy(alpha = 0.7f), 0.75f to Color.Transparent)))
-        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.3f to Color.Transparent, 0.95f to background)))
-        // Only a poster (no wide artwork): shown whole on the right, over the fades; stretched across the screen it was
-        // a blurry crop.
-        if (backdrop == null && poster != null) AsyncImage(poster, null,
-            Modifier.align(Alignment.TopEnd).padding(top = 40.dp, end = 64.dp).height(screen * 0.62f).aspectRatio(2f / 3f).clip(RoundedCornerShape(12.dp)),
-            contentScale = ContentScale.Crop)
-        Box(Modifier.fillMaxSize().background(background.copy(alpha = dim)))
+        // The artwork and its fades render once into a cached layer (see `artworkLayer`); scrolling down fades the
+        // layer over the page background rather than drawing another full-screen dimming fill.
+        Box(Modifier.artworkLayer(alpha = 1f - dim)) {
+            if (backdrop != null) BackdropImage(backdrop)
+            // A fade from the left (the text and the rail stay readable) and one into the page at the bottom.
+            Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(0f to background.copy(alpha = 0.97f), 0.42f to background.copy(alpha = 0.7f), 0.75f to Color.Transparent)))
+            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.3f to Color.Transparent, 0.95f to background)))
+            // Only a poster (no wide artwork): shown whole on the right, over the fades; stretched across the screen it
+            // was a blurry crop.
+            if (backdrop == null && poster != null) AsyncImage(poster, null,
+                Modifier.align(Alignment.TopEnd).padding(top = 40.dp, end = 64.dp).height(screen * 0.62f).aspectRatio(2f / 3f).clip(RoundedCornerShape(12.dp)),
+                contentScale = ContentScale.Crop)
+        }
         // Scroll only when the focused control would be off screen, and then far enough to show the titles under an
         // episode card too (the card alone came into view with its title cut off by the screen's edge).
         val below = with(LocalDensity.current) { 64.dp.toPx() }

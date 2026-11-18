@@ -4,6 +4,7 @@ import androidx.compose.runtime.withFrameNanos
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.graphicsLayer
 import app.tuner.tv.integration.HomeChannel
 import app.tuner.tv.integration.WatchNext
 import app.tuner.tv.app
@@ -143,6 +144,9 @@ fun AppShell() {
         // it aside. Entering it focuses the current section, not whichever icon is level with the focused card.
         ModalNavigationDrawer(
             drawerState = drawerState,
+            // Not drawn under the full-screen player (it was composited on every frame behind the video). A draw-time
+            // alpha keeps the pages composed and focusable, so closing the player returns to the same card.
+            modifier = Modifier.graphicsLayer { alpha = if (playing != null) 0f else 1f },
             scrimBrush = Brush.horizontalGradient(listOf(Color.Black.copy(alpha = 0.8f), Color.Black.copy(alpha = 0.4f))),
             drawerContent = {
                 // Open, the rail sits on a solid panel so its titles never mix with the page's text underneath.
@@ -202,7 +206,9 @@ fun AppShell() {
                         Section.Settings -> PlaylistsScreen(onAdd = { open(Page.AddPlaylist) }, onEdit = { open(Page.EditPlaylist(it)) })
                     } } }
                 }
-                if (page != null) Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+                // No background of its own: the hidden section underneath isn't drawn (alpha 0) and the page sits on the
+                // frame's, so a full-screen fill fewer per frame.
+                if (page != null) Box(Modifier.fillMaxSize()) {
                     when (page) {
                         is Page.MovieDetail -> MovieDetailScreen(page.id, play)
                         is Page.SeriesDetail -> SeriesDetailScreen(page.id, play)
