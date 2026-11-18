@@ -12,7 +12,8 @@ import app.tuner.tv.ui.bleedStart
 import app.tuner.tv.ui.PageTitle
 import androidx.compose.foundation.background
 import androidx.compose.ui.focus.focusProperties
-import androidx.tv.material3.ListItem
+import androidx.tv.material3.Surface
+import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -193,13 +194,23 @@ fun VodGridScreen(kind: CategoryKind, onOpen: (String) -> Unit) {
     }
 }
 
-/** One category in the Movies/TV Shows list: the selected one stays marked while focus is on the posters. */
+/** One category in the Movies/TV Shows list: 36 dp rows (ListItem's 48 dp, even the dense one, fitted only nine on
+ * screen), and the selected one stays marked while focus is on the posters. */
 @Composable
 private fun CategoryRow(name: String, selected: Boolean, modifier: Modifier, onLongClick: (() -> Unit)? = null, onClick: () -> Unit) {
-    ListItem(
-        selected = selected, onClick = onClick, onLongClick = onLongClick, modifier = modifier,
-        headlineContent = { Text(name, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyLarge) },
-    )
+    Surface(
+        onClick = onClick, onLongClick = onLongClick, modifier = modifier.fillMaxWidth().height(36.dp),
+        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(8.dp)),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.03f),
+        colors = ClickableSurfaceDefaults.colors(
+            containerColor = if (selected) Color.White.copy(alpha = 0.14f) else Color.Transparent, contentColor = Color.White,
+            focusedContainerColor = Color.White, focusedContentColor = Color.Black,
+        ),
+    ) {
+        Box(Modifier.fillMaxSize().padding(horizontal = 14.dp), contentAlignment = Alignment.CenterStart) {
+            Text(name, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium)
+        }
+    }
 }
 
 /**
