@@ -57,3 +57,23 @@ Checked 2026-11-17 against the local test kit over Wi-Fi (`app.antenna.player.sc
 | Dead channel (`Tuner Sports 4K`, HTTP 404) | Tries `.ts`, retries once as `.m3u8`, then shows the 404 card | Clean error |
 | Episode playback, Up Next, and resume | Plays `Signal Lost`, shows Up Next above the scrubber, advances on OK, and updates `Resume` on Back | Matches Apple apps |
 | Playlist share server (`Add a Playlist`) | Falls back to an available port when 8790 is busy, confirms on TV, and syncs catalog + posters | Matches spec |
+
+### Navigation smoothness (2026-11-18, `scratch` build, the owner's own playlists)
+
+A fixed D-pad run through Home (rows down and across), the sidebar, Live TV (categories, channels), Movies (grid,
+a title page) and back, with `dumpsys gfxinfo` (`reset` before, stats after):
+
+| | Before | After |
+|---|---|---|
+| Janky frames | 28.6% | **7.9%** |
+| Median / p90 / p95 / p99 frame | 28 / 93 / 101 / 150 ms | **20 / 34 / 38 / 81 ms** |
+| Slow UI thread / slow draw frames | 166 / 160 | **47 / 45** |
+| Home rows only: janky, median | 97–100%, 81–89 ms | **8–11%, 26–27 ms** |
+
+What mattered, in order: this GPU redraws the whole 1920×1080 screen every frame and each full-screen fill costs
+roughly 10 ms, so the hero and title-page artwork with its fades renders once into a cached layer (`artworkLayer`),
+and the window background and the pages hidden under the player are no longer drawn. Sideloaded installs get no Play
+cloud profile, so `profileinstaller` and `baseline-prof.txt` compile the app ahead of time (before, it ran
+interpreted/JIT: dexopt `status=verify`). Library reads map rows off the main thread. To compare builds fairly, force
+the compile Android would otherwise run in the background:
+`adb shell cmd package compile -m speed-profile -f app.antenna.player.scratch`.
