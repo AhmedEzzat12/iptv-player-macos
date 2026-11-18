@@ -92,6 +92,7 @@ import app.tuner.tv.ui.WideCard
 import app.tuner.tv.ui.artworkLayer
 import app.tuner.tv.ui.BackdropImage
 import app.tuner.tv.ui.initialFocus
+import app.tuner.tv.ui.rememberScreenState
 import coil3.compose.AsyncImage
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -114,20 +115,22 @@ private data class OnNow(val channel: Channel, val program: Program?)
 fun HomeScreen(onPlay: (PlaybackItem) -> Unit, onOpenMovie: (String) -> Unit, onOpenSeries: (String) -> Unit, onAddPlaylist: () -> Unit) {
     val app = LocalContext.current.app
     val scope = rememberCoroutineScope()
-    var cw by remember { mutableStateOf<List<ContinueWatchingItem>>(emptyList()) }
-    var onNow by remember { mutableStateOf<List<OnNow>>(emptyList()) }
-    var onNowFavorites by remember { mutableStateOf(true) }
-    var movies by remember { mutableStateOf<List<Movie>>(emptyList()) }
-    var shows by remember { mutableStateOf<List<Series>>(emptyList()) }
-    var topRated by remember { mutableStateOf<List<VODItem>>(emptyList()) }
-    var hero by remember { mutableStateOf<List<VODItem>>(emptyList()) }
-    var loaded by remember { mutableStateOf(false) }
+    // Each starts from what Home last showed (ScreenMemory), so coming back draws the page at once.
+    var cw by rememberScreenState("home.cw") { emptyList<ContinueWatchingItem>() }
+    var onNow by rememberScreenState("home.onNow") { emptyList<OnNow>() }
+    var onNowFavorites by rememberScreenState("home.onNowFavorites") { true }
+    var movies by rememberScreenState("home.movies") { emptyList<Movie>() }
+    var shows by rememberScreenState("home.shows") { emptyList<Series>() }
+    var topRated by rememberScreenState("home.topRated") { emptyList<VODItem>() }
+    var hero by rememberScreenState("home.hero") { emptyList<VODItem>() }
+    var loaded by rememberScreenState("home.loaded") { false }
     var hasSources by remember { mutableStateOf(true) }
     var revision by remember { mutableIntStateOf(0) }
     var guideRevision by remember { mutableIntStateOf(0) }
-    // Provider details and online metadata for the hero titles, fetched once per title (not on every reload).
-    val heroDetails = remember { mutableStateMapOf<String, VODItem>() }
-    val heroMeta = remember { mutableStateMapOf<String, MediaMetadata?>() }
+    // Provider details and online metadata for the hero titles, fetched once per title while the app runs (they were
+    // fetched again on every visit to Home, so the hero's artwork arrived late each time).
+    val heroDetails = remember { app.screens.getOrPut("home.heroDetails") { mutableStateMapOf<String, VODItem>() } }
+    val heroMeta = remember { app.screens.getOrPut("home.heroMeta") { mutableStateMapOf<String, MediaMetadata?>() } }
 
     LaunchedEffect(Unit) { app.database.changes.collect { if (it == Change.GUIDE) guideRevision++ else revision++ } }
     LaunchedEffect(revision) {

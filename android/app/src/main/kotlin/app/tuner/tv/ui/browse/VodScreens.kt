@@ -1,6 +1,7 @@
 package app.tuner.tv.ui.browse
 
 import app.tuner.tv.ui.PillButton
+import app.tuner.tv.ui.rememberScreenState
 import app.tuner.tv.ui.artworkLayer
 import app.tuner.tv.ui.BackdropImage
 import app.tuner.tv.ui.Eyebrow
@@ -107,9 +108,10 @@ import kotlinx.coroutines.launch
 fun VodGridScreen(kind: CategoryKind, onOpen: (String) -> Unit) {
     val app = LocalContext.current.app
     val scope = rememberCoroutineScope()
-    var categories by remember { mutableStateOf<List<Category>>(emptyList()) }
+    // The category list and the first page of All start from what this page last showed (ScreenMemory).
+    var categories by rememberScreenState("vod.${kind.raw}.categories") { emptyList<Category>() }
     var selected by remember { mutableStateOf<String?>(null) }
-    var items by remember { mutableStateOf<List<Triple<String, String, String?>>>(emptyList()) }
+    var items by remember { mutableStateOf(app.screens["vod.${kind.raw}.all"] ?: emptyList<Triple<String, String, String?>>()) }
     var revision by remember { mutableStateOf(0) }
     var exhausted by remember { mutableStateOf(false) }
     var menuCategory by remember { mutableStateOf<app.tuner.core.models.Category?>(null) }
@@ -122,7 +124,7 @@ fun VodGridScreen(kind: CategoryKind, onOpen: (String) -> Unit) {
         else app.library.series(selected, limit = 120, offset = offset).map { Triple(it.id, it.name, it.coverURL) }
 
     LaunchedEffect(selected, revision) {
-        items = page(0)
+        items = page(0).also { if (selected == null) app.screens["vod.${kind.raw}.all"] = it }
         exhausted = items.size < 120
         // Stalker portals: a category's items load when it's first opened.
         val cat = categories.firstOrNull { it.id == selected }

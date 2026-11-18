@@ -2,6 +2,7 @@ package app.tuner.tv.ui.browse
 
 import app.tuner.tv.ui.rememberedFocus
 import app.tuner.tv.ui.PillButton
+import app.tuner.tv.ui.rememberScreenState
 import app.tuner.tv.ui.SideListRow
 import app.tuner.tv.ui.ProgressLine
 import androidx.compose.material.icons.filled.History
@@ -96,10 +97,12 @@ private fun fmtDayClock(instant: Instant): String = DAY_TIME_FMT.withZone(ZoneId
 fun LiveScreen(onPlay: (PlaybackItem) -> Unit, initial: Library.ChannelScope = Library.ChannelScope.All) {
     val app = LocalContext.current.app
     val scope = rememberCoroutineScope()
-    var groups by remember { mutableStateOf<List<Pair<String, Library.ChannelScope>>>(emptyList()) }
+    // Lists start from what this page last showed (ScreenMemory), so coming back draws them at once.
+    val memory = app.screens
+    var groups by rememberScreenState("live.groups") { emptyList<Pair<String, Library.ChannelScope>>() }
     var selected by remember { mutableStateOf(initial) }
-    var channels by remember { mutableStateOf<List<Channel>>(emptyList()) }
-    var programsByKey by remember { mutableStateOf<Map<String, List<Program>>>(emptyMap()) }
+    var channels by remember { mutableStateOf(memory["live.channels.$initial"] ?: emptyList<Channel>()) }
+    var programsByKey by remember { mutableStateOf(memory["live.programs.$initial"] ?: emptyMap<String, List<Program>>()) }
     var revision by remember { mutableStateOf(0) }
     var guideRevision by remember { mutableStateOf(0) }
     var showGrid by remember { mutableStateOf(false) }
@@ -109,7 +112,7 @@ fun LiveScreen(onPlay: (PlaybackItem) -> Unit, initial: Library.ChannelScope = L
     var menuCategory by remember { mutableStateOf<app.tuner.core.models.Category?>(null) }
     var renamingChannel by remember { mutableStateOf<Channel?>(null) }
     var renamingCategory by remember { mutableStateOf<app.tuner.core.models.Category?>(null) }
-    var liveCategories by remember { mutableStateOf<Map<String, app.tuner.core.models.Category>>(emptyMap()) }
+    var liveCategories by rememberScreenState("live.categories") { emptyMap<String, app.tuner.core.models.Category>() }
     var nowEpoch by remember { mutableLongStateOf(System.currentTimeMillis() / 1000) }
     // Grid 2-hour window start, rounded down to 30 minutes.
     var windowStartEpoch by remember { mutableLongStateOf((System.currentTimeMillis() / 1000 / 1800) * 1800) }
@@ -132,7 +135,7 @@ fun LiveScreen(onPlay: (PlaybackItem) -> Unit, initial: Library.ChannelScope = L
                 .map { it.displayName to Library.ChannelScope.InCategory(it.id) }
     }
     LaunchedEffect(selected, revision, guideRevision) {
-        channels = app.library.channels(selected)
+        channels = app.library.channels(selected).also { memory["live.channels.$selected"] = it }
     }
     LaunchedEffect(channels, guideRevision, windowStartEpoch, showGrid, nowEpoch / 300) {
         val keys = channels.mapNotNull { it.epgKey }
@@ -141,7 +144,7 @@ fun LiveScreen(onPlay: (PlaybackItem) -> Unit, initial: Library.ChannelScope = L
         } else {
             val from = if (showGrid) Instant.ofEpochSecond(windowStartEpoch) else Instant.ofEpochSecond(nowEpoch - 1800)
             val to = if (showGrid) Instant.ofEpochSecond(windowStartEpoch + 7200) else Instant.ofEpochSecond(nowEpoch + 6 * 3600)
-            programsByKey = app.library.programs(keys, from, to)
+            programsByKey = app.library.programs(keys, from, to).also { if (!showGrid) memory["live.programs.$selected"] = it }
         }
     }
 

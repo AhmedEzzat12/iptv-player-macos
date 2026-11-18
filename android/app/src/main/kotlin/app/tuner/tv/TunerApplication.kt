@@ -7,6 +7,7 @@ import app.tuner.data.AppDatabase
 import app.tuner.data.Library
 import app.tuner.data.StreamResolver
 import app.tuner.data.SyncService
+import app.tuner.tv.ui.ScreenMemory
 import coil3.ImageLoader
 import coil3.PlatformContext
 import coil3.SingletonImageLoader
@@ -28,6 +29,8 @@ class TunerApplication : Application(), SingletonImageLoader.Factory {
     /** A title to play, from Google TV's Continue watching row (see WatchNext). */
     val playRequests = kotlinx.coroutines.flow.MutableStateFlow<android.net.Uri?>(null)
     val skips by lazy { SkipSegmentService(library.skipCache) }
+    /** What each screen last showed, so coming back to it draws at once (see ScreenMemory). */
+    val screens = ScreenMemory()
 
     /** Posters and logos dominate memory on TV boxes: a bounded memory cache. */
     override fun newImageLoader(context: PlatformContext): ImageLoader = ImageLoader.Builder(context)
