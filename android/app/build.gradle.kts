@@ -76,4 +76,7 @@ dependencies {
     implementation(libs.coil.compose)
     implementation(libs.coil.okhttp)
     implementation(libs.zxing.core)
+    // Installs the baseline profiles (the app's, below, and Compose's own) on sideloaded installs, which get no cloud
+    // profile from Play: without it the app ran interpreted/JIT and every new screen stuttered on TV boxes.
+    implementation(libs.androidx.profileinstaller)
 }

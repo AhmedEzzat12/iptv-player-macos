@@ -1,0 +1,5 @@
+# Compiled ahead of time on install (profileinstaller writes it, ART compiles it in the background). The TV boxes
+# this app runs on are slow enough that interpreted/JIT Compose code missed frames on every first visit to a screen.
+# The whole app, core and data modules: they're small, and what isn't hot at startup is hot while browsing.
+HSPLapp/tuner/**->**(**)**
+Lapp/tuner/**;
