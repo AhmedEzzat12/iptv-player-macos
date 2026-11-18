@@ -186,7 +186,7 @@ public class Library(private val database: AppDatabase) : MetadataCache {
             ChannelScope.Recent -> { sql += " JOIN history h ON h.channelId = c.id"; order = "h.watchedAt DESC" }
             is ChannelScope.InCategory -> { where.add("c.categoryId = ?"); args.add(scope.id) }
         }
-        for (word in words(search)) { where.add("(c.name LIKE ? OR p.alias LIKE ?)"); args.add("%$word%"); args.add("%$word%") }
+        for (word in words(search)) { where.add("(c.name LIKE ? ESCAPE '\\' OR p.alias LIKE ? ESCAPE '\\')"); args.add(contains(word)); args.add(contains(word)) }
         sql += " WHERE " + where.joinToString(" AND ") + " ORDER BY $order"
         (limit ?: if (scope == ChannelScope.Recent) 50 else null)?.let { sql += " LIMIT $it" }
         return lib.channels(SimpleSQLiteQuery(sql, args.toTypedArray())).map(::channel)
@@ -220,6 +220,10 @@ public class Library(private val database: AppDatabase) : MetadataCache {
 
     private fun words(search: String?) = search?.trim()?.split(Regex("\\s+"))?.filter { it.isNotEmpty() } ?: emptyList()
 
+    /** `%word%` for `LIKE … ESCAPE '\\'`, with the word's own `%`, `_` and `\\` matched literally (searching "100%" used
+     * to match everything). */
+    private fun contains(word: String) = "%" + word.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+
     private fun vodOrder(sort: VODSort) = when (sort) {
         VODSort.ADDED -> "addedAt IS NULL, addedAt DESC, providerOrder"
         VODSort.NAME -> "name COLLATE NOCASE"
@@ -231,7 +235,7 @@ public class Library(private val database: AppDatabase) : MetadataCache {
         val where = mutableListOf("(categoryId IS NULL OR categoryId NOT IN (SELECT categoryId FROM categoryPref WHERE isHidden = 1))")
         val args = mutableListOf<Any>()
         if (categoryId != null) { where.add("categoryId = ?"); args.add(categoryId) }
-        for (word in words(search)) { where.add("name LIKE ?"); args.add("%$word%") }
+        for (word in words(search)) { where.add("name LIKE ? ESCAPE '\\'"); args.add(contains(word)) }
         val clause = if (where.isEmpty()) "" else "WHERE " + where.joinToString(" AND ")
         return SimpleSQLiteQuery("SELECT * FROM $table $clause ORDER BY ${vodOrder(sort)} LIMIT $limit OFFSET $offset", args.toTypedArray())
     }
@@ -511,8 +515,8 @@ public class Library(private val database: AppDatabase) : MetadataCache {
         val w = words(query)
         if (w.isEmpty()) return emptyList()
         val args = mutableListOf<Any>(from.epochSecond, from.plusSeconds(hours * 3600).epochSecond)
-        val conds = w.map { "(title LIKE ? OR subtitle LIKE ?)" }
-        for (word in w) { args.add("%$word%"); args.add("%$word%") }
+        val conds = w.map { "(title LIKE ? ESCAPE '\\' OR subtitle LIKE ? ESCAPE '\\')" }
+        for (word in w) { args.add(contains(word)); args.add(contains(word)) }
         val sql = "SELECT * FROM program WHERE end > ? AND start < ? AND ${conds.joinToString(" AND ")} AND epgKey IN (SELECT epgKey FROM channel WHERE epgKey IS NOT NULL) ORDER BY start LIMIT $limit"
         return guideDao.programmes(SimpleSQLiteQuery(sql, args.toTypedArray())).map(::program)
     }

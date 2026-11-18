@@ -37,13 +37,17 @@ public class LenientObject(public val raw: JsonObject) {
         if (p.isString) {
             val t = p.content.trim(' ', '\t')
             // Truncate "3.7" to 3; "nan", "inf" and values beyond Swift's Int range ("1e30") are null, as in Swift.
-            return t.toIntStrict() ?: t.toSwiftDouble()?.let { d ->
-                val whole = if (d < 0) kotlin.math.ceil(d) else kotlin.math.floor(d)
-                if (!whole.isFinite() || whole < -9.223372036854776E18 || whole >= 9.223372036854776E18) null else whole.toLong().toInt()
-            }
+            return t.toIntStrict() ?: t.toSwiftDouble()?.let(::wholeInt)
         }
         p.booleanOrNull?.let { return if (it) 1 else 0 }
-        return p.doubleOrNull?.takeIf { it.isFinite() }?.toLong()?.toInt()
+        return p.doubleOrNull?.let(::wholeInt)
+    }
+
+    /** `d` truncated toward zero, or null when it isn't finite or doesn't fit in Kotlin's 32-bit Int (`toLong().toInt()`
+     * wrapped 3000000000 to a negative number; Swift's 64-bit Int keeps it, so null is the closest honest answer). */
+    private fun wholeInt(d: Double): Int? {
+        val whole = if (d < 0) kotlin.math.ceil(d) else kotlin.math.floor(d)
+        return if (!whole.isFinite() || whole < Int.MIN_VALUE || whole > Int.MAX_VALUE) null else whole.toInt()
     }
 
     public fun double(key: String): Double? {

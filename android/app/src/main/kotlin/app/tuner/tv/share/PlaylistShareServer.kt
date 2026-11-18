@@ -50,6 +50,7 @@ class PlaylistShareServer(private val scope: CoroutineScope, private val onRecei
     private val used = java.util.concurrent.atomic.AtomicBoolean(false)
     // Bad requests per client address: a client that keeps guessing is ignored, the others can still submit.
     private val failures = java.util.concurrent.ConcurrentHashMap<String, Int>()
+    private val slots = java.util.concurrent.Semaphore(8)
     val token: String = randomToken()
     var url: String? = null
         private set
@@ -64,7 +65,13 @@ class PlaylistShareServer(private val scope: CoroutineScope, private val onRecei
         job = scope.launch(Dispatchers.IO) {
             while (isActive) {
                 val client = runCatching { server.accept() }.getOrNull() ?: break
-                launch { runCatching { client.use { handle(it) } } }
+                // A few clients at a time, each with a hard deadline: a device trickling one byte every few seconds
+                // could otherwise hold IO threads for as long as it liked (the read timeout is per byte).
+                if (!slots.tryAcquire()) { runCatching { client.close() }; continue }
+                launch {
+                    val deadline = launch { kotlinx.coroutines.delay(30_000); runCatching { client.close() } }
+                    try { runCatching { client.use { handle(it) } } } finally { deadline.cancel(); slots.release() }
+                }
             }
         }
         return url

@@ -206,9 +206,15 @@ fun AppShell() {
             // A new title (e.g. from Google TV's Continue watching row) restarts the player rather than being ignored.
             androidx.compose.runtime.key(item) { PlayerScreen(item, onClose = { playing = null }) }
         }
-        // Closing the player: back to the card that started it (as for pages), else the page.
+        // Closing the player: back to the card that started it (as for pages), else the page. Started from a pushed page
+        // (a movie or episode page), the remembered card is the hidden one under that page: focus goes back to the page
+        // instead (its restorer picks the Play button), never into the hidden section.
         LaunchedEffect(playing == null) {
-            if (playing == null && returningFromPlayer) {
+            if (playing == null && returningFromPlayer && stack.isNotEmpty()) {
+                returningFromPlayer = false
+                withFrameNanos { }
+                runCatching { contentFocus.requestFocus() }
+            } else if (playing == null && returningFromPlayer) {
                 returningFromPlayer = false
                 focusMemory.restoreKey = focusMemory.lastKey
                 repeat(8) { if (focusMemory.restoreKey != null) withFrameNanos { } }

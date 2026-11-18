@@ -79,7 +79,7 @@ In order of how much a viewer would miss them:
 - Focus audit on every page, banner and launcher icon review, low-RAM tuning (Coil memory cache, list prefetch),
   metadata (posters, ratings) shown wherever the Apple apps show them.
 - Background refresh with WorkManager instead of on launch only.
-- Backup rules: exclude the database and the Keystore-encrypted passwords from cloud backup.
+- ~~Backup rules~~ done 2026-11-18: `allowBackup="false"` and data extraction rules exclude everything from cloud backup and device transfer.
 
 ## Tests and tooling owed
 
