@@ -290,7 +290,7 @@ fun MovieDetailScreen(id: String, onPlay: (PlaybackItem) -> Unit) {
     LaunchedEffect(id) {
         movie = app.library.movie(id)
         movie?.let { m ->
-            app.sync.movieDetails(m)?.let { d -> movie = m.copy(plot = d.plot ?: m.plot, cast = d.cast ?: m.cast, genre = d.genre ?: m.genre,
+            app.sync.movieDetails(m)?.let { d -> movie = m.copy(backdropURL = d.backdropURL?.ifEmpty { null } ?: m.backdropURL, plot = d.plot ?: m.plot, cast = d.cast ?: m.cast, genre = d.genre ?: m.genre,
                 containerExtension = d.containerExtension ?: m.containerExtension, durationSeconds = d.durationSeconds ?: m.durationSeconds) }
             meta = runCatching { app.metadata.metadata(m) }.getOrNull()
         }

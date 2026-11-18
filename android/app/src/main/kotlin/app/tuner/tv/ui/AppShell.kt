@@ -179,7 +179,7 @@ fun AppShell() {
                 // page: disposing it lost the focus, and Back went to the top of Home (where OK then played the first
                 // Continue Watching title). Focus can't wander into it while hidden (`enter` is cancelled).
                 Box(
-                    Modifier.fillMaxSize().padding(PageInsets)
+                    Modifier.fillMaxSize()
                         // Same modifiers in both states: adding/removing one recreated the focus nodes after it and lost
                         // the saved card.
                         .alpha(if (page != null) 0f else 1f)
@@ -187,8 +187,12 @@ fun AppShell() {
                         .focusRequester(sectionFocus).focusGroup()
                 ) {
                     // Each section's state (search text, grid scroll) also survives switching sections.
-                    sectionState.SaveableStateProvider(selected.name) { when (selected) {
-                        Section.Home -> HomeScreen(play, { open(Page.MovieDetail(it)) }, { open(Page.SeriesDetail(it)) }, { open(Page.AddPlaylist) })
+                    // Home runs its hero artwork edge to edge and insets its own content; the other sections sit inside
+                    // the page margins.
+                    sectionState.SaveableStateProvider(selected.name) { if (selected == Section.Home) {
+                        HomeScreen(play, { open(Page.MovieDetail(it)) }, { open(Page.SeriesDetail(it)) }, { open(Page.AddPlaylist) })
+                    } else Box(Modifier.padding(PageInsets)) { when (selected) {
+                        Section.Home -> Unit
                         Section.Live -> LiveScreen(play)
                         Section.Movies -> VodGridScreen(CategoryKind.MOVIE) { open(Page.MovieDetail(it)) }
                         Section.Shows -> VodGridScreen(CategoryKind.SERIES) { open(Page.SeriesDetail(it)) }
@@ -196,7 +200,7 @@ fun AppShell() {
                         Section.Search -> SearchScreen(play, { open(Page.MovieDetail(it)) }, { open(Page.SeriesDetail(it)) },
                             focusSidebar = { runCatching { itemFocus.getValue(Section.Search).requestFocus() } })
                         Section.Settings -> PlaylistsScreen(onAdd = { open(Page.AddPlaylist) }, onEdit = { open(Page.EditPlaylist(it)) })
-                    } }
+                    } } }
                 }
                 if (page != null) Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
                     when (page) {
