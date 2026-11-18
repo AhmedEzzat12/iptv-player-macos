@@ -27,6 +27,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.ui.draw.clip
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -78,6 +80,7 @@ import app.tuner.data.PlayableStream
 import app.tuner.tv.app
 import app.tuner.tv.ui.PlaybackItem
 import app.tuner.tv.ui.TunerColors
+import app.tuner.tv.ui.Eyebrow
 import app.tuner.tv.ui.browse.fmtClock
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
@@ -98,6 +101,10 @@ fun PlayerScreen(initial: PlaybackItem, onClose: () -> Unit) {
     var item by remember { mutableStateOf(initial) }
     var message by remember { mutableStateOf<String?>(null) }
     var chromeVisible by remember { mutableStateOf(true) }
+    /** The player's play/pause intent as Compose state. Read straight from ExoPlayer, the pause symbol only appeared
+     * when something else redrew the screen, and a pause from outside (Assistant, the system's media controls) never
+     * showed the controls. */
+    var playWhenReady by remember { mutableStateOf(true) }
     var lastInput by remember { mutableIntStateOf(0) }
     var position by remember { mutableDoubleStateOf(0.0) }
     var duration by remember { mutableDoubleStateOf(0.0) }
@@ -349,6 +356,11 @@ fun PlayerScreen(initial: PlaybackItem, onClose: () -> Unit) {
 
             override fun onTracksChanged(newTracks: androidx.media3.common.Tracks) { tracks = newTracks }
 
+            override fun onPlayWhenReadyChanged(ready: Boolean, reason: Int) {
+                playWhenReady = ready
+                if (!ready) chromeVisible = true
+            }
+
             override fun onPlayerError(error: PlaybackException) {
                 val live = item as? PlaybackItem.Live
                 // Xtream live is asked as TS first; retry once as HLS before giving up (docs/android-parity.md).
@@ -452,7 +464,7 @@ fun PlayerScreen(initial: PlaybackItem, onClose: () -> Unit) {
     }
 
     // Chrome auto-hides after 5 s while playing.
-    LaunchedEffect(lastInput, chromeVisible) {
+    LaunchedEffect(lastInput, chromeVisible, playWhenReady) {
         if (chromeVisible) {
             delay(5000)
             if (player.isPlaying) chromeVisible = false
@@ -598,7 +610,7 @@ fun PlayerScreen(initial: PlaybackItem, onClose: () -> Unit) {
         )
 
         if (message == null && status == null) {
-            PlayerCenterIndicator(buffering = buffering && scrubTo == null, paused = !player.playWhenReady && !buffering && flash == null && item !is PlaybackItem.Live)
+            PlayerCenterIndicator(buffering = buffering && scrubTo == null, paused = !playWhenReady && !buffering && flash == null && item !is PlaybackItem.Live)
         }
         flash?.let { PlayPauseFlash(it) }
         if ((chromeVisible || message != null) && !optionsOpen) PlayerChrome(item, position, duration, buffered, scrubTo, liveNow, liveNext)
@@ -614,9 +626,26 @@ fun PlayerScreen(initial: PlaybackItem, onClose: () -> Unit) {
         }
 
         upNext?.let { seconds ->
-            Box(Modifier.align(Alignment.BottomEnd).padding(end = 56.dp, bottom = if (chromeVisible) 136.dp else 48.dp)
-                .background(TunerColors.surface.copy(alpha = 0.95f), androidx.compose.foundation.shape.RoundedCornerShape(14.dp)).padding(20.dp)) {
-                Text("Up Next in $seconds s · press OK to play now", style = MaterialTheme.typography.titleSmall)
+            // The Apple TV app's Up Next card: the next episode's picture and title, and a countdown.
+            val ep = item as? PlaybackItem.EpisodeItem
+            val nextEp = ep?.let { EpisodeNavigation.neighbor(it.episode.id, it.episodes, 1) }
+            Row(Modifier.align(Alignment.BottomEnd).padding(end = 56.dp, bottom = if (chromeVisible) 150.dp else 48.dp)
+                .background(TunerColors.raised.copy(alpha = 0.96f), androidx.compose.foundation.shape.RoundedCornerShape(18.dp)).padding(14.dp),
+                verticalAlignment = Alignment.CenterVertically) {
+                val still = nextEp?.imageURL ?: ep?.series?.backdropURL
+                if (still != null) {
+                    coil3.compose.AsyncImage(still, null, Modifier.size(160.dp, 90.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(10.dp)),
+                        contentScale = androidx.compose.ui.layout.ContentScale.Crop)
+                    Spacer(Modifier.width(16.dp))
+                }
+                Column(Modifier.width(260.dp)) {
+                    Text("UP NEXT IN $seconds", style = Eyebrow, color = TunerColors.accent)
+                    Spacer(Modifier.height(4.dp))
+                    Text(nextEp?.let { "S${it.season}, E${it.number} · ${it.title}" } ?: "Next episode", style = MaterialTheme.typography.titleSmall,
+                        maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                    Spacer(Modifier.height(6.dp))
+                    Text("Press OK to play now", style = MaterialTheme.typography.bodySmall, color = TunerColors.secondary)
+                }
             }
         }
 
@@ -631,9 +660,9 @@ fun PlayerScreen(initial: PlaybackItem, onClose: () -> Unit) {
         // the controls showing.
         skipPrompt?.takeIf { (it.isFresh || chromeVisible) && upNext == null && !optionsOpen }?.let { prompt ->
             Box(Modifier.align(Alignment.BottomEnd).padding(end = 56.dp, bottom = if (chromeVisible) 136.dp else 48.dp)
-                .background(Color.White, androidx.compose.foundation.shape.RoundedCornerShape(12.dp)).padding(horizontal = 22.dp, vertical = 14.dp)) {
+                .background(Color.White, androidx.compose.foundation.shape.CircleShape).padding(horizontal = 26.dp, vertical = 13.dp)) {
                 Text(if (prompt.segment.kind == SkipSegment.Kind.CREDITS) "Skip Credits" else if (prompt.segment.kind == SkipSegment.Kind.RECAP) "Skip Recap" else "Skip Intro",
-                    color = Color.Black, style = MaterialTheme.typography.titleSmall)
+                    color = TunerColors.onFocus, style = MaterialTheme.typography.titleSmall)
             }
         }
 
