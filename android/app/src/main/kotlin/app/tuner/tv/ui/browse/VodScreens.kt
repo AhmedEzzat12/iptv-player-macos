@@ -11,6 +11,11 @@ import app.tuner.tv.ui.FocusBleed
 import app.tuner.tv.ui.bleedStart
 import app.tuner.tv.ui.PageTitle
 import androidx.compose.foundation.background
+import androidx.compose.ui.focus.focusProperties
+import androidx.tv.material3.ListItem
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.aspectRatio
@@ -85,6 +90,7 @@ import coil3.compose.AsyncImage
 import kotlinx.coroutines.launch
 
 /** Movies or TV Shows: category chips and a poster grid, paged 120 at a time. */
+@OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
 @Composable
 fun VodGridScreen(kind: CategoryKind, onOpen: (String) -> Unit) {
     val app = LocalContext.current.app
@@ -112,29 +118,63 @@ fun VodGridScreen(kind: CategoryKind, onOpen: (String) -> Unit) {
         if (items.isEmpty() && cat != null) scope.launch { runCatching { app.sync.loadStalkerCategory(cat.sourceId, kind, cat.id) } }
     }
 
+    // Categories in a list on the left (as on Live TV), posters on the right. A row of chips was slow with dozens of
+    // categories: one press per chip, and the posters had to be climbed back up one row at a time to reach them. Now
+    // moving through the list switches category (after a short pause, so passing through doesn't load each one), Left
+    // from the posters' first column comes back to it, and Back from the posters returns to the selected category.
+    val listFocus = remember { mutableMapOf<String, FocusRequester>() }
+    fun requester(key: String) = listFocus.getOrPut(key) { FocusRequester() }
+    var postersHaveFocus by remember { mutableStateOf(false) }
+    var focusedCategory by remember { mutableStateOf<String?>(null) }
+    var focusedAny by remember { mutableStateOf(false) }
+    LaunchedEffect(focusedCategory, focusedAny) {
+        if (!focusedAny) return@LaunchedEffect
+        delay(350)
+        selected = focusedCategory
+    }
+    BackHandler(enabled = postersHaveFocus && menuCategory == null && renamingCategory == null) {
+        runCatching { requester(selected ?: "").requestFocus() }
+    }
+    val grid = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
+    LaunchedEffect(selected) { grid.scrollToItem(0) }
+
     Box(Modifier.fillMaxSize()) {
-        Column(Modifier.fillMaxSize()) {
-            PageTitle(if (kind == CategoryKind.MOVIE) "Movies" else "TV Shows")
-            Spacer(Modifier.height(12.dp))
-            LazyRow(Modifier.bleedStart(), horizontalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(vertical = 8.dp, horizontal = FocusBleed)) {
-                item { FilterChip(selected = selected == null, onClick = { selected = null }, modifier = Modifier.initialFocus()) { Text("All") } }
-                items(categories, key = { it.id }) { c ->
-                    FilterChip(selected = selected == c.id, onClick = { selected = c.id }, onLongClick = { menuCategory = c }) { Text(c.displayName) }
+        Row(Modifier.fillMaxSize()) {
+            Column(Modifier.width(230.dp).fillMaxHeight()) {
+                PageTitle(if (kind == CategoryKind.MOVIE) "Movies" else "TV Shows")
+                // Entering the list (Left from the posters) lands on the selected category, not on whichever one is
+                // level with the poster, which would then switch the category.
+                LazyColumn(Modifier.fillMaxSize().bleedStart()
+                    .focusProperties { enter = { runCatching { requester(selected ?: "") }.getOrDefault(FocusRequester.Default) } }.focusGroup(),
+                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                    contentPadding = PaddingValues(start = FocusBleed, top = 4.dp, bottom = 48.dp)) {
+                    item(key = "") {
+                        CategoryRow("All", selected == null, Modifier.focusRequester(requester("")).initialFocus()
+                            .onFocusChanged { if (it.isFocused) { focusedCategory = null; focusedAny = true } }) { selected = null; focusedAny = false }
+                    }
+                    items(categories, key = { it.id }) { c ->
+                        CategoryRow(c.displayName, selected == c.id, Modifier.focusRequester(requester(c.id))
+                            .onFocusChanged { if (it.isFocused) { focusedCategory = c.id; focusedAny = true } },
+                            onLongClick = { menuCategory = c }) { selected = c.id; focusedAny = false }
+                    }
                 }
             }
-            Spacer(Modifier.height(12.dp))
-            if (items.isEmpty()) {
-                Placeholder(if (categories.isEmpty()) "Add a playlist with movies and shows in Settings." else "Nothing in this category.")
-            } else {
-                // Fixed cells: posters are the same 150 dp as on Home in every category (Adaptive stretched them).
-                LazyVerticalGrid(GridCells.FixedSize(150.dp), Modifier.bleedStart(), horizontalArrangement = Arrangement.spacedBy(18.dp),
-                    verticalArrangement = Arrangement.spacedBy(24.dp), contentPadding = PaddingValues(top = 12.dp, start = FocusBleed, bottom = 48.dp, end = 4.dp)) {
-                    itemsIndexed(items, key = { _, it -> it.first }) { index, (id, name, image) ->
-                        Box(Modifier.rememberedFocus(id)) { PosterCard(name, image, onClick = { onOpen(id) }) }
-                        if (index == items.size - 1 && !exhausted) LaunchedEffect(items.size) {
-                            val more = page(items.size)
-                            exhausted = more.size < 120
-                            items = items + more
+            Spacer(Modifier.width(20.dp))
+            Box(Modifier.weight(1f).fillMaxHeight().padding(top = 44.dp).onFocusChanged { postersHaveFocus = it.hasFocus; if (it.hasFocus) focusedAny = false }) {
+                if (items.isEmpty()) {
+                    Placeholder(if (categories.isEmpty()) "Add a playlist with movies and shows in Settings." else "Nothing in this category.")
+                } else {
+                    // Fixed cells: posters keep one size in every category (Adaptive stretched them); four to a row beside
+                    // the list.
+                    LazyVerticalGrid(GridCells.FixedSize(132.dp), Modifier.bleedStart(), state = grid, horizontalArrangement = Arrangement.spacedBy(18.dp),
+                        verticalArrangement = Arrangement.spacedBy(22.dp), contentPadding = PaddingValues(top = 12.dp, start = FocusBleed, bottom = 48.dp, end = 4.dp)) {
+                        itemsIndexed(items, key = { _, it -> it.first }) { index, (id, name, image) ->
+                            Box(Modifier.rememberedFocus(id)) { PosterCard(name, image, width = 132, onClick = { onOpen(id) }) }
+                            if (index == items.size - 1 && !exhausted) LaunchedEffect(items.size) {
+                                val more = page(items.size)
+                                exhausted = more.size < 120
+                                items = items + more
+                            }
                         }
                     }
                 }
@@ -151,6 +191,15 @@ fun VodGridScreen(kind: CategoryKind, onOpen: (String) -> Unit) {
             RenameDialog("Rename Category", cat.alias ?: "", cat.name, onSave = { scope.launch { app.library.renameCategory(cat.id, it) } }) { renamingCategory = null }
         }
     }
+}
+
+/** One category in the Movies/TV Shows list: the selected one stays marked while focus is on the posters. */
+@Composable
+private fun CategoryRow(name: String, selected: Boolean, modifier: Modifier, onLongClick: (() -> Unit)? = null, onClick: () -> Unit) {
+    ListItem(
+        selected = selected, onClick = onClick, onLongClick = onLongClick, modifier = modifier,
+        headlineContent = { Text(name, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyLarge) },
+    )
 }
 
 /**

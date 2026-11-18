@@ -77,6 +77,10 @@ In order of how much a viewer would miss them:
   TCL's Google TV launcher stores the entries but doesn't show a sideloaded app's in its Continue watching row;
   Google's current route there is the Engage SDK (continuation cluster), which needs Play distribution and Google's
   approval: part of the store work.
+- Movies / TV Shows categories in a side list (2026-11-18), as on Live TV: moving through it switches category after
+  350 ms, Left from the posters' first column returns to the selected category, Back from the posters too. Replaces
+  the chip row (one press per chip, Left raced along it, and reaching it meant climbing the grid). Posters 132 dp,
+  four to a row. Metadata lookups log their outcome (`Metadata` tag; kind, source, rating or error type only).
 - Movie and show pages redesigned (2026-11-18, `DetailPage` in `VodScreens.kt`): the artwork fills the screen behind
   the page and the rail, title/details/plot/buttons sit low on the left over fades, seasons and episodes peek in at
   the bottom (the boxed 380 dp backdrop left the episodes off a 540 dp-tall screen). A title with only a poster shows

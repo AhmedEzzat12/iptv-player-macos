@@ -23,7 +23,7 @@ class TunerApplication : Application(), SingletonImageLoader.Factory {
     val library by lazy { Library(database) }
     val sync by lazy { SyncService(library, cacheDir) }
     val resolver by lazy { StreamResolver(library, sync) }
-    val metadata by lazy { MetadataService(library) }
+    val metadata by lazy { MetadataService(library).apply { onLookup = { android.util.Log.i("Metadata", it) } } }
     val prefs by lazy { Prefs(this) }
     /** A title to play, from Google TV's Continue watching row (see WatchNext). */
     val playRequests = kotlinx.coroutines.flow.MutableStateFlow<android.net.Uri?>(null)

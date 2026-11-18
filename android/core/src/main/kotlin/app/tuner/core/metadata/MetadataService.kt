@@ -54,6 +54,10 @@ public class MetadataService(private val cache: MetadataCache, private val fetch
     private val lock = Mutex()
     public var settings: MetadataSettings = MetadataSettings()
         private set
+
+    /** Told each online lookup's outcome ("movie found TMDB", "series failed: SocketTimeoutException"); no titles or URLs,
+     * so the app can log it. */
+    public var onLookup: ((String) -> Unit)? = null
     private var configured = false
     /** Rows fetched before this are treated as stale (set when the TMDB key or language changes). */
     private var staleBefore = Long.MIN_VALUE
@@ -168,7 +172,13 @@ public class MetadataService(private val cache: MetadataCache, private val fetch
             val now = runCatching { cache.entry(request.mediaId) }.getOrNull()
             if (now != null && lock.withLock { isFresh(now) }) return now.metadata
             val started = System.currentTimeMillis()
-            return when (val outcome = MetadataProviders(fetch).lookup(request, settings, started)) {
+            val outcome = MetadataProviders(fetch).lookup(request, settings, started)
+            onLookup?.invoke("${request.kind.name} " + when (outcome) {
+                is MetadataProviders.Outcome.Found -> "found ${outcome.metadata.source}, rating ${outcome.metadata.rating ?: "none"}"
+                MetadataProviders.Outcome.NotFound -> "not found"
+                is MetadataProviders.Outcome.Failed -> "failed" + (outcome.reason?.let { ": $it" } ?: "")
+            })
+            return when (outcome) {
                 is MetadataProviders.Outcome.Found -> {
                     lock.withLock { recentFailures.remove(request.mediaId) }
                     runCatching { cache.save(outcome.metadata, request.mediaId) }
@@ -186,7 +196,7 @@ public class MetadataService(private val cache: MetadataCache, private val fetch
                         null
                     }
                 }
-                MetadataProviders.Outcome.Failed -> {
+                is MetadataProviders.Outcome.Failed -> {
                     lock.withLock { recentFailures[request.mediaId] = System.currentTimeMillis() }
                     cached?.metadata
                 }
@@ -230,8 +240,8 @@ internal class MetadataProviders(private val fetch: MetadataFetch) {
         data class Found(val metadata: MediaMetadata) : Outcome()
         /** Every provider answered and nothing matched well enough (cacheable). */
         object NotFound : Outcome()
-        /** A provider couldn't be reached or errored (not cacheable). */
-        object Failed : Outcome()
+        /** A provider couldn't be reached or errored (not cacheable); `reason` is the error's type. */
+        data class Failed(val reason: String? = null) : Outcome()
     }
 
     suspend fun lookup(request: MetadataService.LookupRequest, settings: MetadataSettings, fetchedAt: Long): Outcome {
@@ -252,13 +262,13 @@ internal class MetadataProviders(private val fetch: MetadataFetch) {
             val md = CinemetaClient(fetch).lookup(query, request.kind)
             when {
                 md != null -> Outcome.Found(withEpisodeFallbacks(md.copy(fetchedAt = fetchedAt)))
-                transientFailure -> Outcome.Failed
+                transientFailure -> Outcome.Failed("TMDB")
                 else -> Outcome.NotFound
             }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            Outcome.Failed
+            Outcome.Failed(e.javaClass.simpleName + ((e as? app.tuner.core.net.HttpException.Status)?.let { " ${it.code}" } ?: ""))
         }
     }
 
