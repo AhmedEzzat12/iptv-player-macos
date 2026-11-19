@@ -48,6 +48,8 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.text.style.TextOverflow
 import app.tuner.tv.ui.PageStart
+import app.tuner.core.models.VODDetails
+import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.Arrangement
@@ -332,15 +334,16 @@ fun MovieDetailScreen(id: String, onPlay: (PlaybackItem) -> Unit) {
     var favorite by remember { mutableStateOf(false) }
     LaunchedEffect(id, revision) { progress = app.library.progress(id); favorite = app.library.isVodFavorite(id) }
     LaunchedEffect(id) {
-        movie = app.library.movie(id)
-        movie?.let { m ->
-            app.sync.movieDetails(m)?.let { d -> movie = m.copy(backdropURL = d.backdropURL?.ifEmpty { null } ?: m.backdropURL, plot = d.plot ?: m.plot,
-                cast = d.cast ?: m.cast, director = d.director ?: m.director, genre = d.genre ?: m.genre,
-                containerExtension = d.containerExtension ?: m.containerExtension, durationSeconds = d.durationSeconds ?: m.durationSeconds) }
-            meta = runCatching { app.metadata.metadata(m) }.getOrNull()
-        }
+        val m = app.library.movie(id) ?: return@LaunchedEffect
+        fun merged(d: VODDetails?) = if (d == null) m else m.copy(backdropURL = d.backdropURL?.ifEmpty { null } ?: m.backdropURL, plot = d.plot ?: m.plot,
+            cast = d.cast ?: m.cast, director = d.director ?: m.director, genre = d.genre ?: m.genre,
+            containerExtension = d.containerExtension ?: m.containerExtension, durationSeconds = d.durationSeconds ?: m.durationSeconds)
+        // Provider details and online metadata come in together (see `loadTogether`).
+        loadTogether({ app.sync.movieDetails(m) }, { runCatching { app.metadata.metadata(m) }.getOrNull() },
+            early = { movie = m }) { d, md -> movie = merged(d); meta = md }
     }
-    val m = movie ?: return Placeholder("Loading…")
+    // Nothing drawn until the library answers (a frame or two): a "Loading…" placeholder flashed on every open.
+    val m = movie ?: return
     val details = listOfNotNull(m.year ?: meta?.year, m.durationSeconds?.takeIf { it > 0 }?.let { "${(it / 60).coerceAtLeast(1)} min" } ?: meta?.runtimeMinutes?.let { "$it min" },
         VODRating.of(m.rating, meta)?.text, m.genre ?: meta?.genres?.joinToString(", ")).joinToString("  ·  ")
     DetailPage(meta?.backdropURL ?: m.backdropURL, m.posterURL ?: meta?.posterURL, hero = {
@@ -377,13 +380,15 @@ fun SeriesDetailScreen(id: String, onPlay: (PlaybackItem) -> Unit) {
     var favorite by remember { mutableStateOf(false) }
     LaunchedEffect(id, revision) { progress = app.library.progress(id, forSeries = true); favorite = app.library.isVodFavorite(id) }
     LaunchedEffect(id) {
-        series = app.library.seriesItem(id)
-        val s = series ?: return@LaunchedEffect
-        episodes = app.library.episodes(id)
-        episodes = app.sync.episodes(s)
-        meta = runCatching { app.metadata.metadata(s) }.getOrNull()
+        val s = app.library.seriesItem(id) ?: return@LaunchedEffect
+        val stored = app.library.episodes(id)
+        series = s; episodes = stored
+        loadTogether({ app.sync.episodes(s) }, { runCatching { app.metadata.metadata(s) }.getOrNull() }) { fetched, md ->
+            if (fetched != stored) episodes = fetched
+            meta = md
+        }
     }
-    val s = series ?: return Placeholder("Loading…")
+    val s = series ?: return
     val seasons = episodes.map { it.season }.distinct().sortedWith(compareBy { if (it == 0) Int.MAX_VALUE else it })
     // The episode to offer: SmartContinueWatching's choice for this show, else the first.
     val next = remember(episodes, progress) {
@@ -472,6 +477,23 @@ fun SeriesDetailScreen(id: String, onPlay: (PlaybackItem) -> Unit) {
         )) { episodeMenu = null }
     }
 }
+
+/**
+ * Runs a title page's two slower lookups (provider details or episodes, and online metadata) at the same time and
+ * applies both in one update. One after the other, each recomposed the page, and the backdrop often changed twice
+ * (provider's, then the online one), each change redrawing the full-screen artwork layer: the slow frames when a page
+ * opened. If they take longer than a moment, `early` shows what the library has meanwhile.
+ */
+private suspend fun <A, B> loadTogether(first: suspend () -> A, second: suspend () -> B, early: () -> Unit = {}, apply: (A, B) -> Unit) =
+    kotlinx.coroutines.coroutineScope {
+        val a = async { first() }
+        val b = async { second() }
+        if (kotlinx.coroutines.withTimeoutOrNull(QUICK_LOOKUP_MS) { a.await(); b.await() } == null) early()
+        apply(a.await(), b.await())
+    }
+
+/** How long a title page waits for its lookups before showing what the library has (cached lookups take far less). */
+private const val QUICK_LOOKUP_MS = 300L
 
 /** The heart beside Play on movie and show pages (MovieDetailView's favourite button): filled when it's a favourite. */
 @Composable

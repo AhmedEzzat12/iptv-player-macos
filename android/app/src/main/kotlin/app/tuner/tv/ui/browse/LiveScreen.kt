@@ -133,7 +133,6 @@ fun LiveScreen(onPlay: (PlaybackItem) -> Unit, initial: Library.ChannelScope = L
     LaunchedEffect(focusedScope) { if (focusedScope != selected) { delay(250); selected = focusedScope } }
     val channelList = rememberLazyListState()
     val guideList = rememberLazyListState()
-    LaunchedEffect(selected) { channelList.scrollToItem(0); guideList.scrollToItem(0) }
     // Guide data is loaded for the channels around the ones on screen (in steps of 20 rows), not for the whole
     // category: "All Channels" asked for every channel's programmes at each change and every five minutes.
     val firstVisible by remember { derivedStateOf { (if (showGrid) guideList else channelList).firstVisibleItemIndex } }
@@ -157,18 +156,34 @@ fun LiveScreen(onPlay: (PlaybackItem) -> Unit, initial: Library.ChannelScope = L
             app.library.categories(CategoryKind.LIVE).also { cats -> liveCategories = cats.associateBy { it.id } }
                 .map { it.displayName to Library.ChannelScope.InCategory(it.id) }
     }
-    LaunchedEffect(selected, revision, guideRevision) {
-        channels = app.library.channels(selected).also { memory["live.channels.$selected"] = it }
-    }
-    LaunchedEffect(channels, guideRevision, windowStartEpoch, showGrid, nowEpoch / 300, programmeStep) {
-        val start = ((programmeStep - 1) * 20).coerceIn(0, channels.size)
-        val end = ((programmeStep + 3) * 20).coerceIn(start, channels.size)
-        val keys = channels.subList(start, end).mapNotNull { it.epgKey }.distinct()
+    // The guide rows for channels around step `step` of `list` (keys asked for, programmes found).
+    suspend fun programmesAround(list: List<Channel>, step: Int): Pair<Set<String>, Map<String, List<Program>>> {
+        val start = ((step - 1) * 20).coerceIn(0, list.size)
+        val end = ((step + 3) * 20).coerceIn(start, list.size)
+        val keys = list.subList(start, end).mapNotNull { it.epgKey }.distinct()
         val from = if (showGrid) Instant.ofEpochSecond(windowStartEpoch) else Instant.ofEpochSecond(nowEpoch - 1800)
         val to = if (showGrid) Instant.ofEpochSecond(windowStartEpoch + GUIDE_SPAN) else Instant.ofEpochSecond(nowEpoch + 6 * 3600)
-        val loaded = if (keys.isEmpty()) emptyMap() else app.library.programs(keys, from, to)
+        return keys.toSet() to (if (keys.isEmpty()) emptyMap() else app.library.programs(keys, from, to))
+    }
+    fun programmesKey(list: List<Channel>) = listOf(System.identityHashCode(list), showGrid, windowStartEpoch, guideRevision)
+    // Which category `channels` holds: a new one starts at the top.
+    var channelsOf by remember { mutableStateOf(initial) }
+    LaunchedEffect(selected, revision, guideRevision) {
+        val list = app.library.channels(selected).also { memory["live.channels.$selected"] = it }
+        val switched = channelsOf != selected
+        // A new category's channels arrive with their first programmes, in one update and one layout pass with the
+        // scroll back to the top: channels first, then programmes, then the scroll laid the list out three times (the
+        // hitch when focus settled on a category).
+        val (_, programmes) = programmesAround(list, if (switched) 0 else programmeStep)
+        if (switched) { channelList.requestScrollToItem(0); guideList.requestScrollToItem(0); channelsOf = selected }
+        channels = list
+        programsByKey = programmes
+        programmesFor = programmesKey(list)
+    }
+    LaunchedEffect(channels, guideRevision, windowStartEpoch, showGrid, nowEpoch / 300, programmeStep) {
+        val (keys, loaded) = programmesAround(channels, programmeStep)
         // Rows loaded earlier for the same list, guide and window are kept as focus moves down the list.
-        val loadedFor = listOf(System.identityHashCode(channels), showGrid, windowStartEpoch, guideRevision)
+        val loadedFor = programmesKey(channels)
         val sameList = programmesFor == loadedFor
         val updated = (if (sameList) programsByKey - keys.toSet() else emptyMap()) + loaded
         // Unchanged (most steps down a list without guide data): don't redraw every row mid-scroll.
