@@ -249,7 +249,7 @@ fun <T> Shelf(
         LazyRow(if (startInset == 0.dp) Modifier.bleedStart() else Modifier, horizontalArrangement = Arrangement.spacedBy(22.dp),
             contentPadding = PaddingValues(start = if (startInset == 0.dp) FocusBleed else startInset, end = 48.dp, top = 14.dp, bottom = 6.dp)) {
             items(items.size, key = { key(items[it]) }) { i ->
-                Box(Modifier.rememberedFocus(key(items[i])).then(if (focusFirst && i == 0 && !tookFocus) Modifier.initialFocus().onFocusChanged { if (it.hasFocus) tookFocus = true } else Modifier)) { content(items[i]) }
+                Box(Modifier.rememberedFocus("$title/${key(items[i])}").then(if (focusFirst && i == 0 && !tookFocus) Modifier.initialFocus().onFocusChanged { if (it.hasFocus) tookFocus = true } else Modifier)) { content(items[i]) }
             }
         }
     }

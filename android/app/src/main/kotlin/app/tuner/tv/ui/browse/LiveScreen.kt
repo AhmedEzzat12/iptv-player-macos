@@ -26,7 +26,6 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.Key
-import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -89,6 +88,7 @@ import app.tuner.tv.ui.PlaybackItem
 import app.tuner.tv.ui.Placeholder
 import app.tuner.tv.ui.TunerColors
 import app.tuner.tv.ui.initialFocus
+import app.tuner.tv.ui.focusWhenReady
 import coil3.compose.AsyncImage
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -429,7 +429,7 @@ private fun GuideGridView(
                                         val requester = remember { FocusRequester() }
                                         val target = pendingFocus
                                         if (target != null && target.channelId == ch.id && target.epoch >= p.start.epochSecond && target.epoch < p.end.epochSecond) {
-                                            LaunchedEffect(target) { withFrameNanos { }; runCatching { requester.requestFocus() }; pendingFocus = null }
+                                            LaunchedEffect(target) { requester.focusWhenReady(); pendingFocus = null }
                                         }
                                         GuideCell(
                                             onClick = {

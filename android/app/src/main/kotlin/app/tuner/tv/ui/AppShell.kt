@@ -1,7 +1,6 @@
 package app.tuner.tv.ui
 
 import androidx.compose.runtime.withFrameNanos
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.graphicsLayer
@@ -131,9 +130,9 @@ fun AppShell() {
     fun choose(section: Section) { selected = section; stack.clear(); chose++ }
     LaunchedEffect(chose) {
         if (chose == 0) return@LaunchedEffect
-        withFrameNanos { }
-        delay(200)
-        if (!contentHasFocus) runCatching { contentFocus.requestFocus() }
+        // initialFocus gets a few frames to place the section's own first focus before the page takes it.
+        repeat(12) { withFrameNanos { }; if (contentHasFocus) return@LaunchedEffect }
+        contentFocus.focusWhenReady()
     }
     // Registered last, so it wins while the drawer is open: Back closes it and returns to the page.
     BackHandler(enabled = playing == null && drawerState.currentValue == DrawerValue.Open) {
@@ -223,9 +222,7 @@ fun AppShell() {
                     if (page == null && returningFromPage) {
                         returningFromPage = false
                         // The card that opened the page takes focus back (`rememberedFocus`); if it's gone, the section.
-                        focusMemory.restoreKey = savedKey
-                        repeat(8) { if (focusMemory.restoreKey != null) withFrameNanos { } }
-                        if (focusMemory.restoreKey != null) { focusMemory.restoreKey = null; runCatching { sectionFocus.requestFocus() } }
+                        focusMemory.restore(savedKey, fallback = sectionFocus)
                     } else if (page != null) returningFromPage = true
                 }
             }
@@ -242,10 +239,7 @@ fun AppShell() {
                 if ((stack.lastOrNull() as? Page.SeriesDetail)?.id != id) open(Page.SeriesDetail(id))
             }, onClose = {
                 closeScope.launch {
-                    if (stack.isEmpty()) {
-                        focusMemory.restoreKey = focusMemory.lastKey
-                        repeat(8) { if (focusMemory.restoreKey != null) withFrameNanos { } }
-                    }
+                    if (stack.isEmpty()) focusMemory.restore(focusMemory.lastKey, fallback = null)
                     playing = null
                 }
             }) }
@@ -256,13 +250,11 @@ fun AppShell() {
         LaunchedEffect(playing == null) {
             if (playing == null && returningFromPlayer && stack.isNotEmpty()) {
                 returningFromPlayer = false
-                withFrameNanos { }
-                runCatching { contentFocus.requestFocus() }
+                contentFocus.focusWhenReady()
             } else if (playing == null && returningFromPlayer) {
                 returningFromPlayer = false
-                focusMemory.restoreKey = focusMemory.lastKey
-                repeat(8) { if (focusMemory.restoreKey != null) withFrameNanos { } }
-                if (focusMemory.restoreKey != null) { focusMemory.restoreKey = null; runCatching { contentFocus.requestFocus() } }
+                // Usually the card already has focus (taken while the player was still up); this only checks.
+                if (!contentHasFocus) focusMemory.restore(focusMemory.lastKey, fallback = contentFocus)
             } else if (playing != null) returningFromPlayer = true
         }
     } }

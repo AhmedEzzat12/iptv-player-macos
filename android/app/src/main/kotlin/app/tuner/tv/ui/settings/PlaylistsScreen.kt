@@ -75,6 +75,7 @@ import androidx.compose.ui.focus.focusProperties
 import app.tuner.tv.ui.Eyebrow
 import app.tuner.tv.ui.SideListRow
 import app.tuner.tv.ui.initialFocus
+import app.tuner.tv.ui.focusWhenReady
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
 import kotlinx.coroutines.launch
@@ -497,7 +498,7 @@ private fun Field(label: String, value: String, keyboard: KeyboardType = Keyboar
                     }
                     .background(Color.White.copy(alpha = 0.18f), RoundedCornerShape(10.dp)).padding(14.dp),
             )
-            LaunchedEffect(Unit) { editor.requestFocus() }
+            LaunchedEffect(Unit) { editor.focusWhenReady() }
             // Closing the keyboard (Back) ends editing, so the D-pad moves through the form again.
             // Visibility, not height: Google TV's floating keyboard reports a zero-height inset, so testing the height
             // never saw it close and the field stayed in edit mode.
@@ -529,7 +530,7 @@ private fun Field(label: String, value: String, keyboard: KeyboardType = Keyboar
                 Text(shown.ifEmpty { " " }, fontSize = 22.sp, maxLines = 1, modifier = Modifier.padding(14.dp))
             }
             // Back on the field after editing.
-            LaunchedEffect(Unit) { if (returnFocus) { returnFocus = false; runCatching { button.requestFocus() } } }
+            LaunchedEffect(Unit) { if (returnFocus) { returnFocus = false; button.focusWhenReady() } }
         }
         LaunchedEffect(editing) { if (editing) returnFocus = true }
     }
