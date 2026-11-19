@@ -60,6 +60,7 @@ import androidx.tv.material3.Text
 import androidx.tv.material3.rememberDrawerState
 import app.tuner.core.models.CategoryKind
 import app.tuner.data.Library
+import app.tuner.tv.ui.browse.FavoritesScreen
 import app.tuner.tv.ui.browse.HomeScreen
 import app.tuner.tv.ui.browse.LiveScreen
 import app.tuner.tv.ui.browse.MovieDetailScreen
@@ -200,7 +201,7 @@ fun AppShell() {
                         Section.Live -> LiveScreen(play)
                         Section.Movies -> VodGridScreen(CategoryKind.MOVIE) { open(Page.MovieDetail(it)) }
                         Section.Shows -> VodGridScreen(CategoryKind.SERIES) { open(Page.SeriesDetail(it)) }
-                        Section.Favorites -> LiveScreen(play, Library.ChannelScope.Favorites)
+                        Section.Favorites -> FavoritesScreen(play, { open(Page.MovieDetail(it)) }, { open(Page.SeriesDetail(it)) })
                         Section.Search -> SearchScreen(play, { open(Page.MovieDetail(it)) }, { open(Page.SeriesDetail(it)) },
                             focusSidebar = { runCatching { itemFocus.getValue(Section.Search).requestFocus() } })
                         Section.Settings -> PlaylistsScreen(onAdd = { open(Page.AddPlaylist) }, onEdit = { open(Page.EditPlaylist(it)) })

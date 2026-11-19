@@ -107,7 +107,7 @@ import kotlinx.coroutines.launch
 import java.time.Instant
 
 /** A favourite (or recently watched) channel with what's on it now, for the On Now row. */
-private data class OnNow(val channel: Channel, val program: Program?)
+internal data class OnNow(val channel: Channel, val program: Program?)
 
 /**
  * Home, like the Apple TV app's: a full-screen hero rotating through recently added movies and shows (artwork behind

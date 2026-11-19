@@ -41,3 +41,6 @@ What's usable and what was deferred: `docs/android-roadmap.md`.
 - **Home's first focus.** TV Home opens on the hero's Play button, as the Apple TV app does, rather than on the first
   Continue Watching card (appendix D): focusing a row scrolls it to the top, which hid the hero on every launch.
   Continue Watching is the first row under the hero, one press down.
+- **Favorites section.** On Apple the sidebar's Favorites is the guide filtered to favourite channels. On TV it's a page
+  of rows (favourite channels with what's on, then movies, then TV shows), so favourite titles have a home in the
+  drawer too. The channel guide filtered to favourites is still in Live TV → Favorites.
