@@ -353,7 +353,12 @@ user is asked again). Off by default (Settings → Sync).
 - **When** (`CloudSyncController`, app target): after the library loads, when the app becomes active, every 2 minutes
   (on the Mac also in the background, so a device that joins gets its passwords within minutes; on iPhone/iPad while
   active), 3 s after user-state or preference changes (60 s after watch-progress saves, which happen every few
-  seconds during playback), when leaving the app if a pass is pending, and on Sync Now. Passes run in the
+  seconds during playback; 3 s when nothing is playing, so where playback stopped goes out at once), when playback
+  stops, when leaving the app if a pass is pending, and on Sync Now. When another device's file is still downloading
+  from iCloud, the next pass comes 8 s later instead of at the two-minute tick. Each pass also reports, in
+  Settings → Sync, playlists that look like one account added with two server addresses (`CloudSyncDiagnostics`:
+  same kind and username, different fingerprint): they sync as separate playlists, so progress follows whichever
+  copy was watched. Passes run in the
   `CloudSyncEngine` actor (one at a time, never while a source editor is open); applied rows bump the usual revisions
   through the table observers. `TUNER_SYNC_DIR` (or `-TunerSyncDir` in iOS debug builds) uses a plain folder and turns
   sync on, for testing; a scratch library (`TUNER_DATA_DIR`) defaults to `<data dir>/Sync`, never iCloud Drive.
@@ -456,6 +461,10 @@ Data flow: views call `AppModel` actions and read `model.db` in `.task(id:)` blo
   channel column, now-line, catchup/reminder/recording markers), channel context menu.
 - Player: one persistent video view that moves between **full window** (sidebar collapses, TV-app glass
   controls that auto-hide), the guide **preview**, and a **mini player** while browsing — never recreated.
+  The mini player's controls show on hover (Mac) or on a tap for 4 s (touch screens have no hover; before, its close
+  and pause buttons couldn't be reached there). It can be dragged and settles in the nearest corner
+  (`MiniPlayerCorner`, predicted end of the drag); a small one (iPhone, under 140 pt tall) drops the subtitle so the
+  title row stays clear of the play button.
   (Multiview was removed on 2026-10-06 at the owner's request.)
 - `ScreenAwake` keeps the display on while the player is loading, playing or buffering (an IOKit
   display-sleep assertion on the Mac, `isIdleTimerDisabled` on iOS). AVFoundation does this by itself, mpv doesn't,

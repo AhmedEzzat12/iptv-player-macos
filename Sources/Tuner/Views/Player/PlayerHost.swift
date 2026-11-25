@@ -52,6 +52,9 @@ struct PlayerHost: View {
     @ViewState private var dismissOffset: CGFloat = 0
     /// Touch screens: a movie or episode is sliding away before the player closes.
     @ViewState private var isClosing = false
+    /// The mini player's corner (dragged there) and how far it's being dragged right now.
+    @ViewState private var miniCorner = MiniPlayerCorner.bottomTrailing
+    @ViewState private var miniDrag: CGSize = .zero
 
     var body: some View {
         GeometryReader { outer in
@@ -142,7 +145,8 @@ struct PlayerHost: View {
         let mode = self.mode
         let isFull = mode == .full
         let chromeShown = isFull && (chrome.isVisible || chromeHeld)
-        let compact = compactRect(for: mode, safe: safe)
+        let compact = compactRect(for: mode, safe: safe).offsetBy(dx: mode == .mini ? miniDrag.width : 0,
+                                                                    dy: mode == .mini ? miniDrag.height : 0)
         // Swipes (touch screens; the Mac's mouse when turned on): the full-screen player is a card that follows a
         // swipe down, shrinking as it goes (0…1).
         let swipes = model.prefs.swipeGestures
@@ -219,6 +223,9 @@ struct PlayerHost: View {
             } else if mode != .hidden {
                 PlayerCompactControls(slot: player.main, style: mode == .mini ? .mini : .preview, size: compact.size)
                     .frame(width: compact.width, height: compact.height)
+                    // The mini player can be dragged anywhere and settles in the nearest corner (it was fixed
+                    // bottom-trailing, often over what you wanted to see).
+                    .gesture(mode == .mini ? miniDragGesture(safe: safe) : nil)
                     .position(x: compact.midX, y: compact.midY)
                     .transition(.opacity)
                     .zIndex(10)
@@ -453,9 +460,33 @@ struct PlayerHost: View {
         }
         let width = min(340, max(200, safe.width * 0.45)).rounded()
         let height = (width * 9 / 16).rounded()
-        // Narrow screens: float above the bottom tab bar (the stage covers it).
+        return miniRect(corner: miniCorner, size: CGSize(width: width, height: height), safe: safe)
+    }
+
+    private func miniRect(corner: MiniPlayerCorner, size: CGSize, safe: CGRect) -> CGRect {
+        // Narrow screens: clear of the bottom tab bar and the top bar (the stage covers both).
         let bottomGap: CGFloat = compact ? 104 : 20
-        return CGRect(x: safe.maxX - 20 - width, y: safe.maxY - bottomGap - height, width: width, height: height)
+        let topGap: CGFloat = compact ? 64 : 20
+        let x = corner.isLeading ? safe.minX + 20 : safe.maxX - 20 - size.width
+        let y = corner.isTop ? safe.minY + topGap : safe.maxY - bottomGap - size.height
+        return CGRect(origin: CGPoint(x: x, y: y), size: size)
+    }
+
+    /// Drags the mini player; letting go settles it in the corner nearest to where it was dropped (a flick carries
+    /// it towards where it was heading).
+    private func miniDragGesture(safe: CGRect) -> some Gesture {
+        DragGesture(minimumDistance: 8, coordinateSpace: .global)
+            .onChanged { miniDrag = $0.translation }
+            .onEnded { value in
+                let current = compactRect(for: .mini, safe: safe)
+                let end = CGPoint(x: current.midX + value.predictedEndTranslation.width,
+                                  y: current.midY + value.predictedEndTranslation.height)
+                let corner = MiniPlayerCorner(isLeading: end.x < safe.midX, isTop: end.y < safe.midY)
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                    miniCorner = corner
+                    miniDrag = .zero
+                }
+            }
     }
 
     private func placement(for slot: PlayerSlot, mode: PlayerPresentationMode,
@@ -670,3 +701,20 @@ final class PlayerScrollVolumeMonitor {
     }
 }
 #endif
+
+/// The corner the mini player sits in.
+enum MiniPlayerCorner: Equatable {
+    case topLeading, topTrailing, bottomLeading, bottomTrailing
+
+    init(isLeading: Bool, isTop: Bool) {
+        switch (isLeading, isTop) {
+        case (true, true): self = .topLeading
+        case (false, true): self = .topTrailing
+        case (true, false): self = .bottomLeading
+        case (false, false): self = .bottomTrailing
+        }
+    }
+
+    var isLeading: Bool { self == .topLeading || self == .bottomLeading }
+    var isTop: Bool { self == .topLeading || self == .topTrailing }
+}

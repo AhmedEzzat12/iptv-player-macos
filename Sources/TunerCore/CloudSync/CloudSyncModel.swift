@@ -284,6 +284,8 @@ public struct CloudSyncReport: Sendable {
     public var removedDevices: [String: Int64] = [:]
     /// Devices' keys as first seen (device id → base64 public key), including ones met in this pass, to keep.
     public var trustedKeys: [String: String] = [:]
+    /// Other devices' files iCloud is still downloading (read on the next pass, which should come soon).
+    public var pendingDownloads = 0
 
     public init(finishedAt: Date, error: String? = nil) {
         self.finishedAt = finishedAt

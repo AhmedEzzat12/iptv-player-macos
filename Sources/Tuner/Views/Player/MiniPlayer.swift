@@ -2,7 +2,9 @@ import SwiftUI
 import TunerCore
 
 /// Hover controls and status for the main slot when it isn't full window: inside the guide's preview
-/// slot (`.preview`) or as the floating mini player (`.mini`). Double-click opens the full player.
+/// slot (`.preview`) or as the floating mini player (`.mini`). Double-click opens the full player. Touch screens have no
+/// hover: a tap shows the controls for a few seconds (they never appeared there, so the mini player couldn't be closed,
+/// paused or opened except by a double tap).
 /// Sized exactly to the video rect, so nothing outside it intercepts clicks.
 struct PlayerCompactControls: View {
     enum Style {
@@ -15,6 +17,22 @@ struct PlayerCompactControls: View {
     let style: Style
     let size: CGSize
     @ViewState private var hovering = false
+    /// Touch: the controls shown by a tap, hidden again after a few seconds.
+    @ViewState private var tapped = false
+    @ViewState private var hideTask: Task<Void, Never>?
+
+    private var controlsShown: Bool { hovering || tapped }
+
+    private func showForTouch() {
+        withAnimation(.easeInOut(duration: 0.2)) { tapped.toggle() }
+        hideTask?.cancel()
+        guard tapped else { return }
+        hideTask = Task { @MainActor in
+            try? await Task.sleep(for: .seconds(4))
+            guard !Task.isCancelled else { return }
+            withAnimation(.easeInOut(duration: 0.3)) { tapped = false }
+        }
+    }
 
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: style == .mini ? 14 : 12, style: .continuous)
@@ -22,6 +40,9 @@ struct PlayerCompactControls: View {
             Color.clear
                 .contentShape(shape)
                 .onTapGesture(count: 2) { model.enterFullWindow() }
+                #if os(iOS)
+                .onTapGesture { showForTouch() }
+                #endif
 
             PlayerStatusOverlay(slot: slot, size: size, onClose: { model.stopPlayback() })
 
@@ -31,8 +52,8 @@ struct PlayerCompactControls: View {
                 case .mini: miniControls
                 }
             }
-            .opacity(hovering ? 1 : 0)
-            .allowsHitTesting(hovering)
+            .opacity(controlsShown ? 1 : 0)
+            .allowsHitTesting(controlsShown)
         }
         .frame(width: size.width, height: size.height)
         .clipShape(shape)
@@ -90,7 +111,10 @@ struct PlayerCompactControls: View {
 
     private var miniControls: some View {
         let item = slot.item
-        let subtitle = item?.isLive == true ? slot.currentProgram?.title : item?.subtitle
+        // A small mini player (an iPhone's is about 200 × 112 points) keeps one line under the play button: the
+        // subtitle made the title row run into it.
+        let roomy = size.height >= 140
+        let subtitle = roomy ? (item?.isLive == true ? slot.currentProgram?.title : item?.subtitle) : nil
         let showsCenterButton = [PlayerSlot.Phase.playing, .paused].contains(slot.phase)
         // Failure/end cards carry their own buttons; keep only close/expand so nothing overlaps them.
         let showsCard: Bool = {
@@ -148,7 +172,7 @@ struct PlayerCompactControls: View {
                 Button { slot.togglePause() } label: {
                     Image(systemName: playPauseSymbol).contentTransition(.symbolEffect(.replace))
                 }
-                .buttonStyle(PlayerGlassButtonStyle(size: 46))
+                .buttonStyle(PlayerGlassButtonStyle(size: roomy ? 46 : 38))
                 .help(isPaused ? "Play" : "Pause")
             }
         }

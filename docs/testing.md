@@ -425,7 +425,12 @@ defaults to `<data dir>/Sync`, so a test copy never writes to iCloud Drive even 
 7. Check: favourite a channel, hide a category, pin a movie category, make a group, watch a movie halfway, change the
    accent colour on one copy → Sync Now on the other. Then undo them (unfavourite, delete the group, remove the
    progress from Continue Watching) and check they disappear. Removing a playlist on one copy must leave it on the
-   other.
+   other. Episodes: watch one halfway and finish another on one copy, close the player and wait ~5 s (progress goes
+   out 3 s after playback stops), then Sync Now on the other: the show resumes at the same point and Up Next offers
+   the episode after the finished one.
+   Two server addresses: add the test kit's panel as `http://127.0.0.1:8765` on one copy and `http://localhost:8765`
+   (same username) on the other; after a pass, Settings → Sync on either shows the "same account with different
+   server addresses" notice.
 8. The files are readable JSON: `python3 -m json.tool <scratch>/sync/<deviceId>.json`. They must never contain a
    readable password (passwords and full links only appear sealed; give a test M3U link a `&token=secret123` and check
    `grep -c secret123 <scratch>/sync/*.json` is 0) or a stream URL. Corrupt one
@@ -435,6 +440,10 @@ defaults to `<data dir>/Sync`, so a test copy never writes to iCloud Drive even 
    `TUNER_DATA_DIR`), and the scratch defaults (`defaults delete app.tuner.macos.scratch`, which also forgets the
    scratch copy's sync device id). The simulator keeps its sync id and key in its Keychain:
    `xcrun simctl keychain booted reset` clears them.
+
+**Mini player (iPhone/iPad):** play a channel, swipe the player down: the mini player appears bottom-right. A tap
+shows close, open, pause and mute for about 4 s (the simulator panel lags; leave a second between taps or they count
+as a double tap, which opens the player). Drag it towards another corner: it settles there. ✕ stops playback.
 
 The engine itself is covered by `scripts/test.sh` (`CloudSyncTests`, `CloudSyncRoundTripTests`: two in-memory
 libraries syncing through a temporary folder).

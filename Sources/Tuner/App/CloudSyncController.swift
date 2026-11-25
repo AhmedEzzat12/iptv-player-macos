@@ -261,6 +261,13 @@ final class CloudSyncController {
         if isEnabled { syncNow() }
     }
 
+    /// Playback stopped: publish where it stopped within seconds (watch-progress saves otherwise wait a minute, so
+    /// picking up another device right away showed the old position).
+    func playbackStopped() {
+        guard isEnabled else { return }
+        schedule(in: 3)
+    }
+
     func syncNow() {
         guard isEnabled else { return }
         schedule(in: 0)
@@ -302,7 +309,11 @@ final class CloudSyncController {
             guard let stream = self?.model?.db.changes(in: tables) else { return }
             for await _ in stream {
                 guard let self else { return }
-                if Date() >= self.quietUntil { self.schedule(in: delay) }
+                guard Date() >= self.quietUntil else { continue }
+                // Progress saved while nothing plays (paused, closed, an episode ended): that's where it stopped, so
+                // it goes out in seconds; while playing, saves come every few seconds and wait the full delay.
+                let playing = self.model?.player.main.isPlaying ?? false
+                self.schedule(in: tables == ["watchProgress"] && !playing ? 3 : delay)
             }
         })
     }
@@ -375,6 +386,9 @@ final class CloudSyncController {
         }
         lastError = report.error
         notices = report.notices
+        // Another device's file is still downloading from iCloud: read it in a few seconds, not at the next
+        // two-minute pass (a show watched on the Mac took minutes to reach the iPhone).
+        if report.pendingDownloads > 0 { schedule(in: 8) }
         peers = report.peers.sorted { $0.exportedAt > $1.exportedAt }
         if report.error == nil { lastSync = report.finishedAt }
 

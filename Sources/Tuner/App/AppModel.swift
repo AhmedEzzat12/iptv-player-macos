@@ -603,6 +603,7 @@ final class AppModel {
 
     func stopPlayback() {
         player.stopAll()
+        cloudSync.playbackStopped()
     }
 
     /// Shows a trailer inside the app, pausing whatever the main player is playing until it's dismissed.

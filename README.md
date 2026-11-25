@@ -165,6 +165,7 @@ devices from Xcode, with a free Apple ID or a paid developer account.
 | Player | Pointer-driven control panel, keyboard shortcuts; optional mouse swipes (drag down to close, Settings → Playback) | TV app–style touch layout (portrait and landscape): transport on the video, title and timeline below, Episodes / Next Episode pills; tap to show/hide, double-tap the sides to skip 10 s, swipe down to close (iPhone: swipe up for landscape, down for portrait); swipe the Home hero to change title; hardware volume |
 | Refresh | Toolbar / ⌘R | Pull down on Home, Movies, TV Shows or Live TV and let go to sync with iCloud; keep holding the pull (about 2 s, quicker the farther you pull) to refresh the playlists. Both actions and the hold time are in Settings → Guide & Library |
 | Engines | AVFoundation, libmpv (Homebrew) fallback | AVFoundation, libmpv ([MPVKit](https://github.com/mpvkit/MPVKit)) fallback, built in |
+| Mini player | Hover for controls; drag it to any corner | Tap for controls (close, open, pause, mute); drag it to any corner; double-tap to open |
 | Picture in Picture | AVFoundation streams | AVFoundation streams (MKV and other mpv-only formats: no PiP) |
 | AirPlay | All formats (ffmpeg re-wraps the rest) | AVFoundation streams; others via Screen Mirroring |
 | Audio enhancements | All three on every stream with Homebrew's mpv (Audio menu in the control panel) | In the "…" menu. Dialogue Boost everywhere; Night Mode and Volume Levelling only for MP4/MOV in Apple's player (MPVKit's FFmpeg has no compressor or normaliser) |

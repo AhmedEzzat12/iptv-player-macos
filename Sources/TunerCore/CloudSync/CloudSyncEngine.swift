@@ -75,6 +75,7 @@ public actor CloudSyncEngine {
             return report
         }
         report.notices = listing.notices
+        report.pendingDownloads = listing.pending
 
         var removed = removedDevices
         for file in listing.files + [listing.own].compactMap({ $0 }) {
@@ -155,6 +156,7 @@ public actor CloudSyncEngine {
                 report.error = error.localizedDescription
             }
         }
+        if let sources = try? await db.sources() { report.notices += CloudSyncDiagnostics.duplicatePlaylistNotices(sources) }
         Self.log.info("Sync pass: \(files.count) other devices, \(result.appliedCount) changes applied, \(result.preferences.count) preferences, \(result.records.count) records published\(report.wroteFile ? " (file written)" : "")")
         return report
     }
