@@ -67,7 +67,12 @@ final class InAppRemuxer: @unchecked Sendable {
         defer { av_dict_free(&inputOptions) }
         av_dict_set(&inputOptions, "user_agent", userAgent, 0)
         if let referrer { av_dict_set(&inputOptions, "headers", "Referer: \(referrer)\r\n", 0) }
-        if url.scheme?.hasPrefix("http") == true {
+        // Only the source's own kind of protocol, also for what its playlists point to: a provider's HLS playlist
+        // could otherwise name file: URLs and have files from the app's container served on the network.
+        let isRemote = url.scheme == "http" || url.scheme == "https"
+        guard isRemote || url.isFileURL else { return "unsupported address" }
+        av_dict_set(&inputOptions, "protocol_whitelist", isRemote ? "http,https,tcp,tls,crypto" : "file,crypto", 0)
+        if isRemote {
             av_dict_set(&inputOptions, "reconnect", "1", 0)
             av_dict_set(&inputOptions, "reconnect_streamed", "1", 0)
             av_dict_set(&inputOptions, "reconnect_delay_max", "5", 0)
