@@ -8,3 +8,4 @@ TestMedia/
 
 # iOS: personal signing settings (team ID, bundle ID suffix)
 iOS/Config/Local.xcconfig
+iOS/Config/Version.xcconfig

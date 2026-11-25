@@ -42,6 +42,7 @@ EXPORT_OPTIONS="$EXPORT_DIR/ExportOptions.plist"
 cp ../Package.resolved "$RESOLVED_BACKUP"
 trap 'cp "$RESOLVED_BACKUP" ../Package.resolved; rm -rf "$RESOLVED_BACKUP" "$EXPORT_DIR"' EXIT
 
+scripts/write-version.sh
 xcodegen generate --quiet
 rm -rf "$ARCHIVE" "$OUT/export"
 echo "Archiving $SCHEME $VERSION ($BUILD) as $BUNDLE_ID"

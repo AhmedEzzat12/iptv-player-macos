@@ -9,6 +9,7 @@ export DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Develope
 RESOLVED_BACKUP="$(mktemp)"
 cp ../Package.resolved "$RESOLVED_BACKUP"
 trap 'cp "$RESOLVED_BACKUP" ../Package.resolved; rm -f "$RESOLVED_BACKUP"' EXIT
+scripts/write-version.sh
 xcodegen generate --quiet
 xcodebuild -project TunerIOS.xcodeproj -scheme TunerIOS -configuration Release \
   -destination 'generic/platform=iOS' -derivedDataPath ../.build/xcode-ios-check \
