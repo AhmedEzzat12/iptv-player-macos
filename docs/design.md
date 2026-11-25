@@ -41,6 +41,11 @@ Apple frameworks plus SQLite and libmpv.
   (H.264 → TS segments; HEVC → fMP4 + `hvc1` tag + `aac_adtstoasc`. Without that filter, ADTS AAC from TS fails
   with a misleading EPERM). It runs under a `/bin/sh` watchdog that stops ffmpeg when the app's PID disappears
   (crash or force-quit), because macOS has no parent-death signal and an orphan would hold the provider connection.
+  The Mac App Store app can't run ffmpeg, so `InAppRemuxer` does it in-process with MPVKit's LGPL FFmpeg libraries
+  on its own thread. That FFmpeg has no HLS muxer: the **dash** muxer with `hls_playlist=1` writes fMP4 (CMAF)
+  segments plus `index.m3u8` / `media_N.m3u8`, and `HLSFileServer` marks a movie's playlists `EVENT` so the device
+  can seek back. Audio is copied only (AAC, AC-3, E-AC-3, MP3; no encoder is used). The server needs the
+  `network.server` entitlement.
 
 - **Quick reopen** (`PlayerSlot.park`): closing a movie or episode keeps its engine open, paused, for
   `Preferences.keepWarmMinutes` (default 2; off, 2–60 in Settings → Playback, read when the title closes). Short by default: on a
@@ -581,7 +586,7 @@ empty-guide detection with guidance.
 - **Mac App Store app** (`TunerMac` in `iOS/project.yml`, built with `TUNER_APP_STORE`): the same Sources/Tuner,
   sandboxed. `Distribution` (Support/Distribution.swift) says which build is running. The store build links MPVKit
   (Mac slices, with LuaJIT; `load-scripts=no`) and replaces the CMPV loader and Sparkle with stand-ins
-  (`AppStore/Mac/Sources`). It hides recording and the AirPlay converter (they run ffmpeg as a program), fixes the
+  (`AppStore/Mac/Sources`). It hides recording (it runs ffmpeg as a program; the AirPlay converter uses `InAppRemuxer` instead), fixes the
   downloads folder to `~/Movies/Antenna Downloads` (Movies entitlement), keeps access to opened playlist files through security-scoped bookmarks (`Distribution.playlistFileURL`),
   and keeps the iCloud sync folder as a security-scoped bookmark, as on iPhone. Shares `app.antenna.player` with the
   iPhone/iPad app (Universal Purchase); the GitHub build stays `app.tuner.macos`.

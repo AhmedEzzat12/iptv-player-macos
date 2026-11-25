@@ -46,13 +46,29 @@ final class AirPlayBridge {
     private var process: Process?
     private var server: HLSFileServer?
     private var directory: URL?
+    #if TUNER_APP_STORE
+    /// The Mac App Store app re-wraps in-process (the sandbox can't run ffmpeg).
+    private var remuxer: InAppRemuxer?
+    /// Its video playlist (the master, `index.m3u8`, lists no segments).
+    private let mediaPlaylist = InAppRemuxer.mediaPlaylist
+    #else
+    private let mediaPlaylist = "index.m3u8"
+    #endif
 
-    var isRunning: Bool { process?.isRunning == true }
+    var isRunning: Bool {
+        #if TUNER_APP_STORE
+        remuxer?.isRunning == true
+        #else
+        process?.isRunning == true
+        #endif
+    }
 
     /// Starts re-wrapping `stream` from `startAt` and returns the LAN URL once the first segments exist.
     func start(stream: PlayableStream, startAt: Double, isLive: Bool, videoCodec: String?, audioCodec: String?) async throws -> Session {
         stop()
+        #if !TUNER_APP_STORE
         guard let ffmpeg = RecordingService.ffmpegPath() else { throw BridgeError.ffmpegMissing }
+        #endif
         guard let host = Self.lanAddress() else { throw BridgeError.noNetwork }
 
         let video = (videoCodec ?? "h264").lowercased()
@@ -67,6 +83,19 @@ final class AirPlayBridge {
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         directory = dir
 
+        #if TUNER_APP_STORE
+        let remuxer = InAppRemuxer()
+        remuxer.start(url: stream.url, userAgent: stream.userAgent, referrer: stream.referrer, startAt: startAt,
+                      isLive: isLive, directory: dir)
+        self.remuxer = remuxer
+        let server = HLSFileServer(root: dir, movie: !isLive)
+        let port = try await server.start()
+        self.server = server
+        return try await waitUntilReady(host: host, port: port, isLive: isLive, startAt: startAt,
+                                        describe: "\(video) → fMP4, audio copy") {
+            remuxer.isRunning ? nil : (remuxer.failure ?? "the stream ended before it could be sent")
+        }
+        #else
         var args = ["-hide_banner", "-loglevel", "error", "-nostdin", "-user_agent", stream.userAgent]
         if let referrer = stream.referrer { args += ["-headers", "Referer: \(referrer)\r\n"] }
         if stream.url.scheme?.hasPrefix("http") == true {
@@ -112,21 +141,35 @@ final class AirPlayBridge {
         let server = HLSFileServer(root: dir)
         let port = try await server.start()
         self.server = server
+        return try await waitUntilReady(host: host, port: port, isLive: isLive, startAt: startAt,
+                                        describe: "\(video) → \(isHEVC ? "fMP4" : "TS"), audio \(copyAudio ? "copy" : "AAC")") {
+            process.isRunning ? nil : (String(decoding: errors.fileHandleForReading.availableData, as: UTF8.self)
+                .split(separator: "\n").last.map(String.init) ?? "ffmpeg stopped")
+        }
+        #endif
+    }
 
-        // Wait for the playlist and two segments (≈12 s of media) so playback can start smoothly.
-        let playlist = dir.appendingPathComponent("index.m3u8")
+    /// Waits for the video playlist and two segments (≈12 s of media) so playback can start smoothly. `failure`
+    /// returns why the converter stopped, or nil while it runs.
+    private func waitUntilReady(host: String, port: UInt16, isLive: Bool, startAt: Double, describe: String,
+                                failure: () -> String?) async throws -> Session {
+        guard let dir = directory else { throw BridgeError.failed("stopped") }
+        let playlist = dir.appendingPathComponent(mediaPlaylist)
         let deadline = Date().addingTimeInterval(45)
         while Date() < deadline {
-            if !process.isRunning {
-                let detail = String(decoding: errors.fileHandleForReading.availableData, as: UTF8.self)
-                    .split(separator: "\n").last.map(String.init) ?? "ffmpeg stopped"
+            // Ready first: a short or fast source can be fully converted (and the converter finished) before the
+            // first check.
+            let detail = failure()
+            if let text = try? String(contentsOf: playlist, encoding: .utf8) {
+                let segments = text.components(separatedBy: "#EXTINF").count - 1
+                if segments >= 2 || (detail != nil && text.contains("#EXT-X-ENDLIST") && segments > 0) {
+                    Self.log.notice("Bridge ready on \(host, privacy: .public):\(port) (\(describe, privacy: .public))")
+                    return Session(url: URL(string: "http://\(host):\(port)/index.m3u8")!, offset: isLive ? 0 : max(0, startAt))
+                }
+            }
+            if let detail {
                 stop()
                 throw BridgeError.failed(detail)
-            }
-            if let text = try? String(contentsOf: playlist, encoding: .utf8),
-               text.components(separatedBy: "#EXTINF").count - 1 >= 2 {
-                Self.log.notice("Bridge ready on \(host, privacy: .public):\(port) (\(video, privacy: .public) → \(isHEVC ? "fMP4" : "TS", privacy: .public), audio \(copyAudio ? "copy" : "AAC", privacy: .public))")
-                return Session(url: URL(string: "http://\(host):\(port)/index.m3u8")!, offset: isLive ? 0 : max(0, startAt))
             }
             try await Task.sleep(for: .milliseconds(250))
         }
@@ -137,7 +180,7 @@ final class AirPlayBridge {
     /// Seconds of media written so far (sum of segment durations) — seeking beyond needs a restart.
     func generatedSeconds() -> Double {
         guard let dir = directory,
-              let text = try? String(contentsOf: dir.appendingPathComponent("index.m3u8"), encoding: .utf8) else { return 0 }
+              let text = try? String(contentsOf: dir.appendingPathComponent(mediaPlaylist), encoding: .utf8) else { return 0 }
         return text.split(separator: "\n").reduce(0) { total, line in
             guard line.hasPrefix("#EXTINF:") else { return total }
             return total + (Double(line.dropFirst(8).prefix { $0 != "," }) ?? 0)
@@ -147,6 +190,10 @@ final class AirPlayBridge {
     func stop() {
         if let process, process.isRunning { process.terminate() }
         process = nil
+        #if TUNER_APP_STORE
+        remuxer?.stop()
+        remuxer = nil
+        #endif
         server?.stop()
         server = nil
         if let directory { try? FileManager.default.removeItem(at: directory) }
@@ -209,11 +256,15 @@ final class AirPlayBridge {
 /// Minimal HTTP/1.1 file server for the bridge's HLS directory (GET/HEAD, one request per connection).
 final class HLSFileServer: @unchecked Sendable {
     private let root: URL
+    /// A movie or episode: media playlists are served as EVENT playlists, so players start at the beginning and can
+    /// seek back (the in-app converter's DASH muxer doesn't mark them; ffmpeg's HLS muxer already does).
+    private let movie: Bool
     private let queue = DispatchQueue(label: "app.tuner.airplay-server")
     private var listener: NWListener?
 
-    init(root: URL) {
+    init(root: URL, movie: Bool = false) {
         self.root = root
+        self.movie = movie
     }
 
     /// Starts listening on an ephemeral port on all interfaces; returns the port.
@@ -267,9 +318,15 @@ final class HLSFileServer: @unchecked Sendable {
         let allowed = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "._-"))
         guard method == "GET" || method == "HEAD", !name.isEmpty, !name.contains(".."),
               name.unicodeScalars.allSatisfy(allowed.contains),
-              let body = try? Data(contentsOf: root.appendingPathComponent(name)) else {
+              var body = try? Data(contentsOf: root.appendingPathComponent(name)) else {
             send(status: "404 Not Found", type: "text/plain", body: Data("Not found".utf8), headOnly: false, on: connection)
             return
+        }
+        if movie, name.hasSuffix(".m3u8"), var text = String(data: body, encoding: .utf8),
+           !text.contains("#EXT-X-STREAM-INF"), !text.contains("#EXT-X-PLAYLIST-TYPE"),
+           let firstLineEnd = text.firstIndex(of: "\n") {
+            text.insert(contentsOf: "\n#EXT-X-PLAYLIST-TYPE:EVENT", at: firstLineEnd)
+            body = Data(text.utf8)
         }
         let type: String = switch (name as NSString).pathExtension.lowercased() {
         case "m3u8": "application/vnd.apple.mpegurl"

@@ -19,8 +19,9 @@ enum Distribution {
         #endif
     }
 
-    /// Recording and the AirPlay converter run ffmpeg as a separate program, which only the GitHub Mac app can
-    /// (iOS apps can't start programs; sandboxed Mac App Store apps can't run Homebrew's).
+    /// Recording and the GitHub app's AirPlay converter run ffmpeg as a separate program, which only the GitHub Mac app
+    /// can (iOS apps can't start programs; sandboxed Mac App Store apps can't run Homebrew's, so the store app's
+    /// converter is `InAppRemuxer`).
     static var runsFFmpeg: Bool {
         #if os(macOS)
         !isMacAppStore

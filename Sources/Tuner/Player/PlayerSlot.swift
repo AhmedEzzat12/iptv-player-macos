@@ -347,8 +347,16 @@ final class PlayerSlot: Identifiable {
         return created
     }
 
-    /// A stream that isn't AirPlay-ready can still be re-wrapped on this Mac (needs ffmpeg).
-    var canBridgeForAirPlay: Bool { Distribution.runsFFmpeg && stream != nil && RecordingService.ffmpegPath() != nil }
+    /// A stream that isn't AirPlay-ready can still be re-wrapped on this Mac: with Homebrew's ffmpeg (GitHub app) or
+    /// FFmpeg's libraries inside the app (Mac App Store app, `InAppRemuxer`).
+    var canBridgeForAirPlay: Bool {
+        guard stream != nil else { return false }
+        #if TUNER_APP_STORE
+        return true
+        #else
+        return Distribution.runsFFmpeg && RecordingService.ffmpegPath() != nil
+        #endif
+    }
 
     private func endBridge() {
         guard isBridged || bridgeStorage?.isRunning == true else { return }

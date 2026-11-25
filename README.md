@@ -88,7 +88,8 @@ Blender Foundation open movies (CC BY). No provider content is shown.</sub>
 - **AirPlay:** send video to an Apple TV or AirPlay display from the player's top bar. Streams that were opened
   with mpv are reopened in Apple's player automatically when their format allows (Xtream live via HLS, MP4,
   HLS). Formats AirPlay can't take directly (MKV, raw TS, HEVC in TS) are re-wrapped on the Mac by ffmpeg
-  (`-c copy`, no quality loss) into HLS served on the local network.
+  (`-c copy`, no quality loss) into HLS served on the local network. The Mac App Store version does the same with
+  the FFmpeg libraries built into the app (H.264/HEVC video with AAC, AC-3, E-AC-3 or MP3 audio).
 - **HEVC channels:** streams whose video Apple's player can't decode (HEVC in MPEG-TS HLS plays as sound only)
   are detected and reopened in mpv automatically, instead of showing a black picture.
 - **Audio enhancements** (player Audio menu, or Settings → Playback → Audio; off by default): **Dialogue Boost**
@@ -153,7 +154,7 @@ Blender Foundation open movies (CC BY). No provider content is shown.</sub>
 The same app runs on iPhone and iPad (iOS/iPadOS 26+), where it's called **Antenna** (its App Store name; "Tuner" is
 taken there). It's being prepared for the App Store, together with a
 sandboxed Mac App Store version of the Mac app ([docs/app-store](docs/app-store/README.md): steps, listing text and
-review notes; the Mac App Store version has no recording or AirPlay converter). Until then you install it on your own
+review notes; the Mac App Store version has no recording). Until then you install it on your own
 devices from Xcode, with a free Apple ID or a paid developer account.
 
 **What's different on iPhone/iPad**

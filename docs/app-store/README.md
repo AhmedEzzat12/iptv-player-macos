@@ -18,8 +18,8 @@ The two store apps share the bundle ID **`app.antenna.player`**, so they are one
 (**Universal Purchase**): one listing, and once you charge, one purchase unlocks iPhone, iPad and Mac. The GitHub
 Mac app keeps `app.tuner.macos` and its own library, so the two Mac apps can be installed side by side.
 
-**What the Mac App Store app leaves out** (the sandbox doesn't allow running Homebrew programs): recording and the
-AirPlay converter for MKV/TS (AirPlay still works for HLS/MP4; Screen Mirroring for the rest). mpv is built in, so
+**What the Mac App Store app leaves out** (the sandbox doesn't allow running Homebrew programs): recording. The
+AirPlay converter for MKV/TS uses the FFmpeg libraries built into the app instead of ffmpeg. mpv is built in, so
 nothing needs installing. Downloads go to `~/Movies/Antenna Downloads` (fixed), and iCloud sync uses a folder you pick
 once, as on iPhone.
 
@@ -31,8 +31,9 @@ once, as on iPhone.
   into the app. Settings → About lists every bundled library with its licence, includes the LGPL 2.1 text and
   links to Tuner's source. Tuner's own code is under the PolyForm Noncommercial License (`LICENSE.md`): anyone can read
   and rebuild it, but only you can sell it.
-- **Mac sandbox:** the `TunerMac` target builds with `TUNER_APP_STORE` (no Sparkle, recording or AirPlay converter;
-  mpv linked in) and these entitlements: App Sandbox, outgoing network, user-selected files, app-scoped bookmarks and
+- **Mac sandbox:** the `TunerMac` target builds with `TUNER_APP_STORE` (no Sparkle or recording;
+  mpv linked in) and these entitlements: App Sandbox, outgoing network, incoming network (the AirPlay converter's
+  local server), user-selected files, app-scoped bookmarks and
   the Movies folder (written by XcodeGen from `iOS/project.yml` into `AppStore/Mac/Tuner.entitlements`).
 - **Privacy manifest:** `iOS/Resources/PrivacyInfo.xcprivacy` (in both store apps) (no tracking, no data collected; reasons for
   UserDefaults, file timestamps and disk space).

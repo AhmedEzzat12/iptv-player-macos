@@ -324,6 +324,10 @@ codesign -d --entitlements - <scratch>/Antenna.app | grep app-sandbox    # must 
 - Launch `<scratch>/Antenna.app/Contents/MacOS/Antenna`. Its library lands in
   `~/Library/Containers/app.antenna.player.scratch/`. Add the test kit's M3U from the Welcome screen and play
   `Matroska Nights` (mpv) and an HLS channel (AVFoundation).
+- AirPlay converter: in `Matroska Nights` press AirPlay. The log should show `Bridge ready on …`
+  (`/usr/bin/log show --last 2m --predicate 'subsystem == "app.tuner.macos" AND category == "AirPlayBridge"'`) and the
+  player switches to Apple's (AirPlay route menu and PiP in the top bar). The files are in the container's
+  `Data/tmp/tuner-airplay-*/`; `ffprobe http://<ip>:<port>/index.m3u8` should list h264 + aac and the full duration.
 - Check: no Recordings in the sidebar, Settings or shortcut help (`/`); no Updates section in About; About lists the
   bundled libraries; Settings → Sync asks for a folder. Sandbox denials:
   `/usr/bin/log show --last 5m --predicate 'sender == "Sandbox" AND eventMessage CONTAINS "Antenna"'`
