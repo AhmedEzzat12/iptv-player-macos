@@ -1,4 +1,7 @@
 import Foundation
+#if os(iOS)
+import UIKit
+#endif
 
 /// Which app this is: the Mac app from GitHub Releases (Sparkle updates, Homebrew's mpv and ffmpeg), the Mac App Store
 /// app (sandboxed, mpv built in; compiled with `TUNER_APP_STORE`) or the iPhone/iPad app.
@@ -16,6 +19,15 @@ enum Distribution {
         "Tuner"
         #else
         "Antenna"
+        #endif
+    }
+
+    /// The device, for visible text ("on this iPad"): Mac, iPad or iPhone.
+    @MainActor static var deviceName: String {
+        #if os(macOS)
+        "Mac"
+        #else
+        UIDevice.current.userInterfaceIdiom == .pad ? "iPad" : "iPhone"
         #endif
     }
 

@@ -196,7 +196,7 @@ struct SourceEditorView: View {
                 LabeledContent {
                     Button("Choose File…", action: chooseFile)
                 } label: {
-                    Text(isFileURL ? "Local file" : "Or use a playlist file on this Mac")
+                    Text(isFileURL ? "Local file" : "Or use a playlist file on this \(Distribution.deviceName)")
                         .foregroundStyle(.secondary)
                 }
             } footer: {

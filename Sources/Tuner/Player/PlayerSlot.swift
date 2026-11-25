@@ -660,13 +660,17 @@ final class PlayerSlot: Identifiable {
             if airPlaySwitchPending {
                 airPlaySwitchPending = false
                 if engineKind == .av {
+                    #if os(macOS)
                     onNotice?("Ready for AirPlay", "Click the AirPlay button and choose a device.", false)
+                    #else
+                    onNotice?("Ready for AirPlay", "Tap the AirPlay button and choose a device.", false)
+                    #endif
                 } else if canBridgeForAirPlay, let item {
                     // Apple's player couldn't show it directly: re-wrap it instead.
                     onNotice?("Preparing AirPlay…", "Re-wrapping this stream for AirPlay devices on your Mac (no quality loss). It takes a few seconds.", false)
                     bridgeOnceCodecKnown(item)
                 } else {
-                    onNotice?("AirPlay isn't available for this stream", "Apple's player couldn't open it, so it keeps playing on this Mac.", true)
+                    onNotice?("AirPlay isn't available for this stream", "Apple's player couldn't open it, so it keeps playing on this \(Distribution.deviceName).", true)
                 }
             }
             if phase == .loading || phase == .buffering { phase = .playing }
