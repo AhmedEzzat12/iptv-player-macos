@@ -168,7 +168,7 @@ final class InAppRemuxer: @unchecked Sendable {
             if !isLive, pkt.pointee.stream_index == videoIndex, pkt.pointee.pts != Self.noTimestamp,
                startPosition.withLock({ $0 }) == nil {
                 let origin = videoIn.pointee.start_time == Self.noTimestamp ? 0 : videoIn.pointee.start_time
-                let seconds = Double(pkt.pointee.pts - origin) * Double(target.input.num) / Double(target.input.den)
+                let seconds = Double(pkt.pointee.pts &- origin) * Double(target.input.num) / Double(target.input.den)
                 startPosition.withLock { $0 = max(0, seconds) }
             }
             pkt.pointee.stream_index = target.index
@@ -178,13 +178,13 @@ final class InAppRemuxer: @unchecked Sendable {
             if pkt.pointee.pts == Self.noTimestamp { pkt.pointee.pts = pkt.pointee.dts }
             let timeBase = out.pointee.time_base
             let streamShift = av_rescale_q(shift, micro, timeBase)
-            pkt.pointee.dts += streamShift
-            pkt.pointee.pts += streamShift
+            pkt.pointee.dts &+= streamShift
+            pkt.pointee.pts &+= streamShift
             if let last = lastDTS[target.index], pkt.pointee.dts <= last {
-                let gap = last - pkt.pointee.dts + 1
-                if av_rescale_q(gap, timeBase, micro) > 1_000_000 { shift += av_rescale_q(gap, timeBase, micro) }
-                pkt.pointee.dts += gap
-                pkt.pointee.pts += gap
+                let gap = last &- pkt.pointee.dts &+ 1
+                if av_rescale_q(gap, timeBase, micro) > 1_000_000 { shift &+= av_rescale_q(gap, timeBase, micro) }
+                pkt.pointee.dts &+= gap
+                pkt.pointee.pts &+= gap
             }
             if pkt.pointee.pts < pkt.pointee.dts { pkt.pointee.pts = pkt.pointee.dts }
             lastDTS[target.index] = pkt.pointee.dts
