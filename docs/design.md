@@ -491,6 +491,14 @@ Data flow: views call `AppModel` actions and read `model.db` in `.task(id:)` blo
   however the app is held (it took the screen's shape in portrait). Render updates are coalesced (one
   pending at most), so a slow frame can't pile up work in front of the switch. Off: the old `CAEAGLLayer` path,
   unchanged. The shared `PictureInPictureEngine` protocol covers AVFoundation's PiP and this one.
+- **Picture in Picture for mpv (Mac)**, same setting (`MPVPictureInPictureMac.swift`). The screen keeps the
+  `CAOpenGLLayer`; an invisible `AVSampleBufferDisplayLayer` sublayer only gets frames while PiP is open: mpv renders
+  1280×720 into IOSurface-backed pixel buffers (`CGLTexImageIOSurface2D` onto a rectangle texture, unflipped,
+  `glFinish` before enqueueing) instead of the screen. Findings: the PiP window mirrors the layer **in place at the
+  layer's own size in points**, unscaled (a player-sized layer showed a zoomed-in corner; `didTransitionToRenderSize`
+  only echoes the layer's size), so while it's open the layer follows the PIPAgent window's size from the window
+  list; and AVKit traps (`_NSViewValidateGeometry` in its host view) when PiP starts before the layer has had a
+  frame, so the first frame is drawn synchronously first (`prepareForPictureInPicture`) and PiP doesn't open without one.
 - `ScreenAwake` keeps the display on while the player is loading, playing or buffering (an IOKit
   display-sleep assertion on the Mac, `isIdleTimerDisabled` on iOS). AVFoundation does this by itself, mpv doesn't,
   so without it the iPhone dimmed and locked during mpv playback.

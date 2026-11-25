@@ -1,4 +1,9 @@
 import AppKit
+import AVFoundation
+import AVKit
+import CoreMedia
+import CoreVideo
+import IOSurface
 #if TUNER_APP_STORE
 import Libmpv
 #else
@@ -26,6 +31,17 @@ final class MPVRenderer: @unchecked Sendable {
     private let lock = NSLock()
     private var renderContext: OpaquePointer?
     private var drawCount: UInt64 = 0
+
+    /// Picture in Picture: while its window is open, frames go to `sampleLayer` (the kind of layer the system's PiP
+    /// window takes) as 16:9 pixel buffers instead of to the screen layer. Set on the main thread by `MPVVideoView`.
+    weak var sampleLayer: AVSampleBufferDisplayLayer?
+    // Render-queue state for PiP frames.
+    private var framesForPictureInPicture = false
+    private var pixelPool: CVPixelBufferPool?
+    private var formatDescription: CMVideoFormatDescription?
+    private var pictureInPictureFramebuffer: GLuint = 0
+    private var pictureInPictureTexture: GLuint = 0
+    private static let pictureInPictureSize = (width: 1280, height: 720)
 
     /// Creates the GL context and the mpv render context. Must be called before the mpv core
     /// starts playback (vo=libmpv needs a render context to initialise video).
@@ -107,6 +123,10 @@ final class MPVRenderer: @unchecked Sendable {
             mpv_render_context_update(context)
         } ?? 0
         guard flags & UInt64(MPV_RENDER_UPDATE_FRAME.rawValue) != 0 else { return }
+        if framesForPictureInPicture {
+            _ = drawPictureInPictureFrame(block: true)
+            return
+        }
         let before = currentDrawCount
         if let layer { layer.display() }
         // Off-screen or zero-sized layers are never drawn by Core Animation. Tell mpv the frame
@@ -179,6 +199,119 @@ final class MPVRenderer: @unchecked Sendable {
         return true
     }
 
+    // MARK: - Picture in Picture
+
+    /// Before opening the PiP window (main thread): sends frames to the sample layer and draws the current one now.
+    /// AVKit sizes the window from the layer's video and traps on a layer that never had a frame, so false means
+    /// don't open it.
+    func prepareForPictureInPicture() -> Bool {
+        queue.sync {
+            framesForPictureInPicture = true
+            let drawn = drawPictureInPictureFrame(block: false)
+            if !drawn { framesForPictureInPicture = false }
+            return drawn
+        }
+    }
+
+    /// The PiP window opened or closed (main thread). Opening draws the current frame at once: the window takes the
+    /// shape of the frames it's given.
+    func pictureInPictureChanged(active: Bool) {
+        queue.async { [weak self] in
+            guard let self else { return }
+            framesForPictureInPicture = active
+            if active {
+                _ = drawPictureInPictureFrame(block: false)
+            } else {
+                layer?.display()
+            }
+        }
+    }
+
+    /// Renders mpv's frame into a pixel buffer's IOSurface (no copy) and hands it to `sampleLayer`. Render queue.
+    private func drawPictureInPictureFrame(block: Bool) -> Bool {
+        guard let sampleLayer, let buffer = pixelBuffer(), let surface = CVPixelBufferGetIOSurface(buffer)?.takeUnretainedValue() else {
+            skipFrame()
+            return false
+        }
+        let (width, height) = Self.pictureInPictureSize
+        let drawn = withContextLocked { context -> Bool in
+            let rectangle = GLenum(GL_TEXTURE_RECTANGLE)
+            if pictureInPictureTexture == 0 { glGenTextures(1, &pictureInPictureTexture) }
+            if pictureInPictureFramebuffer == 0 { glGenFramebuffers(1, &pictureInPictureFramebuffer) }
+            glBindTexture(rectangle, pictureInPictureTexture)
+            guard CGLTexImageIOSurface2D(glContext, rectangle, GLenum(GL_RGBA), GLsizei(width), GLsizei(height),
+                                         GLenum(GL_BGRA), GLenum(GL_UNSIGNED_INT_8_8_8_8_REV), surface, 0) == kCGLNoError else {
+                glBindTexture(rectangle, 0)
+                return false
+            }
+            glBindFramebuffer(GLenum(GL_FRAMEBUFFER), pictureInPictureFramebuffer)
+            glFramebufferTexture2D(GLenum(GL_FRAMEBUFFER), GLenum(GL_COLOR_ATTACHMENT0), rectangle, pictureInPictureTexture, 0)
+            var target = mpv_opengl_fbo(fbo: Int32(pictureInPictureFramebuffer), w: Int32(width), h: Int32(height), internal_format: 0)
+            // Unflipped: mpv's first row lands in the buffer's first row (only the screen's framebuffer needs flipping).
+            var flip: Int32 = 0
+            var blockTime: Int32 = block ? 1 : 0
+            withUnsafeMutablePointer(to: &target) { targetPtr in
+                withUnsafeMutablePointer(to: &flip) { flipPtr in
+                    withUnsafeMutablePointer(to: &blockTime) { blockPtr in
+                        var params = [
+                            mpv_render_param(type: MPV_RENDER_PARAM_OPENGL_FBO, data: UnsafeMutableRawPointer(targetPtr)),
+                            mpv_render_param(type: MPV_RENDER_PARAM_FLIP_Y, data: UnsafeMutableRawPointer(flipPtr)),
+                            mpv_render_param(type: MPV_RENDER_PARAM_BLOCK_FOR_TARGET_TIME, data: UnsafeMutableRawPointer(blockPtr)),
+                            mpv_render_param(type: MPV_RENDER_PARAM_INVALID, data: nil),
+                        ]
+                        _ = mpv_render_context_render(context, &params)
+                    }
+                }
+            }
+            // The buffer goes to Core Animation next: the GPU must be done with it.
+            glFinish()
+            glBindFramebuffer(GLenum(GL_FRAMEBUFFER), 0)
+            glBindTexture(rectangle, 0)
+            return true
+        } ?? false
+        if drawn { enqueue(buffer, on: sampleLayer) }
+        return drawn
+    }
+
+    private func pixelBuffer() -> CVPixelBuffer? {
+        if pixelPool == nil {
+            let attributes: [String: Any] = [
+                kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,
+                kCVPixelBufferWidthKey as String: Self.pictureInPictureSize.width,
+                kCVPixelBufferHeightKey as String: Self.pictureInPictureSize.height,
+                kCVPixelBufferIOSurfacePropertiesKey as String: [String: Any](),
+                kCVPixelBufferOpenGLCompatibilityKey as String: true,
+            ]
+            CVPixelBufferPoolCreate(kCFAllocatorDefault, nil, attributes as CFDictionary, &pixelPool)
+        }
+        guard let pixelPool else { return nil }
+        var buffer: CVPixelBuffer?
+        CVPixelBufferPoolCreatePixelBuffer(kCFAllocatorDefault, pixelPool, &buffer)
+        return buffer
+    }
+
+    private func enqueue(_ buffer: CVPixelBuffer, on layer: AVSampleBufferDisplayLayer) {
+        if formatDescription == nil {
+            CMVideoFormatDescriptionCreateForImageBuffer(allocator: kCFAllocatorDefault, imageBuffer: buffer, formatDescriptionOut: &formatDescription)
+        }
+        guard let formatDescription else { return }
+        var timing = CMSampleTimingInfo(duration: .invalid, presentationTimeStamp: CMClockGetTime(CMClockGetHostTimeClock()),
+                                        decodeTimeStamp: .invalid)
+        var sample: CMSampleBuffer?
+        CMSampleBufferCreateReadyWithImageBuffer(allocator: kCFAllocatorDefault, imageBuffer: buffer,
+                                                 formatDescription: formatDescription, sampleTiming: &timing, sampleBufferOut: &sample)
+        guard let sample else { return }
+        if let attachments = CMSampleBufferGetSampleAttachmentsArray(sample, createIfNecessary: true),
+           CFArrayGetCount(attachments) > 0 {
+            let dict = unsafeBitCast(CFArrayGetValueAtIndex(attachments, 0), to: CFMutableDictionary.self)
+            CFDictionarySetValue(dict, Unmanaged.passUnretained(kCMSampleAttachmentKey_DisplayImmediately).toOpaque(),
+                                 Unmanaged.passUnretained(kCFBooleanTrue).toOpaque())
+        }
+        let renderer = layer.sampleBufferRenderer
+        if renderer.status == .failed { renderer.flush() }
+        renderer.enqueue(sample)
+    }
+
     /// Unregisters the update callback and frees the render context with its GL context current.
     /// Must run before `mpv_terminate_destroy`. Idempotent. Call on `queue` (it may block briefly
     /// while mpv tears down its video chain).
@@ -195,6 +328,8 @@ final class MPVRenderer: @unchecked Sendable {
         mpv_render_context_set_update_callback(renderContext, nil, nil)
         mpv_render_context_free(renderContext)
         self.renderContext = nil
+        if pictureInPictureFramebuffer != 0 { glDeleteFramebuffers(1, &pictureInPictureFramebuffer) }
+        if pictureInPictureTexture != 0 { glDeleteTextures(1, &pictureInPictureTexture) }
         CGLSetCurrentContext(previous)
     }
 }
@@ -270,13 +405,31 @@ final class MPVVideoLayer: CAOpenGLLayer {
 /// Layer-hosting view for `MPVVideoLayer`; keeps the layer's scale in sync with the window.
 final class MPVVideoView: NSView {
     let videoLayer: MPVVideoLayer
+    /// Picture in Picture (Settings → Playback → "Picture in Picture for all videos", read when the engine is made):
+    /// the layer the system's PiP window shows. It sits invisibly over the video and only gets frames while PiP is open.
+    let sampleLayer: AVSampleBufferDisplayLayer?
+    private(set) var pictureInPicture: MPVPictureInPicture?
 
     init(videoLayer: MPVVideoLayer) {
         self.videoLayer = videoLayer
+        let wantsPictureInPicture = UserDefaults.standard.object(forKey: "mpvPictureInPicture") as? Bool ?? true
+        sampleLayer = wantsPictureInPicture && AVPictureInPictureController.isPictureInPictureSupported()
+            ? AVSampleBufferDisplayLayer() : nil
         super.init(frame: NSRect(x: 0, y: 0, width: 640, height: 360))
         // Layer-hosting: assign the layer before enabling wantsLayer.
         layer = videoLayer
         wantsLayer = true
+        if let sampleLayer {
+            sampleLayer.videoGravity = .resizeAspect
+            // A plain invisible sublayer the size of the video. The PiP window shows this layer as it is, unscaled, so
+            // while it's open the layer takes the window's size instead (`MPVPictureInPicture`).
+            sampleLayer.opacity = 0
+            sampleLayer.frame = bounds
+            videoLayer.addSublayer(sampleLayer)
+            videoLayer.renderer.sampleLayer = sampleLayer
+            pictureInPicture = MPVPictureInPicture(layer: sampleLayer, renderer: videoLayer.renderer)
+            pictureInPicture?.restoreLayout = { [weak self] in self?.layOutSampleLayer() }
+        }
     }
 
     @available(*, unavailable)
@@ -287,6 +440,20 @@ final class MPVVideoView: NSView {
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
         syncScale()
+    }
+
+    override func setFrameSize(_ newSize: NSSize) {
+        super.setFrameSize(newSize)
+        layOutSampleLayer()
+    }
+
+    /// The sample layer back at the video's size (not while the PiP window sizes it).
+    func layOutSampleLayer() {
+        guard let sampleLayer, pictureInPicture?.isActive != true, !bounds.isEmpty, sampleLayer.frame != bounds else { return }
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        sampleLayer.frame = bounds
+        CATransaction.commit()
     }
 
     override func viewDidChangeBackingProperties() {

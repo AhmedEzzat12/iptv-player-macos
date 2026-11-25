@@ -459,5 +459,10 @@ playing (drawn on the CPU in the background), in a 16:9 window; live shows LIVE.
 OpenGL. The simulator draws OpenGL in software, so switches and the first frames take seconds there (instant on a
 device), and it reads pixels back instead of sharing IOSurfaces. With the setting off, mpv videos have no PiP button.
 
+**Picture in Picture for mpv (Mac):** in a scratch copy play `Matroska Nights` (mpv) and press P or the PiP button in
+the top bar. The PiP window must show the whole picture (not a zoomed-in corner), follow resizing, answer play/pause
+and close back into the player, which draws again. The window can be captured with `screencapture -l <id>`; its id
+is in the window list (owner `com.apple.PIPAgent`).
+
 The engine itself is covered by `scripts/test.sh` (`CloudSyncTests`, `CloudSyncRoundTripTests`: two in-memory
 libraries syncing through a temporary folder).

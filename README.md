@@ -96,7 +96,7 @@ Blender Foundation open movies (CC BY). No provider content is shown.</sub>
   (clearer, louder speech: centre channel raised, speech band lifted, rumble cut), **Night Mode** (reduces loud
   sounds and raises quiet ones) and **Volume Levelling** (evens out loudness between channels and titles). They
   apply live, without restarting the stream. Apple's player can't process HLS sound, so while one is on, HLS
-  streams play with mpv (Automatic engine) and lose Picture in Picture and native AirPlay until it's off again.
+  streams play with mpv (Automatic engine) and lose native AirPlay until it's off again.
 - **Sleep timer** (Audio menu): 15/30/45/60/90 minutes or the end of the episode or movie (live TV: the end of
   the programme), with the time left in the menu. The sound fades out over the last 10 seconds; movies pause,
   live TV stops, and no next episode starts. Stopping playback cancels it; it's never remembered.
@@ -167,7 +167,7 @@ devices from Xcode, with a free Apple ID or a paid developer account.
 | Refresh | Toolbar / ⌘R | Pull down on Home, Movies, TV Shows or Live TV and let go to sync with iCloud; keep holding the pull (about 2 s, quicker the farther you pull) to refresh the playlists. Both actions and the hold time are in Settings → Guide & Library |
 | Engines | AVFoundation, libmpv (Homebrew) fallback | AVFoundation, libmpv ([MPVKit](https://github.com/mpvkit/MPVKit)) fallback, built in |
 | Mini player | Hover for controls; drag it to any corner | Tap for controls (close, open, pause, mute); drag it to any corner; double-tap to open |
-| Picture in Picture | AVFoundation streams | Every video, MKV and raw TS too (Settings → Playback → "Picture in Picture for all videos", on by default); starts by itself when you leave the app |
+| Picture in Picture | Every video, MKV and raw TS too (Settings → Playback → "Picture in Picture for all videos", on by default; P or the top-bar button) | The same; starts by itself when you leave the app |
 | AirPlay | All formats (ffmpeg re-wraps the rest) | AVFoundation streams; others via Screen Mirroring |
 | Audio enhancements | All three on every stream with Homebrew's mpv (Audio menu in the control panel) | In the "…" menu. Dialogue Boost everywhere; Night Mode and Volume Levelling only for MP4/MOV in Apple's player (MPVKit's FFmpeg has no compressor or normaliser) |
 | Recordings | Yes (ffmpeg) | No (iOS apps can't run ffmpeg) |
