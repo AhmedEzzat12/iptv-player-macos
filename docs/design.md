@@ -518,7 +518,7 @@ and the original research: `ios-handover.md`, `ios-port-research.md`.
 | Engines | Same routing as the Mac (AVFoundation first, mpv fallback, HEVC-in-TS detection). mpv is MPVKit 1.0.0 (GPL build, linked statically), rendering through the same libmpv OpenGL render API into a `CAEAGLLayer` (OpenGL ES 3) | `MPVEngine` is shared; only the renderer differs. GPL is fine for builds that are never distributed |
 | mpv decoding | Device: `hwdec=videotoolbox-copy`; simulator: `hwdec=no` | Zero-copy VideoToolbox frames rendered a solid colour into the GLES context; the simulator's VideoToolbox corrupts HEVC |
 | Background | GLES draws stop in the background (iOS kills apps that use the GPU there) and mpv's video track is switched off, so audio continues; AVPlayer's layer is detached unless Picture in Picture is showing it | Background audio for both engines |
-| Not on iOS | Recording (needs the ffmpeg process), the ffmpeg AirPlay bridge, Sparkle, the shortcut editor, choosing a downloads folder, PiP for mpv content | Platform limits; the owner declined mpv PiP |
+| Not on iOS | Recording (needs the ffmpeg process), the ffmpeg AirPlay bridge, Sparkle, the shortcut editor, choosing a downloads folder | Platform limits |
 | Downloads | Documents/Downloads (visible in Files), excluded from iCloud backup | Re-downloadable, large |
 
 ## Performance
