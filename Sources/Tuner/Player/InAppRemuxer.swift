@@ -25,10 +25,14 @@ final class InAppRemuxer: @unchecked Sendable {
     static let mediaPlaylist = "media_0.m3u8"
 
     private let state = OSAllocatedUnfairLock(initialState: (stopped: false, running: false, failure: String?.none))
+    /// Where the output really starts in the movie, in seconds (a seek lands on the keyframe before the asked time).
+    private let startPosition = OSAllocatedUnfairLock<Double?>(initialState: nil)
     private var thread: Thread?
 
     var isRunning: Bool { state.withLock { $0.running } }
     var failure: String? { state.withLock { $0.failure } }
+    /// Set once the first video packet is read (nil for live TV).
+    var startOffset: Double? { startPosition.withLock { $0 } }
     fileprivate var isStopped: Bool { state.withLock { $0.stopped } }
 
     /// Starts reading `url` and writing the playlists and segments into `directory`.
@@ -66,6 +70,7 @@ final class InAppRemuxer: @unchecked Sendable {
         var inputOptions: OpaquePointer?
         defer { av_dict_free(&inputOptions) }
         av_dict_set(&inputOptions, "user_agent", userAgent, 0)
+        av_dict_set(&inputOptions, "fflags", "+genpts", 0)
         if let referrer { av_dict_set(&inputOptions, "headers", "Referer: \(referrer)\r\n", 0) }
         // Only the source's own kind of protocol, also for what its playlists point to: a provider's HLS playlist
         // could otherwise name file: URLs and have files from the app's container served on the network.
@@ -102,7 +107,9 @@ final class InAppRemuxer: @unchecked Sendable {
 
         if startAt > 1, !isLive {
             let target = Int64(startAt * Double(AV_TIME_BASE))
-            avformat_seek_file(ic, -1, Int64.min, target, target, 0)
+            if avformat_seek_file(ic, -1, Int64.min, target, target, 0) < 0 {
+                Self.log.notice("Bridge couldn't seek: starting from the beginning")
+            }
         }
 
         // Output: the DASH muxer with HLS playlists, fragmented MP4 segments of about 6 s.
@@ -143,6 +150,12 @@ final class InAppRemuxer: @unchecked Sendable {
         defer { av_packet_free(&packet) }
         guard let pkt = packet else { return "out of memory" }
         var failure: String?
+        // Live streams jump in time (clock wraps, encoder restarts); the MP4 muxer refuses timestamps that go back,
+        // where the ffmpeg program patches them. `shift` (µs, every stream) carries the timeline on across a jump;
+        // small hiccups move the packet just after the one before.
+        let micro = AVRational(num: 1, den: 1_000_000)
+        var shift: Int64 = 0
+        var lastDTS: [Int32: Int64] = [:]
         while !isStopped {
             status = av_read_frame(ic, pkt)
             if status < 0 {
@@ -152,8 +165,29 @@ final class InAppRemuxer: @unchecked Sendable {
             }
             defer { av_packet_unref(pkt) }
             guard let target = mapping[pkt.pointee.stream_index], let out = oc.pointee.streams[Int(target.index)] else { continue }
+            if !isLive, pkt.pointee.stream_index == videoIndex, pkt.pointee.pts != Self.noTimestamp,
+               startPosition.withLock({ $0 }) == nil {
+                let origin = videoIn.pointee.start_time == Self.noTimestamp ? 0 : videoIn.pointee.start_time
+                let seconds = Double(pkt.pointee.pts - origin) * Double(target.input.num) / Double(target.input.den)
+                startPosition.withLock { $0 = max(0, seconds) }
+            }
             pkt.pointee.stream_index = target.index
             av_packet_rescale_ts(pkt, target.input, out.pointee.time_base)
+            if pkt.pointee.dts == Self.noTimestamp { pkt.pointee.dts = pkt.pointee.pts }
+            guard pkt.pointee.dts != Self.noTimestamp else { continue }
+            if pkt.pointee.pts == Self.noTimestamp { pkt.pointee.pts = pkt.pointee.dts }
+            let timeBase = out.pointee.time_base
+            let streamShift = av_rescale_q(shift, micro, timeBase)
+            pkt.pointee.dts += streamShift
+            pkt.pointee.pts += streamShift
+            if let last = lastDTS[target.index], pkt.pointee.dts <= last {
+                let gap = last - pkt.pointee.dts + 1
+                if av_rescale_q(gap, timeBase, micro) > 1_000_000 { shift += av_rescale_q(gap, timeBase, micro) }
+                pkt.pointee.dts += gap
+                pkt.pointee.pts += gap
+            }
+            if pkt.pointee.pts < pkt.pointee.dts { pkt.pointee.pts = pkt.pointee.dts }
+            lastDTS[target.index] = pkt.pointee.dts
             pkt.pointee.pos = -1
             status = av_interleaved_write_frame(oc, pkt)
             if status < 0 {
@@ -167,6 +201,9 @@ final class InAppRemuxer: @unchecked Sendable {
     }
 
     // MARK: - Helpers
+
+    /// `AV_NOPTS_VALUE` (a C macro, not imported).
+    private static let noTimestamp = Int64.min
 
     /// `AVERROR_EOF` (a C macro, not imported).
     private static let endOfFile: Int32 = -Int32(bitPattern: UInt32(0x45) | UInt32(0x4F) << 8 | UInt32(0x46) << 16 | UInt32(0x20) << 24)

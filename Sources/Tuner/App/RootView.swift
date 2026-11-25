@@ -235,7 +235,9 @@ struct BannerStack: View {
         }
         .padding(.horizontal, compact ? 10 : 0)
         .animation(.spring(response: 0.35), value: model.banners)
-        .sensoryFeedback(.warning, trigger: banners.last?.id) { _, _ in compact && banners.last?.isError == true }
+        .sensoryFeedback(.warning, trigger: model.latestBannerID) { _, id in
+            compact && model.banners.first { $0.id == id }?.isError == true
+        }
     }
 }
 
@@ -296,7 +298,16 @@ private struct BannerCard: View {
         .offset(y: drag)
         .gesture(swipeUp, isEnabled: TouchScreen.isAvailable)
         .accessibilityElement(children: .combine)
-        .accessibilityAction(named: "Dismiss") { model.dismissBanner(banner.id) }
+        // The card reads as one element: its buttons come back as actions.
+        .accessibilityActions {
+            if let title = banner.actionTitle, let action = banner.action {
+                Button(title) {
+                    action()
+                    model.dismissBanner(banner.id)
+                }
+            }
+            Button("Dismiss") { model.dismissBanner(banner.id) }
+        }
     }
 
     /// Follows the finger upwards (and only a little downwards); far or fast enough up dismisses it.

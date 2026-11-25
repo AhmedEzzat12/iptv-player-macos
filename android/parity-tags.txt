@@ -2,3 +2,8 @@
 # Tag commits that missed their Android trailer.
 # Format: <40-char-sha> todo|deferred|n/a <text>
 # Lines starting with # are comments.
+cbaad3e301442bfb6fb36464be5615933e97f40b n/a Mac App Store-only in-app AirPlay converter (Google TV has no AirPlay)
+42bb95951ec985797c2307a9ea42b89bc919cf36 n/a protocol whitelist for the Mac App Store AirPlay converter
+3bda276ae113a18f474de4f2ab569a0561902670 n/a Mac Picture in Picture for mpv (AVKit)
+37218fbb634b81bee0a84cca8edf468fbb3f6adb n/a iPhone/iPad Picture in Picture opening (AVKit)
+1e613b5544b563011dd4589103484626a9881fb1 n/a Apple device names in visible text (Mac/iPhone/iPad)

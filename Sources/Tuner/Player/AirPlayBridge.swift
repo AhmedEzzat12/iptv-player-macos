@@ -92,7 +92,7 @@ final class AirPlayBridge {
         let port = try await server.start()
         self.server = server
         return try await waitUntilReady(host: host, port: port, isLive: isLive, startAt: startAt,
-                                        describe: "\(video) → fMP4, audio copy") {
+                                        describe: "\(video) → fMP4, audio copy", startOffset: { remuxer.startOffset }) {
             remuxer.isRunning ? nil : (remuxer.failure ?? "the stream ended before it could be sent")
         }
         #else
@@ -151,8 +151,9 @@ final class AirPlayBridge {
 
     /// Waits for the video playlist and two segments (≈12 s of media) so playback can start smoothly. `failure`
     /// returns why the converter stopped, or nil while it runs.
+    /// `startOffset` is where the output really starts, when the converter knows (else `startAt`).
     private func waitUntilReady(host: String, port: UInt16, isLive: Bool, startAt: Double, describe: String,
-                                failure: () -> String?) async throws -> Session {
+                                startOffset: () -> Double? = { nil }, failure: () -> String?) async throws -> Session {
         guard let dir = directory else { throw BridgeError.failed("stopped") }
         let playlist = dir.appendingPathComponent(mediaPlaylist)
         let deadline = Date().addingTimeInterval(45)
@@ -164,7 +165,7 @@ final class AirPlayBridge {
                 let segments = text.components(separatedBy: "#EXTINF").count - 1
                 if segments >= 2 || (detail != nil && text.contains("#EXT-X-ENDLIST") && segments > 0) {
                     Self.log.notice("Bridge ready on \(host, privacy: .public):\(port) (\(describe, privacy: .public))")
-                    return Session(url: URL(string: "http://\(host):\(port)/index.m3u8")!, offset: isLive ? 0 : max(0, startAt))
+                    return Session(url: URL(string: "http://\(host):\(port)/index.m3u8")!, offset: isLive ? 0 : startOffset() ?? max(0, startAt))
                 }
             }
             if let detail {

@@ -34,7 +34,11 @@ final class MPVRenderer: @unchecked Sendable {
 
     /// Picture in Picture: while its window is open, frames go to `sampleLayer` (the kind of layer the system's PiP
     /// window takes) as 16:9 pixel buffers instead of to the screen layer. Set on the main thread by `MPVVideoView`.
-    weak var sampleLayer: AVSampleBufferDisplayLayer?
+    var sampleLayer: AVSampleBufferDisplayLayer? {
+        get { lock.withLock { sampleLayerStorage } }
+        set { lock.withLock { sampleLayerStorage = newValue } }
+    }
+    private weak var sampleLayerStorage: AVSampleBufferDisplayLayer?
     // Render-queue state for PiP frames.
     private var framesForPictureInPicture = false
     private var pixelPool: CVPixelBufferPool?

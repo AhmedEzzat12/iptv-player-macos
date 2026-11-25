@@ -24,6 +24,8 @@ final class MPVPictureInPicture: NSObject {
     private var controller: AVPictureInPictureController?
     private var timebase: CMTimebase?
     private var ticker: Timer?
+    /// A start was asked for and AVKit hasn't answered yet.
+    private var startRequested = false
 
     var controls: PictureInPictureControls? {
         didSet { refreshState() }
@@ -75,7 +77,18 @@ final class MPVPictureInPicture: NSObject {
                 Self.log.error("Picture in Picture (mpv): no frame to show yet")
                 return
             }
+            startRequested = true
             controller.startPictureInPicture()
+            // AVKit can ignore the request without a callback: don't leave mpv drawing only for the hidden layer.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in
+                MainActor.assumeIsolated {
+                    guard let self, self.startRequested else { return }
+                    self.startRequested = false
+                    Self.log.error("Picture in Picture (mpv) didn't start")
+                    self.renderer.pictureInPictureChanged(active: false)
+                    self.restoreLayout?()
+                }
+            }
         }
     }
 
@@ -123,7 +136,10 @@ final class MPVPictureInPicture: NSObject {
 
 extension MPVPictureInPicture: AVPictureInPictureControllerDelegate {
     nonisolated func pictureInPictureControllerWillStartPictureInPicture(_ controller: AVPictureInPictureController) {
-        MainActor.assumeIsolated { renderer.pictureInPictureChanged(active: true) }
+        MainActor.assumeIsolated {
+            startRequested = false
+            renderer.pictureInPictureChanged(active: true)
+        }
     }
 
     nonisolated func pictureInPictureControllerDidStartPictureInPicture(_ controller: AVPictureInPictureController) {
@@ -145,6 +161,7 @@ extension MPVPictureInPicture: AVPictureInPictureControllerDelegate {
                                                 failedToStartPictureInPictureWithError error: Error) {
         Self.log.error("Picture in Picture (mpv) failed to start: \(String(describing: error), privacy: .public)")
         MainActor.assumeIsolated {
+            startRequested = false
             renderer.pictureInPictureChanged(active: false)
             restoreLayout?()
         }

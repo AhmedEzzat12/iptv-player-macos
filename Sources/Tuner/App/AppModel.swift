@@ -80,6 +80,8 @@ final class AppModel {
     /// Bumped when user state changes (favourites, hidden, progress, reminders, recordings, history).
     private(set) var userRevision = 0
     private(set) var banners: [Banner] = []
+    /// The banner posted last (not the one shown last: dismissing the newest brings the one before back).
+    private(set) var latestBannerID: UUID?
     private(set) var reminders: [Reminder] = []
     private(set) var recordings: [Recording] = []
 
@@ -1218,6 +1220,7 @@ final class AppModel {
 
     func notify(_ banner: Banner) {
         banners.append(banner)
+        latestBannerID = banner.id
         if banners.count > 3 { banners.removeFirst(banners.count - 3) }
         let id = banner.id
         Task { [weak self] in
