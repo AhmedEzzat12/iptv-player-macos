@@ -221,37 +221,98 @@ private struct SidebarFooter: View {
 
 struct BannerStack: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.tunerCompact) private var compact
 
     var body: some View {
+        // iPhone: only the newest, edge to edge like the system's banners (three stacked would cover the screen);
+        // the one before it comes back if it's still due when the newest goes.
+        let banners = compact ? Array(model.banners.suffix(1)) : model.banners
         VStack(spacing: 8) {
-            ForEach(model.banners) { banner in
-                HStack(spacing: 12) {
-                    Image(systemName: banner.symbol)
-                        .font(.title3)
-                        .foregroundStyle(banner.isError ? Color.orange : Color.accentColor)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(banner.title).font(.callout.weight(.semibold))
-                        if let m = banner.message { Text(m).font(.caption).foregroundStyle(.secondary).lineLimit(3) }
-                    }
-                    Spacer(minLength: 8)
-                    if let title = banner.actionTitle, let action = banner.action {
-                        Button(title) {
-                            action()
-                            model.dismissBanner(banner.id)
-                        }
-                        .buttonStyle(GlassButtonStyle())
-                    }
-                    Button { model.dismissBanner(banner.id) } label: { Image(systemName: "xmark") }
-                        .buttonStyle(.borderless)
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
-                .frame(maxWidth: 460)
-                .tunerGlass(cornerRadius: 18)
-                .transition(.move(edge: .top).combined(with: .opacity))
+            ForEach(banners) { banner in
+                BannerCard(banner: banner)
+                    .transition(.move(edge: .top).combined(with: .opacity))
             }
         }
+        .padding(.horizontal, compact ? 10 : 0)
         .animation(.spring(response: 0.35), value: model.banners)
+        .sensoryFeedback(.warning, trigger: banners.last?.id) { _, _ in compact && banners.last?.isError == true }
+    }
+}
+
+/// Glass, except on iPhone: there the banner covers the top bar's glass buttons, and glass on glass shows them
+/// through it (and melts into them), so it gets a thick material instead.
+private struct BannerBackground: ViewModifier {
+    let compact: Bool
+
+    func body(content: Content) -> some View {
+        if compact {
+            content.background(.thickMaterial, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        } else {
+            content.tunerGlass(cornerRadius: 18)
+        }
+    }
+}
+
+/// One banner. On touch screens it goes with a swipe up, as the system's do (iPhone drops the close button).
+private struct BannerCard: View {
+    @Environment(AppModel.self) private var model
+    @Environment(\.tunerCompact) private var compact
+    let banner: Banner
+    @ViewState private var drag: CGFloat = 0
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: banner.symbol)
+                .font(compact ? .title2 : .title3)
+                .foregroundStyle(banner.isError ? Color.orange : Color.accentColor)
+                .frame(width: compact ? 32 : nil)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(banner.title)
+                    .font(compact ? .subheadline.weight(.semibold) : .callout.weight(.semibold))
+                    .lineLimit(2)
+                if let m = banner.message {
+                    Text(m).font(compact ? .footnote : .caption).foregroundStyle(.secondary).lineLimit(3)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            if let title = banner.actionTitle, let action = banner.action {
+                Button(title) {
+                    action()
+                    model.dismissBanner(banner.id)
+                }
+                .buttonStyle(GlassButtonStyle())
+            }
+            if !compact {
+                Button { model.dismissBanner(banner.id) } label: { Image(systemName: "xmark") }
+                    .buttonStyle(.borderless)
+                    .accessibilityLabel("Dismiss")
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, compact ? 14 : 12)
+        .frame(maxWidth: compact ? 520 : 460)
+        .modifier(BannerBackground(compact: compact))
+        .contentShape(.rect(cornerRadius: compact ? 24 : 18))
+        .offset(y: drag)
+        .gesture(swipeUp, isEnabled: TouchScreen.isAvailable)
+        .accessibilityElement(children: .combine)
+        .accessibilityAction(named: "Dismiss") { model.dismissBanner(banner.id) }
+    }
+
+    /// Follows the finger upwards (and only a little downwards); far or fast enough up dismisses it.
+    private var swipeUp: some Gesture {
+        DragGesture(minimumDistance: 8)
+            .onChanged { value in
+                let y = value.translation.height
+                drag = y < 0 ? y : y / 6
+            }
+            .onEnded { value in
+                if value.translation.height < -24 || value.predictedEndTranslation.height < -80 {
+                    model.dismissBanner(banner.id)
+                } else {
+                    withAnimation(.spring(response: 0.3)) { drag = 0 }
+                }
+            }
     }
 }
 

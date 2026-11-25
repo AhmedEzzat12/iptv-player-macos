@@ -6,6 +6,7 @@ import UIKit
 /// Development hook for scripted end-to-end tests in the simulator (Debug builds only):
 ///   xcrun simctl launch booted <bundle id> -TunerDebugPlayMovie "Matroska Nights"
 ///   xcrun simctl launch booted <bundle id> -TunerDebugPlayChannel "Tuner News" [-TunerDebugEngine mpv]
+///   xcrun simctl launch booted <bundle id> -TunerDebugBanners YES
 /// Waits for the library, then plays the first match full screen, so each engine can be checked without tapping.
 /// iCloud sync reads `-TunerSyncDir <path>` itself (`CloudSyncController`): a plain folder shared with a scratch Mac
 /// app, instead of a folder picked in Files.
@@ -20,6 +21,17 @@ enum DebugLaunch {
                 NSLog("TunerDebug: adding playlist %@", m3u)
                 model.addSource(Source(name: URL(string: m3u)?.host() ?? "Debug", kind: .m3u, url: m3u))
             }
+        }
+        // -TunerDebugBanners YES: shows sample banners (an error, one with a button), for checking their layout.
+        if defaults.bool(forKey: "TunerDebugBanners") {
+            try? await Task.sleep(for: .seconds(2))
+            model.notify(Banner(symbol: "bell.fill", title: "Reminder set", message: "Evening News · 8:00 PM"))
+            try? await Task.sleep(for: .seconds(1))
+            model.notify(Banner(symbol: "exclamationmark.triangle.fill", title: "Couldn't refresh Test Kit",
+                                message: "The server didn't answer. Check your connection and try again.", isError: true))
+            try? await Task.sleep(for: .seconds(1))
+            model.notify(Banner(symbol: "arrow.down.circle.fill", title: "Downloaded “Matroska Nights”",
+                                message: "Ready to watch offline.", actionTitle: "Play", action: {}))
         }
         let movieName = defaults.string(forKey: "TunerDebugPlayMovie")
         let channelName = defaults.string(forKey: "TunerDebugPlayChannel")

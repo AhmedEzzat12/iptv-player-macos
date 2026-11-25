@@ -287,7 +287,8 @@ Never against the real feed or your own keychain. Use a throwaway key and a loca
   `-TunerDebugPlayMovie <name>`, `-TunerDebugPlayChannel <name>` play the first match full screen and log
   `TunerDebug: t+6s engine=… phase=… video=… hw=…` every 6 s (`-TunerDebugReportSeconds 42` for longer), so each engine
   can be checked from `xcrun simctl spawn booted log show --predicate 'process == "Tuner"'`. Boolean preferences take
-  plist syntax: `-hardwareDecoding "<false/>"`.
+  plist syntax: `-hardwareDecoding "<false/>"`. `-TunerDebugBanners YES` posts three sample banners: on iPhone only
+  the newest shows, edge to edge, and a swipe up dismisses it (the one before comes back while it's still due).
 - **HEVC in MPEG-TS** (AVFoundation plays the sound only, so the app must switch to mpv): make one from a test-kit feed
   with `ffmpeg -i TestMedia/channels/feed2-sports.ts -c:v libx265 -c:a copy -f hls -hls_segment_type mpegts …` and serve
   it with `python3 -m http.server`.
