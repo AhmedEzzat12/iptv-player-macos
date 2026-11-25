@@ -36,6 +36,8 @@ A native IPTV player for **Mac, iPhone and iPad** with an Apple TV app–style e
 | ![Skip Intro button](docs/media/24-skip-intro.png) | ![Audio settings](docs/media/25-audio-settings.png) |
 | **Rows start clear of the sidebar** | **Send a playlist to Google TV (iPhone)** |
 | ![Home rows aligned with their titles](docs/media/26-home-rows.png) | ![Send to TV](docs/media/27-send-to-tv.png) |
+| **Notifications sized for the iPhone (swipe up to dismiss)** | |
+| ![iPhone notification banner](docs/media/28-iphone-banner.png) | |
 
 <sub>Screenshots and video use the local test kit (`scripts/testkit`): synthetic channels and titles, plus four
 Blender Foundation open movies (CC BY). No provider content is shown.</sub>
