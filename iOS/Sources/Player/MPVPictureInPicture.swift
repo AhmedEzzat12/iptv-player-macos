@@ -17,6 +17,7 @@ final class MPVPictureInPicture: NSObject {
     private var controller: AVPictureInPictureController?
     private var timebase: CMTimebase?
     private var ticker: Timer?
+    private var observers: [NSObjectProtocol] = []
 
     var controls: PictureInPictureControls? {
         didSet { refreshState() }
@@ -48,10 +49,36 @@ final class MPVPictureInPicture: NSObject {
         ticker = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.refreshState() }
         }
+        // Leaving the app (resign active comes first) may start PiP by itself: have its frames ready, so the window
+        // opens in its final shape. Coming back without PiP undoes it.
+        let center = NotificationCenter.default
+        observers.append(center.addObserver(forName: UIApplication.willResignActiveNotification, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self, let controller = self.controller, controller.isPictureInPicturePossible,
+                      !controller.isPictureInPictureActive, self.controls?.isPaused() == false else { return }
+                self.prepare()
+            }
+        })
+        observers.append(center.addObserver(forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.cancelPreparation() }
+        })
     }
 
     isolated deinit {
         ticker?.invalidate()
+        observers.forEach(NotificationCenter.default.removeObserver)
+    }
+
+    /// 16:9 frames, shown letterboxed, before the window opens.
+    private func prepare() {
+        layer.videoGravity = .resizeAspect
+        renderer.prepareForPictureInPicture()
+    }
+
+    private func cancelPreparation() {
+        guard controller?.isPictureInPictureActive != true else { return }
+        layer.videoGravity = .resize
+        renderer.cancelPictureInPicturePreparation()
     }
 
     var isPossible: Bool { controller?.isPictureInPicturePossible ?? false }
@@ -62,6 +89,7 @@ final class MPVPictureInPicture: NSObject {
         if controller.isPictureInPictureActive {
             controller.stopPictureInPicture()
         } else if controller.isPictureInPicturePossible {
+            prepare()
             controller.startPictureInPicture()
         }
     }
@@ -119,6 +147,7 @@ extension MPVPictureInPicture: AVPictureInPictureControllerDelegate {
         MainActor.assumeIsolated {
             layer.videoGravity = .resize
             renderer.pictureInPictureChanged(active: false)
+            renderer.cancelPictureInPicturePreparation()
         }
     }
 

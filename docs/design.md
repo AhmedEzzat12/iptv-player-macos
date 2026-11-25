@@ -487,8 +487,10 @@ Data flow: views call `AppModel` actions and read `model.db` in `.task(id:)` blo
   no GPU work in the background, so with PiP open mpv switches to its CPU renderer (`MPV_RENDER_API_TYPE_SW`, 960×540)
   and back on return: video goes off (`vid=no`) before the render context is
   freed — freeing it while mpv's video output used it deadlocked — then the track is selected again. In PiP the
-  frames are always 16:9 (the video letterboxed inside), redrawn so the moment PiP starts, so the window is landscape
-  however the app is held (it took the screen's shape in portrait). Render updates are coalesced (one
+  frames are always 16:9 (the video letterboxed inside), so the window is landscape however the app is held. They're
+  drawn **before** PiP opens (`prepareForPictureInPicture`: on the PiP button, and on resign active for the automatic
+  start), because the window opens in the shape of the frames already in the layer: switching in `willStart` made it
+  open in the screen's shape and then resize (two steps, with a hitch). Coming back without PiP undoes it. Render updates are coalesced (one
   pending at most), so a slow frame can't pile up work in front of the switch. Off: the old `CAEAGLLayer` path,
   unchanged. The shared `PictureInPictureEngine` protocol covers AVFoundation's PiP and this one.
 - **Picture in Picture for mpv (Mac)**, same setting (`MPVPictureInPictureMac.swift`). The screen keeps the

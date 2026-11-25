@@ -202,13 +202,42 @@ final class MPVRenderer: @unchecked Sendable {
         let background = UIApplication.shared.applicationState == .background
         // Opening while already in the background: off the GPU before drawing anything.
         if active, background { useSoftware(true) }
-        // The window takes the shape of the frames it's given: redraw the current one 16:9 at once, so it opens
-        // landscape (in portrait it opened tall, the shape of the screen, until the next frame).
-        queue.sync {
-            framesForPictureInPicture = active
-            drawCurrentFrame()
+        // Normally `prepareForPictureInPicture()` already drew 16:9 frames; otherwise redraw now (the window then
+        // resizes once more).
+        if active != preparedForPictureInPicture {
+            preparedForPictureInPicture = active
+            queue.sync {
+                framesForPictureInPicture = active
+                drawCurrentFrame()
+            }
         }
         if !active, background { setSuspended(true) }
+    }
+
+    /// Main thread: 16:9 frames are going to the layer (prepared or in PiP).
+    private var preparedForPictureInPicture = false
+
+    /// Just before the PiP window may open (main thread): draws the current frame 16:9 now. The window opens in the
+    /// shape of the frames already in the layer; switching after it started made it open in the screen's shape and
+    /// then resize (two steps, with a hitch).
+    func prepareForPictureInPicture() {
+        guard usesSampleBuffers, !preparedForPictureInPicture else { return }
+        preparedForPictureInPicture = true
+        queue.sync {
+            framesForPictureInPicture = true
+            drawCurrentFrame()
+        }
+    }
+
+    /// PiP didn't open after all (main thread): back to frames the shape of the view.
+    func cancelPictureInPicturePreparation() {
+        guard preparedForPictureInPicture, !isInPictureInPicture else { return }
+        preparedForPictureInPicture = false
+        queue.async { [weak self] in
+            guard let self else { return }
+            framesForPictureInPicture = false
+            drawCurrentFrame()
+        }
     }
 
     /// Pixel-buffer mode: the view's size in pixels (main thread).
