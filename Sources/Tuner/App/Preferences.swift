@@ -98,6 +98,9 @@ final class Preferences {
     // Playback
     var engine: EngineChoice { didSet { set(engine.rawValue, "engine") } }
     var hardwareDecoding: Bool { didSet { set(hardwareDecoding, "hardwareDecoding") } }
+    /// iPhone/iPad: Picture in Picture for videos mpv plays too (MKV, raw TS…), not only AVFoundation's. mpv then draws
+    /// into a sample-buffer layer, and on the CPU while in the background (iOS allows no GPU work there).
+    var mpvPictureInPicture: Bool { didSet { set(mpvPictureInPicture, "mpvPictureInPicture") } }
     var bufferMegabytes: Int { didSet { set(bufferMegabytes, "bufferMegabytes") } }
     var timeshiftMegabytes: Int { didSet { set(timeshiftMegabytes, "timeshiftMegabytes") } }
     var mpvExtraOptions: String { didSet { set(mpvExtraOptions, "mpvExtraOptions") } }
@@ -203,6 +206,7 @@ final class Preferences {
 
         engine = EngineChoice(rawValue: v("engine", "")) ?? .automatic
         hardwareDecoding = v("hardwareDecoding", true)
+        mpvPictureInPicture = v("mpvPictureInPicture", true)
         bufferMegabytes = v("bufferMegabytes", 150)
         timeshiftMegabytes = v("timeshiftMegabytes", 256)
         mpvExtraOptions = v("mpvExtraOptions", "")

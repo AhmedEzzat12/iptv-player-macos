@@ -448,5 +448,12 @@ defaults to `<data dir>/Sync`, so a test copy never writes to iCloud Drive even 
 shows close, open, pause and mute for about 4 s (the simulator panel lags; leave a second between taps or they count
 as a double tap, which opens the player). Drag it towards another corner: it settles there. ✕ stops playback.
 
+**Picture in Picture for mpv (iPhone/iPad):** test on an **iPad** simulator: the iPhone simulator reports PiP as
+unsupported for every player. Launch a Debug build with `-TunerDebugPlayMovie "Matroska Nights"` (MKV, plays with mpv)
+or `-TunerDebugPlayChannel "Tuner News" -TunerDebugEngine mpv`, press Home: the video moves into the PiP window and keeps
+playing (drawn on the CPU in the background), in a 16:9 window; live shows LIVE. Opening the app again switches back to
+OpenGL. The simulator draws OpenGL in software, so switches and the first frames take seconds there (instant on a
+device), and it reads pixels back instead of sharing IOSurfaces. With the setting off, mpv videos have no PiP button.
+
 The engine itself is covered by `scripts/test.sh` (`CloudSyncTests`, `CloudSyncRoundTripTests`: two in-memory
 libraries syncing through a temporary folder).

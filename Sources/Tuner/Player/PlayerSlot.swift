@@ -297,7 +297,8 @@ final class PlayerSlot: Identifiable {
         return subtitleTracks[nextIndex]
     }
 
-    /// Observable PiP state (AVFoundation engine only), refreshed by the poll and the engine's PiP callback.
+    /// Observable PiP state (AVFoundation, and mpv on iPhone/iPad when its PiP setting is on), refreshed by the poll and
+    /// the engine's PiP callback.
     private(set) var isPictureInPicturePossible = false
     private(set) var isPictureInPictureActive = false
 
@@ -441,7 +442,9 @@ final class PlayerSlot: Identifiable {
         return .switching
     }
 
-    func togglePictureInPicture() { avEngineIfActive?.togglePictureInPicture() }
+    func togglePictureInPicture() { pictureInPictureEngine?.togglePictureInPicture() }
+
+    private var pictureInPictureEngine: PictureInPictureEngine? { engine as? PictureInPictureEngine }
 
     /// Chapter markers of the playing media (none while re-wrapped for AirPlay: the bridge drops them).
     func chapters() async -> [ChapterMark] {
@@ -606,8 +609,21 @@ final class PlayerSlot: Identifiable {
             guard let self, let newEngine, newEngine === self.engine else { return }
             self.handle(event)
         }
+        if let pip = newEngine as? PictureInPictureEngine {
+            pip.onPictureInPictureChanged = { [weak self, weak pip] active in
+                guard let self, let pip, pip === self.engine as AnyObject else { return }
+                self.isPictureInPictureActive = active
+            }
+            pip.attachPictureInPictureControls(PictureInPictureControls(
+                isPaused: { [weak self] in self?.phase == .paused || self?.phase == .ended },
+                setPaused: { [weak self] paused in self?.setPaused(paused) },
+                position: { [weak self] in self?.snapshot.position },
+                duration: { [weak self] in self?.snapshot.duration },
+                isLive: { [weak self] in self?.item?.isLive ?? false },
+                seekBy: { [weak self] delta in self?.seek(by: delta) },
+                videoSize: { [weak self] in self?.snapshot.videoSize }))
+        }
         if let av = newEngine as? AVEngine {
-            av.onPictureInPictureChanged = { [weak self] active in self?.isPictureInPictureActive = active }
             av.onExternalPlaybackChanged = { [weak self] active in self?.isAirPlayActive = active }
             isAirPlayActive = av.isExternalPlaybackActive
         } else {
@@ -932,7 +948,7 @@ final class PlayerSlot: Identifiable {
                 return
             }
         }
-        let pipPossible = avEngineIfActive?.isPictureInPicturePossible ?? false
+        let pipPossible = pictureInPictureEngine?.isPictureInPicturePossible ?? false
         if pipPossible != isPictureInPicturePossible { isPictureInPicturePossible = pipPossible }
         refreshAppliedAudioEnhancements()
         if ticks % 2 == 0 { watchdog() }

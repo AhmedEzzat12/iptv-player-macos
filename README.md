@@ -166,7 +166,7 @@ devices from Xcode, with a free Apple ID or a paid developer account.
 | Refresh | Toolbar / ⌘R | Pull down on Home, Movies, TV Shows or Live TV and let go to sync with iCloud; keep holding the pull (about 2 s, quicker the farther you pull) to refresh the playlists. Both actions and the hold time are in Settings → Guide & Library |
 | Engines | AVFoundation, libmpv (Homebrew) fallback | AVFoundation, libmpv ([MPVKit](https://github.com/mpvkit/MPVKit)) fallback, built in |
 | Mini player | Hover for controls; drag it to any corner | Tap for controls (close, open, pause, mute); drag it to any corner; double-tap to open |
-| Picture in Picture | AVFoundation streams | AVFoundation streams (MKV and other mpv-only formats: no PiP) |
+| Picture in Picture | AVFoundation streams | Every video, MKV and raw TS too (Settings → Playback → "Picture in Picture for all videos", on by default); starts by itself when you leave the app |
 | AirPlay | All formats (ffmpeg re-wraps the rest) | AVFoundation streams; others via Screen Mirroring |
 | Audio enhancements | All three on every stream with Homebrew's mpv (Audio menu in the control panel) | In the "…" menu. Dialogue Boost everywhere; Night Mode and Volume Levelling only for MP4/MOV in Apple's player (MPVKit's FFmpeg has no compressor or normaliser) |
 | Recordings | Yes (ffmpeg) | No (iOS apps can't run ffmpeg) |

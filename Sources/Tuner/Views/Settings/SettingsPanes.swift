@@ -32,6 +32,12 @@ struct SettingsPlaybackPane: View {
                     Text("Hardware decoding")
                     Text("Decode video on the GPU. Turn off if you see green frames or artifacts.")
                 }
+                #if os(iOS)
+                Toggle(isOn: $prefs.mpvPictureInPicture) {
+                    Text("Picture in Picture for all videos")
+                    Text("Also for MKV and other formats mpv plays. Uses more battery while Picture in Picture is open. Applies to the next video.")
+                }
+                #endif
             } header: {
                 Text("Engine")
             } footer: {

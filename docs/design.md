@@ -473,6 +473,18 @@ Data flow: views call `AppModel` actions and read `model.db` in `.task(id:)` blo
   (`MiniPlayerCorner`, predicted end of the drag); a small one (iPhone, under 140 pt tall) drops the subtitle so the
   title row stays clear of the play button.
   (Multiview was removed on 2026-10-06 at the owner's request.)
+- **Picture in Picture for mpv (iPhone/iPad)**, Settings → Playback → "Picture in Picture for all videos" (on by
+  default; read when an engine is made). mpv then draws into pixel buffers shown by an `AVSampleBufferDisplayLayer`
+  (`MPVVideoView.sampleLayer`) instead of the `CAEAGLLayer`, so AVKit's sample-buffer PiP can take the video
+  (`MPVPictureInPicture`: content source, play/pause and ±skip through `PlayerSlot` via `PictureInPictureControls`,
+  live streams as an endless range, starts automatically from inline). OpenGL ES renders straight into the
+  buffers' IOSurfaces through `CVOpenGLESTextureCache` (the simulator can't, so it reads the pixels back). iOS allows
+  no GPU work in the background, so with PiP open mpv switches to its CPU renderer (`MPV_RENDER_API_TYPE_SW`, frames in
+  the video's shape capped at 960×540) and back on return: video goes off (`vid=no`) before the render context is
+  freed — freeing it while mpv's video output used it deadlocked — then the track is selected again. In PiP the
+  frames carry no bars (the window letterboxes them; 16:9 until the size is known). Render updates are coalesced (one
+  pending at most), so a slow frame can't pile up work in front of the switch. Off: the old `CAEAGLLayer` path,
+  unchanged. The shared `PictureInPictureEngine` protocol covers AVFoundation's PiP and this one.
 - `ScreenAwake` keeps the display on while the player is loading, playing or buffering (an IOKit
   display-sleep assertion on the Mac, `isIdleTimerDisabled` on iOS). AVFoundation does this by itself, mpv doesn't,
   so without it the iPhone dimmed and locked during mpv playback.
