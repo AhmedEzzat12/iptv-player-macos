@@ -88,9 +88,6 @@ final class MPVPictureInPicture: NSObject {
         if changed { controller?.invalidatePlaybackState() }
     }
 
-    private func videoSize() -> CGSize? {
-        controls?.videoSize()
-    }
 }
 
 // MARK: - PiP window
@@ -98,9 +95,9 @@ final class MPVPictureInPicture: NSObject {
 extension MPVPictureInPicture: AVPictureInPictureControllerDelegate {
     nonisolated func pictureInPictureControllerWillStartPictureInPicture(_ controller: AVPictureInPictureController) {
         MainActor.assumeIsolated {
-            // Frames in the video's own shape for the window (it letterboxes them itself).
+            // 16:9 frames for the window, whatever the app's orientation.
             layer.videoGravity = .resizeAspect
-            renderer.pictureInPictureChanged(active: true, videoSize: videoSize())
+            renderer.pictureInPictureChanged(active: true)
         }
     }
 
@@ -111,7 +108,7 @@ extension MPVPictureInPicture: AVPictureInPictureControllerDelegate {
     nonisolated func pictureInPictureControllerDidStopPictureInPicture(_ controller: AVPictureInPictureController) {
         MainActor.assumeIsolated {
             layer.videoGravity = .resize
-            renderer.pictureInPictureChanged(active: false, videoSize: nil)
+            renderer.pictureInPictureChanged(active: false)
             onChanged?(false)
         }
     }
@@ -121,7 +118,7 @@ extension MPVPictureInPicture: AVPictureInPictureControllerDelegate {
         Self.log.error("Picture in Picture (mpv) failed to start: \(String(describing: error), privacy: .public)")
         MainActor.assumeIsolated {
             layer.videoGravity = .resize
-            renderer.pictureInPictureChanged(active: false, videoSize: nil)
+            renderer.pictureInPictureChanged(active: false)
         }
     }
 

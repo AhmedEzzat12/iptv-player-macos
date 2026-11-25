@@ -620,8 +620,7 @@ final class PlayerSlot: Identifiable {
                 position: { [weak self] in self?.snapshot.position },
                 duration: { [weak self] in self?.snapshot.duration },
                 isLive: { [weak self] in self?.item?.isLive ?? false },
-                seekBy: { [weak self] delta in self?.seek(by: delta) },
-                videoSize: { [weak self] in self?.snapshot.videoSize }))
+                seekBy: { [weak self] delta in self?.seek(by: delta) }))
         }
         if let av = newEngine as? AVEngine {
             av.onExternalPlaybackChanged = { [weak self] active in self?.isAirPlayActive = active }

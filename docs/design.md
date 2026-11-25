@@ -479,10 +479,11 @@ Data flow: views call `AppModel` actions and read `model.db` in `.task(id:)` blo
   (`MPVPictureInPicture`: content source, play/pause and ±skip through `PlayerSlot` via `PictureInPictureControls`,
   live streams as an endless range, starts automatically from inline). OpenGL ES renders straight into the
   buffers' IOSurfaces through `CVOpenGLESTextureCache` (the simulator can't, so it reads the pixels back). iOS allows
-  no GPU work in the background, so with PiP open mpv switches to its CPU renderer (`MPV_RENDER_API_TYPE_SW`, frames in
-  the video's shape capped at 960×540) and back on return: video goes off (`vid=no`) before the render context is
+  no GPU work in the background, so with PiP open mpv switches to its CPU renderer (`MPV_RENDER_API_TYPE_SW`, 960×540)
+  and back on return: video goes off (`vid=no`) before the render context is
   freed — freeing it while mpv's video output used it deadlocked — then the track is selected again. In PiP the
-  frames carry no bars (the window letterboxes them; 16:9 until the size is known). Render updates are coalesced (one
+  frames are always 16:9 (the video letterboxed inside), redrawn so the moment PiP starts, so the window is landscape
+  however the app is held (it took the screen's shape in portrait). Render updates are coalesced (one
   pending at most), so a slow frame can't pile up work in front of the switch. Off: the old `CAEAGLLayer` path,
   unchanged. The shared `PictureInPictureEngine` protocol covers AVFoundation's PiP and this one.
 - `ScreenAwake` keeps the display on while the player is loading, playing or buffering (an IOKit

@@ -11,8 +11,6 @@ struct PictureInPictureControls {
     var duration: () -> Double?
     var isLive: () -> Bool
     var seekBy: (Double) -> Void
-    /// The video's display size (frames for the window are drawn in its shape).
-    var videoSize: () -> CGSize?
 }
 
 /// An engine that can show its video in Picture in Picture.

@@ -66,8 +66,9 @@ final class MPVRenderer: @unchecked Sendable {
     // Pixel-buffer mode (render queue).
     private var isSoftware = false
     private var targetSize = CGSize.zero
-    /// While in PiP: the video's display size, so frames carry no bars (the window letterboxes them itself).
-    private var pictureInPictureVideoSize: CGSize?
+    /// While in PiP: frames are drawn 16:9 (the video letterboxed inside), so the window is always landscape, however
+    /// the app is held.
+    private var framesForPictureInPicture = false
     private var pixelPool: CVPixelBufferPool?
     private var pixelPoolSize = CGSize.zero
     private var formatDescription: CMVideoFormatDescription?
@@ -196,13 +197,17 @@ final class MPVRenderer: @unchecked Sendable {
 
     /// The PiP window opened or closed (main thread). Opening while already in the background switches to the CPU
     /// renderer; closing there leaves only the audio playing, as without PiP.
-    func pictureInPictureChanged(active: Bool, videoSize: CGSize?) {
+    func pictureInPictureChanged(active: Bool) {
         isInPictureInPicture = active
-        // The window takes the frames' shape: the video's, or 16:9 while it isn't known yet (a stream still starting).
-        let framing = videoSize.flatMap { $0.width > 0 && $0.height > 0 ? $0 : nil } ?? CGSize(width: 1280, height: 720)
-        queue.async { [weak self] in self?.pictureInPictureVideoSize = active ? framing : nil }
         let background = UIApplication.shared.applicationState == .background
+        // Opening while already in the background: off the GPU before drawing anything.
         if active, background { useSoftware(true) }
+        // The window takes the shape of the frames it's given: redraw the current one 16:9 at once, so it opens
+        // landscape (in portrait it opened tall, the shape of the screen, until the next frame).
+        queue.sync {
+            framesForPictureInPicture = active
+            drawCurrentFrame()
+        }
         if !active, background { setSuspended(true) }
     }
 
@@ -371,10 +376,8 @@ final class MPVRenderer: @unchecked Sendable {
 
     /// The view's pixels; in PiP the video's own shape (no bars), capped (smaller on the CPU renderer).
     private func renderSize() -> CGSize {
-        if let video = pictureInPictureVideoSize, video.width > 0, video.height > 0 {
-            let box = isSoftware ? CGSize(width: 960, height: 540) : CGSize(width: 1920, height: 1080)
-            let scale = min(1, box.width / video.width, box.height / video.height)
-            return CGSize(width: (video.width * scale / 2).rounded() * 2, height: (video.height * scale / 2).rounded() * 2)
+        if framesForPictureInPicture {
+            return isSoftware ? CGSize(width: 960, height: 540) : CGSize(width: 1280, height: 720)
         }
         // Even sizes: video planes with odd sizes came out black.
         return CGSize(width: (targetSize.width / 2).rounded(.down) * 2, height: (targetSize.height / 2).rounded(.down) * 2)
