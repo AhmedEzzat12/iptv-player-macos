@@ -13,6 +13,7 @@ struct SettingsSyncPane: View {
     #endif
     @ViewState private var nameDraft = ""
     @ViewState private var removing: CloudSyncPeer?
+    @ViewState private var confirmingReset = false
 
     private var sync: CloudSyncController { model.cloudSync }
 
@@ -57,6 +58,13 @@ struct SettingsSyncPane: View {
                         .disabled(!sync.isEnabled || sync.isSyncing)
                 }
             }
+
+            Section {
+                Button("Reset Sync on This Device…", role: .destructive) { confirmingReset = true }
+                    .disabled(!sync.isEnabled || sync.isSyncing)
+            } footer: {
+                SettingsFooter("If passwords, progress or playlists stop arriving here, this device starts over as a new one: it gets everything from your other devices again, and they send it passwords within a few minutes.")
+            }
         }
         .formStyle(.grouped)
         .onAppear { nameDraft = sync.deviceName }
@@ -71,6 +79,12 @@ struct SettingsSyncPane: View {
             Button("Cancel", role: .cancel) { removing = nil }
         } message: {
             Text("Its sync file is deleted. If the device is still in use, it turns sync off the next time it opens \(Distribution.appName); turning sync on there adds it again.")
+        }
+        .confirmationDialog("Reset sync on this device?", isPresented: $confirmingReset, titleVisibility: .visible) {
+            Button("Reset Sync", role: .destructive) { Task { await sync.resetSync() } }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This device rejoins sync as a new device. Your other devices' progress, favourites, settings and playlists are applied here again, and theirs win where they differ. Nothing is deleted on the other devices, and this device's own playlists and passwords stay.")
         }
         #if os(iOS) || TUNER_APP_STORE
         .fileImporter(isPresented: $pickingFolder, allowedContentTypes: [.folder]) { result in

@@ -204,6 +204,34 @@ struct CloudSyncRoundTripTests {
         #expect(try await c.sources().first?.password == nil)
     }
 
+    @Test func resetDeviceRejoinsAndGetsPasswordsAgain() async throws {
+        try await a.save(xtream(id: "SA"))
+        _ = await engineB.sync(folder: folder, preferences: [:], now: at(1))
+        var trustA = await engineA.sync(folder: folder, preferences: [:], includeSecrets: true, now: at(2)).trustedKeys
+        _ = await engineB.sync(folder: folder, preferences: [:], now: at(3))
+        #expect(try await b.sources().first?.password == "pw-A-secret")
+
+        // B lost its key (a new one replaced it): A pins the old one, so nothing reaches B any more.
+        var lost = try #require(try await b.sources().first)
+        lost.password = nil
+        lost.needsPassword = true
+        try await b.save(lost)
+        try await b.resetCloudSyncLedger()
+
+        // Reset Sync on B: new id and key, its old file goes; A trusts the new device and seals for it.
+        let newKey = CloudSyncSecrets.PrivateKey()
+        try await engineB.reset(id: "device-B2", key: newKey, folder: folder)
+        #expect(!FileManager.default.fileExists(atPath: folder.appendingPathComponent("device-B.json").path))
+        _ = await engineB.sync(folder: folder, preferences: [:], now: at(10))
+        let report = await engineA.sync(folder: folder, preferences: [:], includeSecrets: true, trustedKeys: trustA, now: at(11))
+        trustA = report.trustedKeys
+        #expect(report.peers.map(\.id) == ["device-B2"])
+        #expect(trustA["device-B2"] == CloudSyncSecrets.publicKeyString(newKey))
+        _ = await engineB.sync(folder: folder, preferences: [:], now: at(12))
+        let back = try #require(try await b.sources().first)
+        #expect(back.password == "pw-A-secret" && !back.needsPassword && back.enabled)
+    }
+
     @Test func deviceIdsThatArentPlainIdsAreRejected() throws {
         #expect(CloudSyncDeviceFile.isValidDeviceId("6F1C9A2B-0000-4000-8000-123456789ABC"))
         for bad in ["../../etc/x", "a/b", "", ".hidden", String(repeating: "a", count: 65)] {

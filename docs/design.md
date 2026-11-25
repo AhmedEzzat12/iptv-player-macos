@@ -358,7 +358,14 @@ user is asked again). Off by default (Settings → Sync).
   from iCloud, the next pass comes 8 s later instead of at the two-minute tick. Each pass also reports, in
   Settings → Sync, playlists that look like one account added with two server addresses (`CloudSyncDiagnostics`:
   same kind and username, different fingerprint): they sync as separate playlists, so progress follows whichever
-  copy was watched. Passes run in the
+  copy was watched.
+- **Keys and Reset:** on iPhone/iPad the private key and device id are only created when the Keychain has none
+  (`SyncKeychain.lookup`: found / not found / unavailable). Before the first unlock after a restart it refuses reads;
+  that used to count as "no key", so a background launch replaced the key and the other devices, which pin keys,
+  stopped sealing passwords for it. Now passes wait until the key can be read. Settings → Sync → **Reset Sync on This
+  Device** makes the device start over as a new one (`CloudSyncEngine.reset`): its file is deleted, it takes a new id
+  and key, forgets its pinned keys and its ledger, and syncs; the others trust it on first sight and seal passwords
+  for it, and their values win where they differ (first-sync rule). Removed devices stay removed. Passes run in the
   `CloudSyncEngine` actor (one at a time, never while a source editor is open); applied rows bump the usual revisions
   through the table observers. `TUNER_SYNC_DIR` (or `-TunerSyncDir` in iOS debug builds) uses a plain folder and turns
   sync on, for testing; a scratch library (`TUNER_DATA_DIR`) defaults to `<data dir>/Sync`, never iCloud Drive.

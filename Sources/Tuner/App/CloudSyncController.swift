@@ -89,8 +89,10 @@ final class CloudSyncController {
         let platform = "iOS"
         #endif
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
+        let key = Self.loadKey()
+        keyUnavailable = key == nil
         engine = CloudSyncEngine(db: db, device: .init(id: deviceId, name: name, platform: platform, appVersion: version),
-                                 key: Self.loadKey())
+                                 key: key ?? .init())
         refreshFolderDescription()
     }
 
@@ -119,12 +121,14 @@ final class CloudSyncController {
     /// UserDefaults move to the Keychain. On the Mac, UserDefaults already survive reinstalling.
     private static func loadDeviceId(_ defaults: UserDefaults) -> String {
         #if os(iOS)
-        if let data = SyncKeychain.read("deviceId"), let id = String(data: data, encoding: .utf8) {
+        let lookup = SyncKeychain.lookup("deviceId")
+        if case .found(let data) = lookup, let id = String(data: data, encoding: .utf8) {
             defaults.set(id, forKey: deviceIdKey)
             return id
         }
         let id = defaults.string(forKey: deviceIdKey) ?? UUID().uuidString
-        SyncKeychain.write("deviceId", Data(id.utf8))
+        // Only when the Keychain really has none (not when it's locked): a write then could replace the saved id.
+        if case .notFound = lookup { SyncKeychain.write("deviceId", Data(id.utf8)) }
         defaults.set(id, forKey: deviceIdKey)
         return id
         #else
@@ -148,20 +152,77 @@ final class CloudSyncController {
     /// The private key that opens passwords other devices sealed for this one (`CloudSyncSecrets`). It never leaves
     /// the device: iPhone/iPad keep it in the Keychain (surviving reinstalls, like the device id); the Mac in a file only
     /// this user can read, next to the library.
-    private static func loadKey() -> CloudSyncSecrets.PrivateKey {
+    ///
+    /// iPhone/iPad: a new key is made only when the Keychain has none. Before the first unlock after a restart (the app
+    /// can start then, for background audio) the Keychain refuses reads; treating that as "no key" replaced the real key,
+    /// and the other devices, which pin each device's key, stopped sealing passwords for it. Nil means "not readable
+    /// now": passes wait until it is (`ensureKey`).
+    private static func loadKey() -> CloudSyncSecrets.PrivateKey? {
         #if os(iOS)
-        if let data = SyncKeychain.read("privateKey"), let key = try? CloudSyncSecrets.PrivateKey(rawRepresentation: data) { return key }
-        let key = CloudSyncSecrets.PrivateKey()
-        SyncKeychain.write("privateKey", key.rawRepresentation)
-        return key
+        switch SyncKeychain.lookup("privateKey") {
+        case .found(let data):
+            if let key = try? CloudSyncSecrets.PrivateKey(rawRepresentation: data) { return key }
+            return storeNewKey()
+        case .notFound:
+            return storeNewKey()
+        case .unavailable:
+            return nil
+        }
         #else
         let url = TunerApp.dataDirectory.appendingPathComponent("sync-key")
         if let data = try? Data(contentsOf: url), let key = try? CloudSyncSecrets.PrivateKey(rawRepresentation: data) { return key }
+        return storeNewKey()
+        #endif
+    }
+
+    private static func storeNewKey() -> CloudSyncSecrets.PrivateKey {
         let key = CloudSyncSecrets.PrivateKey()
+        #if os(iOS)
+        SyncKeychain.write("privateKey", key.rawRepresentation)
+        #else
+        let url = TunerApp.dataDirectory.appendingPathComponent("sync-key")
+        try? FileManager.default.removeItem(at: url)
         try? FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
         FileManager.default.createFile(atPath: url.path, contents: key.rawRepresentation, attributes: [.posixPermissions: 0o600])
-        return key
         #endif
+        return key
+    }
+
+    /// The key couldn't be read at launch (iPhone/iPad, before the first unlock): no pass runs until it can, because
+    /// publishing a stand-in key would make the other devices stop sending passwords.
+    @ObservationIgnored private var keyUnavailable = false
+
+    private func ensureKey() async -> Bool {
+        guard keyUnavailable else { return true }
+        guard let key = Self.loadKey() else { return false }
+        keyUnavailable = false
+        try? await engine.reset(id: deviceId, key: key, folder: nil)
+        return true
+    }
+
+    /// Settings → Sync → Reset Sync: this device starts over as a new one. Its file leaves the folder, it gets a new id
+    /// and key, forgets the keys it pinned for the other devices and what it last published, then syncs: the other
+    /// devices' playlists, passwords, progress and settings are applied again (theirs win over this device's, as on a
+    /// first sync), and they seal passwords for the new key on their next pass. Removed devices stay removed.
+    func resetSync() async {
+        cancelScheduled()
+        let folder: (URL, () -> Void)? = try? resolveFolder().get()
+        let id = UUID().uuidString
+        deviceId = id
+        defaults.set(id, forKey: Self.deviceIdKey)
+        #if os(iOS)
+        SyncKeychain.write("deviceId", Data(id.utf8))
+        #endif
+        let key = Self.storeNewKey()
+        keyUnavailable = false
+        trustedKeys = [:]
+        try? await engine.reset(id: id, key: key, folder: folder?.0)
+        folder?.1()
+        peers = []
+        notices = []
+        lastError = nil
+        lastSync = nil
+        syncNow()
     }
 
     /// Renames this device for the other devices' lists; an empty name goes back to the system name.
@@ -342,6 +403,11 @@ final class CloudSyncController {
         // Never while a playlist is being edited: the import could change the playlist under the editor.
         guard model.openSourceEditors == 0 else {
             schedule(in: 5)
+            return
+        }
+        guard await ensureKey() else {
+            lastError = "Waiting for this device to be unlocked to read its sync key."
+            schedule(in: 30)
             return
         }
         isSyncing = true
@@ -530,13 +596,28 @@ enum SyncKeychain {
          kSecAttrAccount as String: account]
     }
 
-    static func read(_ account: String) -> Data? {
+    enum Lookup {
+        case found(Data)
+        case notFound
+        /// The Keychain couldn't be read right now (locked since the restart, or another error): nothing is known.
+        case unavailable
+    }
+
+    static func lookup(_ account: String) -> Lookup {
         var q = query(account)
         q[kSecReturnData as String] = true
         q[kSecMatchLimit as String] = kSecMatchLimitOne
         var result: AnyObject?
-        guard SecItemCopyMatching(q as CFDictionary, &result) == errSecSuccess else { return nil }
-        return result as? Data
+        switch SecItemCopyMatching(q as CFDictionary, &result) {
+        case errSecSuccess: return (result as? Data).map(Lookup.found) ?? .unavailable
+        case errSecItemNotFound: return .notFound
+        default: return .unavailable
+        }
+    }
+
+    static func read(_ account: String) -> Data? {
+        if case .found(let data) = lookup(account) { return data }
+        return nil
     }
 
     static func write(_ account: String, _ data: Data) {

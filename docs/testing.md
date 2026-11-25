@@ -416,7 +416,10 @@ defaults to `<data dir>/Sync`, so a test copy never writes to iCloud Drive even 
    in front) it turns on by itself. Check the library: `sqlite3 <lib>/tuner.sqlite "SELECT needsPassword, enabled FROM source"`. With "Include Playlist Passwords"
    off, enter `test` by hand. The M3U playlist (`http://127.0.0.1:8765/playlist.m3u`) has no secret and arrives ready.
    Check `grep -c '"secret"' <scratch>/sync/*.json` is 0 and `sealedSecret.keys` lists only the other device's id.
-5. Devices: rename this device in Settings → Sync, then Remove the other copy there. Its file disappears and the
+5. Reset: on the copy that should receive passwords, Settings → Sync → Reset Sync on This Device. Its old file leaves
+   the folder and a new one (new id) appears; within a pass or two of the other copy, its playlists have their
+   passwords again (`SELECT needsPassword, enabled FROM source`).
+   Devices: rename this device in Settings → Sync, then Remove the other copy there. Its file disappears and the
    removal shows in this copy's `removedDevices`; at its next pass the removed copy turns sync off and doesn't
    write its file again.
 6. Reinstall (iPhone/iPad): `xcrun simctl uninstall booted <bundle id>`, install and launch again with the same

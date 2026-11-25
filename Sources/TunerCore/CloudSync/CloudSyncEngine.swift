@@ -26,7 +26,7 @@ public actor CloudSyncEngine {
     public let db: AppDatabase
     public private(set) var device: Device
     /// Seals playlist passwords for the other devices and opens the ones sealed for this one (`CloudSyncSecrets`).
-    private let key: CloudSyncSecrets.PrivateKey
+    private var key: CloudSyncSecrets.PrivateKey
     /// Records in this device's file as last written or read, so unchanged state isn't rewritten (and re-uploaded).
     private var published: [CloudSyncRecord]?
     private var publishedRemoved: [String: Int64]?
@@ -50,6 +50,20 @@ public actor CloudSyncEngine {
         guard id != device.id else { return }
         device.id = id
         published = nil
+        publishedFolder = nil
+    }
+
+    /// Starts over as a new device (Settings → Sync → Reset Sync): this device's file is deleted from `folder`, it takes
+    /// `id` and `key`, and forgets what it published, so the next pass applies the other devices' state as on a first
+    /// sync and they seal passwords for the new key.
+    public func reset(id: String, key: CloudSyncSecrets.PrivateKey, folder: URL?) async throws {
+        if let folder { CloudSyncFolder.delete(deviceId: device.id, in: folder) }
+        try await db.resetCloudSyncLedger()
+        device.id = id
+        self.key = key
+        published = nil
+        publishedRemoved = nil
+        publishedRecipients = nil
         publishedFolder = nil
     }
 
